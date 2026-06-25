@@ -1,0 +1,191 @@
+import { lazy, Suspense, useEffect } from "react";
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+import { DefaultProviders } from "./components/providers/default.tsx";
+import AuthCallback from "./pages/auth/Callback.tsx";
+import Index from "./pages/Index.tsx";
+import { ErrorBoundary } from "@/components/error-boundary.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { useServiceWorker } from "@/hooks/use-service-worker.ts";
+import { useAnalytics } from "@/hooks/use-analytics.ts";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top.ts";
+import CookieBanner from "@/components/cookie-banner.tsx";
+import { InstallAppPrompt } from "@/components/pwa/install-prompt.tsx";
+import "./i18n.ts";
+
+const ChecklistPage = lazy(() => import("./pages/checklist/page.tsx"));
+const PricingPage = lazy(() => import("./pages/pricing/page.tsx"));
+const LoginPage = lazy(() => import("./pages/login/page.tsx"));
+const PaymentPage = lazy(() => import("./pages/payment/page.tsx"));
+const PassportPhotoPage = lazy(() => import("./pages/passport-photo/page.tsx"));
+const DashboardPage = lazy(() => import("./pages/dashboard/page.tsx"));
+const DashboardChecklistsPage = lazy(
+  () => import("./pages/dashboard/checklists/page.tsx"),
+);
+const DashboardTimelinePage = lazy(
+  () => import("./pages/dashboard/timeline/page.tsx"),
+);
+const DashboardRemindersPage = lazy(
+  () => import("./pages/dashboard/reminders/page.tsx"),
+);
+const DashboardTripWorkspacePage = lazy(
+  () => import("./pages/dashboard/trips/page.tsx"),
+);
+const DocumentVaultPage = lazy(() => import("./pages/dashboard/vault/page.tsx"));
+const CountryWatchPage = lazy(() => import("./pages/dashboard/country-watch/page.tsx"));
+const ProfileSettingsPage = lazy(
+  () => import("./pages/settings/profile/page.tsx"),
+);
+const RejectionAnalyserPage = lazy(
+  () => import("./pages/rejection-analyser/page.tsx"),
+);
+const AgentsPage = lazy(() => import("./pages/agents/page.tsx"));
+const AgentRegisterPage = lazy(() => import("./pages/agents/register.tsx"));
+const AgentOnboardingPage = lazy(() => import("./pages/agents/onboarding.tsx"));
+const AgentDashboardPreviewPage = lazy(() => import("./pages/agents/dashboard.tsx"));
+const ClientPortalPage = lazy(() => import("./pages/agents/client-portal.tsx"));
+const OnboardingPage = lazy(() => import("./pages/onboarding/page.tsx"));
+const TermsPage = lazy(() => import("./pages/terms/page.tsx"));
+const PrivacyPage = lazy(() => import("./pages/privacy/page.tsx"));
+const AdminPage = lazy(() => import("./pages/admin/page.tsx"));
+const WhiteLabelPage = lazy(() => import("./pages/white-label/page.tsx"));
+const ContactPage = lazy(() => import("./pages/contact/page.tsx"));
+const AboutPage = lazy(() => import("./pages/about/page.tsx"));
+const BlogPage = lazy(() => import("./pages/blog/page.tsx"));
+const BlogArticlePage = lazy(() => import("./pages/blog/article.tsx"));
+const GoogleLoginPage = lazy(() => import("./pages/google-login/page.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex flex-col gap-4 p-8">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-20 w-full rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+// Redirect first-time visitors to onboarding
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const onboarded = localStorage.getItem("vc_onboarded");
+    const skipPaths = [
+      "/onboarding",
+      "/auth/callback",
+      "/terms",
+      "/privacy",
+      "/pricing",
+      "/login",
+      "/signup",
+      "/google-login",
+      "/payment",
+      "/settings",
+      "/agents",
+      "/agents/register",
+      "/agents/onboarding",
+      "/agents/dashboard",
+      "/client-portal",
+      "/about",
+      "/contact",
+      "/blog",
+      "/white-label",
+      "/checklist",
+      "/dashboard",
+      "/rejection-analyser",
+      "/passport-photo",
+      "/admin",
+    ];
+    if (!onboarded && !skipPaths.some((p) => location.pathname.startsWith(p))) {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [navigate, location.pathname]);
+
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  useServiceWorker();
+  useAnalytics();
+  useScrollToTop();
+
+  return (
+    <OnboardingGate>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/checklist" element={<ChecklistPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<LoginPage />} />
+          <Route path="/google-login" element={<GoogleLoginPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/passport-photo" element={<PassportPhotoPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route
+            path="/dashboard/checklists"
+            element={<DashboardChecklistsPage />}
+          />
+          <Route
+            path="/dashboard/timeline"
+            element={<DashboardTimelinePage />}
+          />
+          <Route
+            path="/dashboard/reminders"
+            element={<DashboardRemindersPage />}
+          />
+          <Route
+            path="/dashboard/trips/:id"
+            element={<DashboardTripWorkspacePage />}
+          />
+          <Route path="/dashboard/vault" element={<DocumentVaultPage />} />
+          <Route path="/dashboard/country-watch" element={<CountryWatchPage />} />
+          <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+          <Route
+            path="/rejection-analyser"
+            element={<RejectionAnalyserPage />}
+          />
+          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents/register" element={<AgentRegisterPage />} />
+          <Route path="/agents/onboarding" element={<AgentOnboardingPage />} />
+          <Route path="/agents/dashboard" element={<AgentDashboardPreviewPage />} />
+          <Route path="/client-portal/:token" element={<ClientPortalPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/white-label" element={<WhiteLabelPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:id" element={<BlogArticlePage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </OnboardingGate>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <DefaultProviders>
+        <BrowserRouter>
+          <AppRoutes />
+          <InstallAppPrompt />
+          <CookieBanner />
+        </BrowserRouter>
+      </DefaultProviders>
+    </ErrorBoundary>
+  );
+}

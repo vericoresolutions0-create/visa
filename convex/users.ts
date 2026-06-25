@@ -1,0 +1,581 @@
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { MutationCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { bumpStat } from "./platformStats.ts";
+
+const PLAN_PRICES_CENTS = {
+  pro: { monthly: 900, yearly: 7900 },
+  expert: { monthly: 1900, yearly: 14900 },
+} as const;
+
+const AGENT_PLAN_PRICES_CENTS = {
+  agent_listing: { monthly: 2900, yearly: 29000 },
+  agent_featured: { monthly: 7900, yearly: 79000 },
+  agency_white_label: { monthly: 14900, yearly: 149000 },
+} as const;
+
+const BUILT_IN_REFERRALS: Record<string, number> = {
+  VERICORE20: 20,
+  VISACLEAR20: 20,
+};
+
+function makeReferralCode(name: string | undefined, userId: string) {
+  const prefix = (name ?? "VISA")
+    .replace(/[^a-zA-Z]/g, "")
+    .slice(0, 4)
+    .toUpperCase()
+    .padEnd(4, "X");
+  return `${prefix}${userId.slice(-6).toUpperCase()}`;
+}
+
+async function getCurrentUserOrThrow(ctx: MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity)
+    throw new ConvexError({
+      code: "UNAUTHENTICATED",
+      message: "Not logged in",
+    });
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_token", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+  if (!user)
+    throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+  return user;
+}
+
+function normalizeReferralCode(code: string) {
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+async function getReferralDiscount(
+  ctx: MutationCtx,
+  code: string | undefined,
+  currentUser?: Doc<"users">,
+) {
+  if (!code) return { discountPercent: 0, normalizedCode: undefined };
+
+  const normalizedCode = normalizeReferralCode(code);
+  if (!normalizedCode) return { discountPercent: 0, normalizedCode: undefined };
+
+  const builtInDiscount = BUILT_IN_REFERRALS[normalizedCode];
+  if (builtInDiscount)
+    return { discountPercent: builtInDiscount, normalizedCode };
+
+  const owner = await ctx.db
+    .query("users")
+    .withIndex("by_referral_code", (q) => q.eq("referralCode", normalizedCode))
+    .unique();
+
+  if (!owner || owner._id === currentUser?._id) {
+    return { discountPercent: 0, normalizedCode: undefined };
+  }
+
+  return { discountPercent: 15, normalizedCode };
+}
+
+function detectCardBrand(cardNumber: string) {
+  const digits = cardNumber.replace(/\D/g, "");
+  if (digits.startsWith("4")) return "Visa";
+  if (/^5[1-5]/.test(digits) || /^2(2[2-9]|[3-6]|7[01]|720)/.test(digits))
+    return "Mastercard";
+  if (/^3[47]/.test(digits)) return "Amex";
+  return "Card";
+}
+
+export const updateCurrentUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({
+        code: "UNAUTHENTICATED",
+        message: "User not logged in",
+      });
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+    if (user !== null) {
+      if (!user.referralCode) {
+        await ctx.db.patch(user._id, {
+          referralCode: makeReferralCode(user.name, user._id),
+        });
+      }
+      return user._id;
+    }
+
+    // New user — create account and send welcome email
+    const userId = await ctx.db.insert("users", {
+      name: identity.name,
+      email: identity.email,
+      tokenIdentifier: identity.tokenIdentifier,
+      plan: "free",
+      role: "user",
+    });
+
+    await ctx.db.patch(userId, {
+      referralCode: makeReferralCode(identity.name, userId),
+    });
+    await bumpStat(ctx, "totalUsers", 1);
+
+    // Trigger welcome email asynchronously (non-blocking)
+    if (identity.email) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.emails.welcome.sendWelcomeEmail,
+        {
+          to: identity.email,
+          name: identity.name,
+        },
+      );
+    }
+
+    return userId;
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    country: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    await ctx.db.patch(user._id, {
+      name: args.name.trim(),
+      email: args.email.trim(),
+      phone: args.phone?.trim() || undefined,
+      country: args.country?.trim() || undefined,
+    });
+    return user._id;
+  },
+});
+
+export const updatePayoutSetup = mutation({
+  args: {
+    method: v.union(
+      v.literal("bank"),
+      v.literal("mobile_money"),
+      v.literal("paypal"),
+    ),
+    accountName: v.string(),
+    country: v.string(),
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    mobileMoneyProvider: v.optional(v.string()),
+    mobileMoneyNumber: v.optional(v.string()),
+    paypalEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const accountNumberDigits = args.accountNumber?.replace(/\D/g, "") ?? "";
+    const mobileDigits = args.mobileMoneyNumber?.replace(/\D/g, "") ?? "";
+    const existingPayout = user.payoutSetup;
+    const accountNumberLast4 = accountNumberDigits
+      ? accountNumberDigits.slice(-4)
+      : existingPayout?.method === "bank"
+        ? existingPayout.accountNumberLast4
+        : undefined;
+    const mobileMoneyLast4 = mobileDigits
+      ? mobileDigits.slice(-4)
+      : existingPayout?.method === "mobile_money"
+        ? existingPayout.mobileMoneyLast4
+        : undefined;
+
+    if (args.method === "bank" && (!args.bankName || !accountNumberLast4)) {
+      throw new ConvexError({
+        code: "INVALID_PAYOUT",
+        message: "Enter a bank name and account number.",
+      });
+    }
+    if (
+      args.method === "mobile_money" &&
+      (!args.mobileMoneyProvider || !mobileMoneyLast4)
+    ) {
+      throw new ConvexError({
+        code: "INVALID_PAYOUT",
+        message: "Enter a mobile money provider and number.",
+      });
+    }
+    if (
+      args.method === "paypal" &&
+      (!args.paypalEmail || !args.paypalEmail.includes("@"))
+    ) {
+      throw new ConvexError({
+        code: "INVALID_PAYOUT",
+        message: "Enter a valid PayPal email.",
+      });
+    }
+
+    await ctx.db.patch(user._id, {
+      payoutSetup: {
+        method: args.method,
+        accountName: args.accountName.trim(),
+        country: args.country.trim(),
+        bankName: args.bankName?.trim() || undefined,
+        accountNumberLast4,
+        mobileMoneyProvider: args.mobileMoneyProvider?.trim() || undefined,
+        mobileMoneyLast4,
+        paypalEmail: args.paypalEmail?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    return user._id;
+  },
+});
+
+export const validateReferralCode = query({
+  args: { code: v.string() },
+  handler: async (ctx, args) => {
+    const normalizedCode = normalizeReferralCode(args.code);
+    if (!normalizedCode) {
+      return {
+        valid: false,
+        discountPercent: 0,
+        message: "Enter a referral code.",
+      };
+    }
+
+    const builtInDiscount = BUILT_IN_REFERRALS[normalizedCode];
+    if (builtInDiscount) {
+      return {
+        valid: true,
+        discountPercent: builtInDiscount,
+        code: normalizedCode,
+        message: `${builtInDiscount}% discount applied.`,
+      };
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    const currentUser = identity
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) =>
+            q.eq("tokenIdentifier", identity.tokenIdentifier),
+          )
+          .unique()
+      : null;
+    const owner = await ctx.db
+      .query("users")
+      .withIndex("by_referral_code", (q) =>
+        q.eq("referralCode", normalizedCode),
+      )
+      .unique();
+
+    if (!owner) {
+      return {
+        valid: false,
+        discountPercent: 0,
+        message: "Referral code not found.",
+      };
+    }
+    if (owner._id === currentUser?._id) {
+      return {
+        valid: false,
+        discountPercent: 0,
+        message: "You cannot use your own referral code.",
+      };
+    }
+
+    return {
+      valid: true,
+      discountPercent: 15,
+      code: normalizedCode,
+      message: `15% referral discount applied${owner.name ? ` from ${owner.name}` : ""}.`,
+    };
+  },
+});
+
+export const completeCheckout = mutation({
+  args: {
+    plan: v.union(v.literal("pro"), v.literal("expert")),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    referralCode: v.optional(v.string()),
+    expectedAmountCents: v.number(),
+    paymentMethod: v.object({
+      cardNumber: v.string(),
+      nameOnCard: v.string(),
+      expiryMonth: v.string(),
+      expiryYear: v.string(),
+      billingEmail: v.string(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const baseAmountCents = PLAN_PRICES_CENTS[args.plan][args.billingCycle];
+    const { discountPercent, normalizedCode } = await getReferralDiscount(
+      ctx,
+      args.referralCode,
+      user,
+    );
+    const finalAmountCents = Math.round(
+      baseAmountCents * (1 - discountPercent / 100),
+    );
+
+    if (args.expectedAmountCents !== finalAmountCents) {
+      throw new ConvexError({
+        code: "PRICE_MISMATCH",
+        message: "The checkout total changed. Please refresh and try again.",
+      });
+    }
+
+    const cardDigits = args.paymentMethod.cardNumber.replace(/\D/g, "");
+    if (cardDigits.length < 12 || cardDigits.length > 19) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter a valid card number.",
+      });
+    }
+    if (!args.paymentMethod.nameOnCard.trim()) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter the name on the card.",
+      });
+    }
+    if (!args.paymentMethod.billingEmail.includes("@")) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter a valid billing email.",
+      });
+    }
+
+    const now = new Date().toISOString();
+    await ctx.db.patch(user._id, {
+      plan: args.plan,
+      billingCycle: args.billingCycle,
+      subscriptionAmountCents: finalAmountCents,
+      subscriptionStartedAt: user.subscriptionStartedAt ?? now,
+      lastPaymentAt: now,
+      referredByCode: normalizedCode ?? user.referredByCode,
+      paymentMethod: {
+        type: "card",
+        brand: detectCardBrand(cardDigits),
+        last4: cardDigits.slice(-4),
+        nameOnMethod: args.paymentMethod.nameOnCard.trim(),
+        expiresAt: `${args.paymentMethod.expiryMonth.padStart(2, "0")}/${args.paymentMethod.expiryYear}`,
+        billingEmail: args.paymentMethod.billingEmail.trim(),
+        updatedAt: now,
+      },
+    });
+
+    return {
+      plan: args.plan,
+      billingCycle: args.billingCycle,
+      discountPercent,
+      amountCents: finalAmountCents,
+    };
+  },
+});
+
+export const completeAgentCheckout = mutation({
+  args: {
+    plan: v.union(
+      v.literal("agent_listing"),
+      v.literal("agent_featured"),
+      v.literal("agency_white_label"),
+    ),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    referralCode: v.optional(v.string()),
+    expectedAmountCents: v.number(),
+    paymentMethod: v.object({
+      cardNumber: v.string(),
+      nameOnCard: v.string(),
+      expiryMonth: v.string(),
+      expiryYear: v.string(),
+      billingEmail: v.string(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const baseAmountCents =
+      AGENT_PLAN_PRICES_CENTS[args.plan][args.billingCycle];
+    const { discountPercent, normalizedCode } = await getReferralDiscount(
+      ctx,
+      args.referralCode,
+      user,
+    );
+    const finalAmountCents = Math.round(
+      baseAmountCents * (1 - discountPercent / 100),
+    );
+
+    if (args.expectedAmountCents !== finalAmountCents) {
+      throw new ConvexError({
+        code: "PRICE_MISMATCH",
+        message: "The checkout total changed. Please refresh and try again.",
+      });
+    }
+
+    const cardDigits = args.paymentMethod.cardNumber.replace(/\D/g, "");
+    if (cardDigits.length < 12 || cardDigits.length > 19) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter a valid card number.",
+      });
+    }
+    if (!args.paymentMethod.nameOnCard.trim()) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter the name on the card.",
+      });
+    }
+    if (!args.paymentMethod.billingEmail.includes("@")) {
+      throw new ConvexError({
+        code: "INVALID_PAYMENT_METHOD",
+        message: "Enter a valid billing email.",
+      });
+    }
+
+    const now = new Date().toISOString();
+    await ctx.db.patch(user._id, {
+      agentPlan: args.plan,
+      agentBillingCycle: args.billingCycle,
+      agentSubscriptionAmountCents: finalAmountCents,
+      agentSubscriptionStartedAt: user.agentSubscriptionStartedAt ?? now,
+      lastAgentPaymentAt: now,
+      referredByCode: normalizedCode ?? user.referredByCode,
+      paymentMethod: {
+        type: "card",
+        brand: detectCardBrand(cardDigits),
+        last4: cardDigits.slice(-4),
+        nameOnMethod: args.paymentMethod.nameOnCard.trim(),
+        expiresAt: `${args.paymentMethod.expiryMonth.padStart(2, "0")}/${args.paymentMethod.expiryYear}`,
+        billingEmail: args.paymentMethod.billingEmail.trim(),
+        updatedAt: now,
+      },
+    });
+
+    return {
+      plan: args.plan,
+      billingCycle: args.billingCycle,
+      discountPercent,
+      amountCents: finalAmountCents,
+    };
+  },
+});
+
+export const deleteCurrentAccount = mutation({
+  args: { confirmEmail: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    if (
+      (user.email ?? "").toLowerCase() !==
+      args.confirmEmail.trim().toLowerCase()
+    ) {
+      throw new ConvexError({
+        code: "EMAIL_MISMATCH",
+        message: "The email confirmation does not match your account.",
+      });
+    }
+
+    const checklists = await ctx.db
+      .query("saved_checklists")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const reminders = await ctx.db
+      .query("reminders")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const analyses = await ctx.db
+      .query("rejection_analyses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const agentProfiles = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const vaultDocs = await ctx.db
+      .query("vault_documents")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const countryWatches = await ctx.db
+      .query("country_watches")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const aiUsageRows = await ctx.db
+      .query("ai_assistant_usage")
+      .withIndex("by_user_month", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Vault documents also own a real uploaded file in Convex storage —
+    // deleting the row without deleting the file would leave it behind
+    // forever, which is a real privacy problem for a product that promises
+    // GDPR compliance in its own emails.
+    for (const doc of vaultDocs) {
+      await ctx.storage.delete(doc.storageId);
+    }
+
+    for (const doc of [
+      ...checklists,
+      ...reminders,
+      ...analyses,
+      ...agentProfiles,
+      ...vaultDocs,
+      ...countryWatches,
+      ...aiUsageRows,
+    ]) {
+      await ctx.db.delete(doc._id);
+    }
+    await ctx.db.delete(user._id);
+
+    // Keep the admin dashboard's denormalized counters accurate — this bulk
+    // delete bypasses the per-row mutations that normally call bumpStat.
+    await bumpStat(ctx, "totalChecklists", -checklists.length);
+    await bumpStat(ctx, "totalRejectionAnalyses", -analyses.length);
+    await bumpStat(ctx, "totalAgents", -agentProfiles.length);
+    await bumpStat(ctx, "totalUsers", -1);
+
+    return { deleted: true };
+  },
+});
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    return await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+  },
+});
+
+export const startTrial = mutation({
+  args: { plan: v.union(v.literal("pro"), v.literal("expert")) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity)
+      throw new ConvexError({
+        code: "UNAUTHENTICATED",
+        message: "Not logged in",
+      });
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+    if (!user)
+      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    await ctx.db.patch(user._id, {
+      plan: args.plan,
+      trialStartedAt: new Date().toISOString(),
+    });
+    return user._id;
+  },
+});

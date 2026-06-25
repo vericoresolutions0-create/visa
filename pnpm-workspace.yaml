@@ -1,0 +1,21 @@
+packages:
+  - .
+
+overrides:
+  ws: ">=8.21.0"
+  dompurify: ">=3.4.11"
+
+onlyBuiltDependencies:
+  - "@swc/core"
+  - "@tailwindcss/oxide"
+  - esbuild
+
+blockExoticSubdeps: true
+
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  - "@usehercules/*"
+allowBuilds:
+  '@swc/core': true
+  core-js: true
+  esbuild: true

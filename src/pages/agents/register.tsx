@@ -1,0 +1,404 @@
+import { useState } from "react";
+import { motion } from "motion/react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { Button } from "@/components/ui/button.tsx";
+import { useSeo } from "@/hooks/use-seo.ts";
+import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
+import { api } from "@/convex/_generated/api.js";
+import {
+  AGENT_PLANS,
+  SPECIALISATIONS,
+  LANGUAGES_LIST,
+  getAgentPlan,
+  getAgentPlanPrice,
+  type AgentPlanId,
+  type BillingCycle,
+} from "@/lib/agent-plans.ts";
+import { cn } from "@/lib/utils.ts";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Globe,
+  Shield,
+  CheckCircle2,
+  Briefcase,
+  Phone,
+  Mail,
+  MapPin,
+  BadgeCheck,
+  CreditCard,
+  ChevronRight,
+} from "lucide-react";
+
+export default function AgentRegisterPage() {
+  useSeo({
+    title: "Agent Registration",
+    description: "Register your visa professional profile on VisaClear and start building trust with applicants.",
+  });
+
+  const navigate = useNavigate();
+  const { isDemoAuthenticated } = useDemoAuth();
+  const [params] = useSearchParams();
+  const initialPlan = getAgentPlan(params.get("plan"));
+  const [step, setStep] = useState(1);
+  const [billing, setBilling] = useState<BillingCycle>("monthly");
+  const [selectedPlanId, setSelectedPlanId] = useState<AgentPlanId>(
+    initialPlan.id,
+  );
+  const selectedPlan = getAgentPlan(selectedPlanId);
+  const selectedPrice = getAgentPlanPrice(selectedPlan, billing);
+  const checkoutPath = `/payment?product=agent&plan=${selectedPlan.id}&billing=${billing}`;
+
+  const upsertAgentProfile = useMutation(api.agents.upsertProfile);
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    country: "",
+    bio: "",
+    yearsExperience: 1,
+    specialisations: [] as string[],
+    languages: [] as string[],
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const toggleProfileItem = (key: "specialisations" | "languages", item: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(item)
+        ? prev[key].filter((x) => x !== item)
+        : [...prev[key], item],
+    }));
+  };
+
+  const handleContinueToReview = async () => {
+    if (!profile.fullName || !profile.email || !profile.country || !profile.bio || profile.specialisations.length === 0) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await upsertAgentProfile({
+        fullName: profile.fullName,
+        email: profile.email,
+        phone: profile.phone || undefined,
+        country: profile.country,
+        bio: profile.bio,
+        yearsExperience: profile.yearsExperience,
+        specialisations: profile.specialisations,
+        languages: profile.languages,
+      });
+      setStep(3);
+    } catch {
+      toast.error("Failed to save your profile. Please try again.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer">
+              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+                <Globe className="w-3.5 h-3.5 text-primary-foreground" />
+              </div>
+              <div>
+                <span className="font-serif text-lg font-semibold text-primary">VisaClear</span>
+                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Agent Onboarding</span>
+              </div>
+            </button>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+            <BadgeCheck className="w-3.5 h-3.5 text-accent" /> Verified partner onboarding
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-10 md:py-14">
+        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-8 items-start">
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm lg:sticky lg:top-24"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
+              <Shield className="w-3.5 h-3.5" /> Agent onboarding
+            </div>
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-primary mb-4">A more trusted way to present your agency.</h1>
+            <p className="text-muted-foreground text-base md:text-lg leading-relaxed mb-6">
+              Create a verified partner profile, choose a paid visibility tier, and turn serious applicant demand into a cleaner agency pipeline.
+            </p>
+
+            <div className="space-y-3">
+              {[
+                "Verified partner badge for trust",
+                "Clear business details and service areas",
+                "Built for applicant conversion, not clutter",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl border border-border bg-background/80 p-4">
+                  <CheckCircle2 className="w-4 h-4 text-accent mt-0.5" />
+                  <span className="text-sm text-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-border bg-background/80 p-4">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-accent font-semibold">Partner plan</p>
+                  <h2 className="font-serif text-2xl font-semibold text-primary">Monetize your listing</h2>
+                </div>
+                <div className="grid grid-cols-2 rounded-full border border-border bg-card p-1 text-xs font-semibold">
+                  {(["monthly", "yearly"] as BillingCycle[]).map((cycle) => (
+                    <button
+                      key={cycle}
+                      type="button"
+                      onClick={() => setBilling(cycle)}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 capitalize transition-colors cursor-pointer",
+                        billing === cycle
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-primary",
+                      )}
+                    >
+                      {cycle}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                {AGENT_PLANS.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={cn(
+                      "rounded-2xl border p-4 text-left transition-all cursor-pointer",
+                      selectedPlanId === plan.id
+                        ? "border-primary bg-primary/8 shadow-sm"
+                        : "border-border bg-card hover:border-primary/30",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-foreground">{plan.name}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{plan.audience}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-primary">${getAgentPlanPrice(plan, billing)}</div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">/{billing === "monthly" ? "mo" : "yr"}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <Button
+                className="mt-4 w-full cursor-pointer"
+                onClick={() => navigate(checkoutPath)}
+              >
+                Activate {selectedPlan.name}
+                <CreditCard className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">Step {step} of 3</p>
+                <h2 className="font-serif text-2xl font-semibold text-primary">Create your agent account</h2>
+              </div>
+              <div className="hidden sm:block rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+                {selectedPlan.name}
+              </div>
+            </div>
+
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                  Verified agent accounts only. Sign in with Google or create an account with your real email and password to begin your partner journey.
+                </div>
+                <AuthAccessPanel returnPath="/agents/register" hideDemoOption />
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <Button variant="ghost" onClick={() => navigate("/login")} className="cursor-pointer">Already have an account?</Button>
+                  <Button
+                    onClick={() => setStep(2)}
+                    disabled={!isDemoAuthenticated}
+                    className="cursor-pointer"
+                  >
+                    {isDemoAuthenticated ? "Continue to profile setup" : "Sign in above to continue"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2"><Briefcase className="w-4 h-4 text-accent" /> Business profile</div>
+                  <p className="text-xs text-muted-foreground">This is where your agency can show credibility, specialisation, and client support style for applicants.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="text-sm">Full name *
+                    <input
+                      value={profile.fullName}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                      placeholder="Your professional name"
+                    />
+                  </label>
+                  <label className="text-sm">Email *
+                    <input
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                      placeholder="your@email.com"
+                    />
+                  </label>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="text-sm">Phone
+                    <input
+                      type="tel"
+                      value={profile.phone}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                      placeholder="+234 xxx xxx xxxx"
+                    />
+                  </label>
+                  <label className="text-sm">Country / base location *
+                    <input
+                      value={profile.country}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, country: e.target.value }))}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                      placeholder="Lagos, Nigeria"
+                    />
+                  </label>
+                </div>
+                <label className="text-sm block">Bio / professional summary *
+                  <textarea
+                    value={profile.bio}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, bio: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 min-h-[90px]"
+                    placeholder="Tell applicants about your expertise and success rate..."
+                  />
+                </label>
+                <label className="text-sm block">Years of experience
+                  <input
+                    type="number"
+                    min={1}
+                    max={40}
+                    value={profile.yearsExperience}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, yearsExperience: parseInt(e.target.value) || 1 }))}
+                    className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                  />
+                </label>
+                <div>
+                  <p className="text-sm mb-2">Visa specialisations *</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SPECIALISATIONS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleProfileItem("specialisations", s)}
+                        className={cn(
+                          "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
+                          profile.specialisations.includes(s)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40",
+                        )}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm mb-2">Languages spoken</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LANGUAGES_LIST.map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => toggleProfileItem("languages", l)}
+                        className={cn(
+                          "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
+                          profile.languages.includes(l)
+                            ? "bg-accent/15 text-accent border-accent/30"
+                            : "border-border text-muted-foreground hover:border-accent/30",
+                        )}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <Button variant="secondary" onClick={() => setStep(1)} className="cursor-pointer">Back</Button>
+                  <Button
+                    onClick={() => { void handleContinueToReview(); }}
+                    disabled={savingProfile}
+                    className="cursor-pointer"
+                  >
+                    {savingProfile ? "Saving..." : "Continue"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-accent" /> Verification by our team</div>
+                  <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-accent" /> Direct contact details for applicants</div>
+                  <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-accent" /> Local expertise and destination coverage</div>
+                </div>
+                <div className="rounded-2xl border border-primary/20 bg-primary/8 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-accent font-semibold">Selected partner plan</p>
+                      <h3 className="mt-1 font-serif text-2xl font-semibold text-primary">{selectedPlan.name}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{selectedPlan.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-2xl font-semibold text-primary">${selectedPrice}</div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">/{billing === "monthly" ? "mo" : "yr"}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border bg-background/80 p-4 text-sm text-muted-foreground">
+                  Your profile will be verified before it goes live. This is the exact register → verify → dashboard flow we want to support for revenue growth.
+                </div>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+                  <Button variant="secondary" onClick={() => setStep(2)} className="cursor-pointer">Back</Button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="secondary" onClick={() => navigate("/agents/onboarding")} className="cursor-pointer">Preview onboarding</Button>
+                    <Button onClick={() => navigate(checkoutPath)} className="cursor-pointer">
+                      Continue to checkout <ChevronRight className="w-4 h-4 ml-1.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.section>
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>VisaClear by Vericore — Precise Visa Document Checklists</title>
+    <meta
+      name="description"
+      content="Get a precise, personalised visa document checklist in 60 seconds. Built for African, Asian, and LatAm applicants. GDPR & NDPA compliant. AI rejection analysis, deadline reminders, and verified immigration agents."
+    />
+    <meta name="author" content="Vericore Ltd" />
+    <meta
+      name="keywords"
+      content="visa checklist, UK visa documents, Schengen visa, Canada visa, immigration, visa refusal, visa rejection analysis, Nigerian visa, African visa applicants"
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://visaclear.vericore.app" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/icon/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon/icon-192.png" />
+
+    <!-- Open Graph -->
+    <meta
+      property="og:title"
+      content="VisaClear by Vericore — Precise Visa Document Checklists"
+    />
+    <meta
+      property="og:description"
+      content="Get a precise, personalised visa document checklist in 60 seconds. Built for African, Asian, and LatAm applicants who deserve more than vague embassy advice."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://visaclear.vericore.app" />
+    <meta property="og:image" content="/icon/icon-512.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:site_name" content="VisaClear by Vericore" />
+    <meta property="og:locale" content="en_GB" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VisaClear — Precise Visa Checklists" />
+    <meta
+      name="twitter:description"
+      content="60-second personalised visa checklists for African, Asian & LatAm applicants. GDPR & NDPA compliant."
+    />
+    <meta name="twitter:image" content="/icon/icon-512.png" />
+    <meta name="twitter:site" content="@usehercules" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#0f2040" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="VisaClear" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "VisaClear by Vericore",
+        "description": "Precise, personalised visa document checklists for African, Asian, and LatAm applicants.",
+        "url": "https://visaclear.vericore.app",
+        "applicationCategory": "TravelApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "GBP"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Vericore Ltd"
+        }
+      }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+      crossorigin
+    />
+
+    <!-- Detect dark mode preference and set the class before next-themes loads. This avoids a flash of unstyled content (FOUC) when the page loads. -->
+    <script>
+      try {
+        let theme = localStorage.getItem("theme");
+        if (theme === "system" || !theme) {
+          let prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+          theme = prefersDark ? "dark" : "light";
+        }
+        document.documentElement.classList.add(theme);
+      } catch (e) {}
+    </script>
+
+    <link href="/src/index.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
