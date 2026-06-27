@@ -56,7 +56,7 @@ export default function LoginPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-10">
-        <div className="grid md:grid-cols-[260px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6 items-start">
           <aside className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs tracking-widest uppercase text-accent font-semibold mb-4">
               Access Flow

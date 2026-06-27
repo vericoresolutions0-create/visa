@@ -1,25 +1,17 @@
 "use node";
 
 import escapeHtml from "escape-html";
-import { Hercules } from "@usehercules/sdk";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-
-const hercules = new Hercules({
-  apiKey: process.env.HERCULES_API_KEY!,
-  apiVersion: "2025-12-09",
-});
+import { sendEmail } from "./sendEmail.ts";
 
 export const sendWelcomeEmail = internalAction({
   args: { to: v.string(), name: v.optional(v.string()) },
   handler: async (_ctx, args) => {
     const { to, name } = args;
     const displayName = name ?? "there";
-    await hercules.email.send({
-      from: "hello@vericore.app",
-      to,
-      subject: "Welcome to VisaClear — Your visa checklist is ready",
-      html: `
+    const subject = "Welcome to VisaClear — Your visa checklist is ready";
+    const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -65,7 +57,7 @@ export const sendWelcomeEmail = internalAction({
               </a>
             </div>
             <p style="font-size:12px;color:#999;line-height:1.6;text-align:center;font-style:italic;margin:0;">
-              &ldquo;It&rsquo;s all about Privacy.&rdquo; Your data is never sold. Built to GDPR &amp; NDPA standards.
+              &ldquo;It&rsquo;s all about Privacy.&rdquo; Your data is never sold. Built with GDPR &amp; NDPA principles.
             </p>
           </td>
         </tr>
@@ -83,7 +75,8 @@ export const sendWelcomeEmail = internalAction({
     </td></tr>
   </table>
 </body>
-</html>`,
-    });
+</html>`;
+
+    await sendEmail({ to, subject, html });
   },
 });

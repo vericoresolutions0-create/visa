@@ -3,22 +3,14 @@ import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { bumpStat } from "./platformStats.ts";
+import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
+import { recordPartnerEvent } from "./partners.ts";
+import { internal } from "./_generated/api";
 
 export const FREE_MONTHLY_TRIP_LIMIT = 3;
 
 function currentYearMonth(): string {
   return new Date().toISOString().slice(0, 7); // "YYYY-MM"
-}
-
-async function getUserOrThrow(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-    .unique();
-  if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-  return user;
 }
 
 function getEffectivePlan(user: Doc<"users">): "free" | "pro" | "expert" {
@@ -42,12 +34,7 @@ async function countTripsCreatedThisMonth(ctx: QueryCtx, userId: Id<"users">): P
 export const getMonthlyTripUsage = query({
   args: {},
   handler: async (ctx): Promise<{ plan: "free" | "pro" | "expert"; used: number; limit: number | null }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return { plan: "free", used: 0, limit: FREE_MONTHLY_TRIP_LIMIT };
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return { plan: "free", used: 0, limit: FREE_MONTHLY_TRIP_LIMIT };
     const plan = getEffectivePlan(user);
     if (plan !== "free") return { plan, used: 0, limit: null };
@@ -119,6 +106,9 @@ export const saveChecklist = mutation({
       status: "planning",
     });
     await bumpStat(ctx, "totalChecklists", 1);
+    if (user.partnerReferralSlug) {
+      await recordPartnerEvent(ctx, { slug: user.partnerReferralSlug, eventType: "checklist_completed", userId: user._id });
+    }
     return id;
   },
 });
@@ -148,7 +138,42 @@ export const updateTripDetails = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this trip" });
     }
     const { id, ...patch } = args;
+    const justApproved = args.status === "approved" && doc.status !== "approved";
     await ctx.db.patch(id, patch);
+
+    // Only fires on the transition into "approved" — re-saving an
+    // already-approved trip (e.g. editing the trip name) must never re-send.
+    if (justApproved && user.email) {
+      await ctx.scheduler.runAfter(0, internal.emails.settleIn.sendSettleInReadyEmail, {
+        to: user.email,
+        destination: doc.destination,
+        tripId: doc._id,
+      });
+    }
+  },
+});
+
+// ─── Track progress through the post-approval Settle-In Toolkit ─────────────
+export const updateSettleInProgress = mutation({
+  args: {
+    id: v.id("saved_checklists"),
+    settleInCheckedItems: v.array(v.string()),
+    settleInProgress: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserOrThrow(ctx);
+    const doc = await ctx.db.get(args.id);
+    if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Trip not found" });
+    if (doc.userId !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this trip" });
+    }
+    if (doc.status !== "approved") {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Settle-in tracking is only available once a trip is approved." });
+    }
+    await ctx.db.patch(args.id, {
+      settleInCheckedItems: args.settleInCheckedItems,
+      settleInProgress: args.settleInProgress,
+    });
   },
 });
 
@@ -170,12 +195,7 @@ export const setTripArchived = mutation({
 export const getSavedChecklists = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
     return await ctx.db
       .query("saved_checklists")
@@ -187,10 +207,22 @@ export const getSavedChecklists = query({
 
 // ─── Get a single trip (Multi-Trip Manager workspace) ────────────────────────
 export const getTrip = query({
-  args: { id: v.id("saved_checklists") },
+  // Accepts a raw string rather than v.id(...) so a malformed or stale id in
+  // the URL (a manually edited link, an old bookmark to a deleted trip)
+  // returns null gracefully instead of throwing a raw ArgumentValidationError
+  // that the user would see as a generic crash screen. Same reasoning for
+  // being signed out: return null (same "Trip not found" empty state) rather
+  // than throw, instead of using the throwing getUserOrThrow helper — a
+  // direct visit to a bookmarked/shared trip link while signed out (or after
+  // a session expires) should show a clean empty state, not crash. This also
+  // avoids leaking whether a given id exists to an unauthenticated caller.
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const user = await getUserOrThrow(ctx);
-    const doc = await ctx.db.get(args.id);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const id = ctx.db.normalizeId("saved_checklists", args.id);
+    if (!id) return null;
+    const doc = await ctx.db.get(id);
     if (!doc || doc.userId !== user._id) return null;
     return doc;
   },

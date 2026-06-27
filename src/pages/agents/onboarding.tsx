@@ -1,7 +1,10 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "convex/react";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
+import { api } from "@/convex/_generated/api.js";
 import {
   ArrowLeft,
   Globe,
@@ -21,6 +24,10 @@ export default function AgentOnboardingPage() {
   });
 
   const navigate = useNavigate();
+  const goBack = useSmartBack("/agents");
+  const myProfile = useQuery(api.agents.getMyProfile, {});
+  const hasProfile = myProfile !== undefined && myProfile !== null;
+  const isVerified = myProfile?.verified ?? false;
 
   const steps = [
     {
@@ -42,7 +49,7 @@ export default function AgentOnboardingPage() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer">
@@ -62,7 +69,7 @@ export default function AgentOnboardingPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-10 md:py-14">
-        <div className="grid lg:grid-cols-[1fr_0.95fr] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.95fr] gap-8 items-start">
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
               <Shield className="w-3.5 h-3.5" /> Agent onboarding
@@ -86,8 +93,16 @@ export default function AgentOnboardingPage() {
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm space-y-5">
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-accent font-semibold mb-2"><CheckCircle2 className="w-4 h-4" /> Verification status</div>
-              <h2 className="font-serif text-2xl font-semibold text-primary mb-1">Pending review</h2>
-              <p className="text-sm text-muted-foreground">Your partner profile will be reviewed and approved before you go live to applicants.</p>
+              <h2 className="font-serif text-2xl font-semibold text-primary mb-1">
+                {!hasProfile ? "No profile yet" : isVerified ? "Verified — you're live" : "Pending review"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {!hasProfile
+                  ? "Register your profile to start the verification process."
+                  : isVerified
+                    ? "Applicants can find and contact you in the marketplace right now."
+                    : "Your partner profile will be reviewed and approved before you go live to applicants."}
+              </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">

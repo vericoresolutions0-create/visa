@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Globe, ArrowLeft, Lock } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 export default function PrivacyPage() {
   const navigate = useNavigate();
-  useSeo({ title: "Privacy Policy", description: "VisaClear by Vericore is GDPR and NDPA compliant. Read how we handle your data with full transparency and zero compromise." });
+  const goBack = useSmartBack("/");
+  useSeo({ title: "Privacy Policy", description: "VisaClear by Vericore is built around GDPR and NDPA data protection principles. Read how we handle your data with full transparency and zero compromise." });
   const year = new Date().getFullYear();
 
   return (
@@ -12,7 +14,7 @@ export default function PrivacyPage() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("/")}>
@@ -56,6 +58,11 @@ export default function PrivacyPage() {
                 { title: "Account information", desc: "Your name and email address when you create an account." },
                 { title: "Usage data", desc: "Visa checklists you generate, reminders you set, and checklists you save. This data is tied to your account." },
                 { title: "Refusal letter content", desc: "Text you paste into the AI Rejection Analyser. This is processed transiently to generate your analysis and stored only if you save the result." },
+                { title: "Risk Score and pre-submission audit answers", desc: "Financial and personal readiness answers you submit to get a Risk Score or pre-submission check. If you are signed in this is linked to your account; if not, it is stored only against a private result link that you choose whether to share." },
+                { title: "Wall of Fame submissions", desc: "Visa refusal/approval stories you choose to submit. Reviewed before publishing and always shown to other users without your name or any identifying information." },
+                { title: "Wait time reports", desc: "Application and decision dates you submit for a specific visa route. These are combined into anonymous community statistics (e.g. a median processing time) and never shown individually." },
+                { title: "Partner referral", desc: "If you arrive via a partner organisation's link (e.g. a university), we record which partner referred you so we can report aggregate usage back to that partner. Your individual identity is never shared with the partner." },
+                { title: "Telegram bot messages", desc: "If you message our Telegram bot, we log the message text and which destination/visa type it matched, to operate and improve the bot. This is not linked to any VisaClear account." },
                 { title: "Payment information", desc: "Billing details for paid plans, processed by our payment provider. We do not store card numbers." },
                 { title: "Technical data", desc: "Browser type, device type, and anonymised usage analytics to improve the Service. No personal identifiers are included." },
               ].map((item) => (
@@ -99,7 +106,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">6. Data Sharing</h2>
             <p className="text-muted-foreground leading-relaxed">
-              We do not sell, rent, or trade your personal data. We share data only with trusted service providers who process it on our behalf (hosting, payment processing, email delivery) under strict data processing agreements. We may disclose data if required by law or to protect our legal rights.
+              We do not sell, rent, or trade your personal data. We share data only with trusted service providers who process it on our behalf (hosting, payment processing, email delivery) under strict data processing agreements. We may disclose data if required by law or to protect our legal rights. Features like the Wall of Fame are different from third-party sharing: content is only ever made public because you actively chose to submit it, and it is always shown without your name or identity.
             </p>
           </section>
 

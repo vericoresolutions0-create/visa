@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // ─── Create reminder ─────────────────────────────────────────────────────────
 export const createReminder = mutation({
@@ -11,13 +12,7 @@ export const createReminder = mutation({
     checklistId: v.optional(v.id("saved_checklists")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const user = await getCurrentUserOrThrow(ctx);
 
     return await ctx.db.insert("reminders", {
       userId: user._id,
@@ -36,12 +31,7 @@ export const createReminder = mutation({
 export const getReminders = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
     return await ctx.db
       .query("reminders")
@@ -55,13 +45,7 @@ export const getReminders = query({
 export const deleteReminder = mutation({
   args: { id: v.id("reminders") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const user = await getCurrentUserOrThrow(ctx);
     const doc = await ctx.db.get(args.id);
     if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Reminder not found" });
     if (doc.userId !== user._id) {

@@ -15,7 +15,8 @@ export type AnalyticsEvent =
   | "share_link_copied"
   | "pricing_page_viewed"
   | "agents_page_viewed"
-  | "blog_article_opened";
+  | "blog_article_opened"
+  | "risk_score_completed";
 
 type EventRecord = {
   event: AnalyticsEvent;

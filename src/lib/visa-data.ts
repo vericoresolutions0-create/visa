@@ -17,7 +17,7 @@ export type VisaChecklist = {
   fee: string;
   successTip: string;
   lastVerified: string; // ISO date string e.g. "2026-04-01"
-  embassyUrl: string;   // Official embassy/application portal URL
+  embassyUrl?: string;  // Official embassy/application portal URL, when known
   items: ChecklistItem[];
 };
 
@@ -58,7 +58,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "Strong bank statements and ties to your home country (job, property, family) are the #1 factor in approval.",
       items: [
         { id: "uk-t-1", title: "Valid Passport", description: "Must be valid for the entire duration of your trip. Should have at least 2 blank pages.", where: "Your passport issuing authority. Renew if expiring soon.", required: true },
-        { id: "uk-t-2", title: "Completed Online Application Form", description: "Fill out the UK Standard Visitor Visa application on the official UK government website.", where: "gov.uk/standard-visitor-visa", tip: "Do NOT use third-party websites , many are scams.", required: true },
+        { id: "uk-t-2", title: "Completed Online Application Form", description: "Fill out the UK Standard Visitor Visa application on the official UK government website.", where: "gov.uk/standard-visitor-visa", tip: "Do NOT use third-party websites — many are scams.", required: true },
         { id: "uk-t-3", title: "Biometric Appointment Confirmation", description: "Book and attend a biometric enrollment appointment at a UK Visa Application Centre.", where: "TLScontact or VFS Global centre in your country.", required: true },
         { id: "uk-t-4", title: "Bank Statements (6 months)", description: "Must show consistent income and a healthy balance. Avoid large unexplained cash deposits.", where: "Your bank. Request official stamped statements, not printouts.", tip: "A minimum of $3,000–$5,000 equivalent is advisable for a 2-week trip.", required: true },
         { id: "uk-t-5", title: "Proof of Employment or Business", description: "Letter from your employer stating your position, salary, and approved leave dates. If self-employed, provide business registration and tax returns.", where: "Your employer's HR department or your business registration documents.", required: true },
@@ -82,7 +82,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "uk-s-3", title: "Proof of English Language", description: "IELTS (usually 6.0+), TOEFL, or equivalent proof of English proficiency.", where: "Your test provider (British Council for IELTS).", required: true },
         { id: "uk-s-4", title: "Financial Evidence", description: "Bank statements showing you can cover tuition + living costs. UK requires proof of £1,334/month for London, £1,023 outside London.", where: "Your bank. Must show funds held for at least 28 consecutive days.", required: true },
         { id: "uk-s-5", title: "Academic Transcripts & Certificates", description: "Previous degrees, diplomas, and academic certificates.", where: "Your previous schools/universities.", required: true },
-        { id: "uk-s-6", title: "ATAS Certificate (if applicable)", description: "Academic Technology Approval Scheme , required for certain science/engineering courses.", where: "gov.uk/guidance/academic-technology-approval-scheme", required: false },
+        { id: "uk-s-6", title: "ATAS Certificate (if applicable)", description: "Academic Technology Approval Scheme — required for certain science/engineering courses.", where: "gov.uk/guidance/academic-technology-approval-scheme", required: false },
         { id: "uk-s-7", title: "Tuberculosis (TB) Test Results", description: "Required if you are from a listed country (Nigeria, Ghana, Pakistan etc.).", where: "An approved clinic listed on the UK Home Office website.", required: true },
         { id: "uk-s-8", title: "Parental Consent (if under 18)", description: "Written consent from parents or guardians.", where: "Written and notarized by a lawyer.", required: false },
       ]
@@ -110,7 +110,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       origin: "Africa/Asia/LatAm",
       processingTime: "8–24 weeks",
       fee: "£1,846 (~$2,320) outside UK",
-      successTip: "Proving the genuine nature of your relationship is everything. Provide years of communication history, photos, joint finances , the more evidence the better.",
+      successTip: "Proving the genuine nature of your relationship is everything. Provide years of communication history, photos, joint finances — the more evidence the better.",
       items: [
         { id: "uk-f-1", title: "Valid Passport", description: "Valid for intended duration of stay.", where: "Passport issuing authority.", required: true },
         { id: "uk-f-2", title: "Sponsor's Documents (UK Partner)", description: "UK partner's passport, proof of settlement or citizenship, proof of address.", where: "Your UK partner provides these.", required: true },
@@ -148,11 +148,11 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "ca-t-1", title: "Valid Passport", description: "Must be valid for at least 6 months beyond your planned stay.", where: "Your passport issuing authority.", required: true },
         { id: "ca-t-2", title: "Online Application (IMM 5257)", description: "Complete the Temporary Resident Visa application on IRCC website.", where: "canada.ca/en/immigration-refugees-citizenship", required: true },
         { id: "ca-t-3", title: "Biometric Enrollment", description: "Fingerprints and photo at a Visa Application Centre.", where: "VFS Global centre in your country.", required: true },
-        { id: "ca-t-4", title: "Bank Statements (6 months)", description: "Showing sufficient funds , generally CAD $2,500–$5,000 minimum per person.", where: "Your bank. Must be official stamped statements.", required: true },
+        { id: "ca-t-4", title: "Bank Statements (6 months)", description: "Showing sufficient funds — generally CAD $2,500–$5,000 minimum per person.", where: "Your bank. Must be official stamped statements.", required: true },
         { id: "ca-t-5", title: "Proof of Employment", description: "Employer letter confirming job, salary, and approved leave.", where: "Your HR department.", required: true },
         { id: "ca-t-6", title: "Travel Itinerary", description: "Flight bookings and accommodation plans in Canada.", where: "Book refundable tickets and hotels.", required: true },
         { id: "ca-t-7", title: "Invitation Letter (if applicable)", description: "From your Canadian host including their status in Canada.", where: "Your Canadian host.", required: false },
-        { id: "ca-t-8", title: "Proof of Ties to Home Country", description: "Property, family, employment , evidence you will return.", where: "Your employer, land registry, family documents.", tip: "This is CRITICAL for African applicants.", required: true },
+        { id: "ca-t-8", title: "Proof of Ties to Home Country", description: "Property, family, employment — evidence you will return.", where: "Your employer, land registry, family documents.", tip: "This is CRITICAL for African applicants.", required: true },
         { id: "ca-t-9", title: "Travel History", description: "Previous visas showing you have traveled and returned. Copy of old passports.", where: "Your old passports and previous visa stamps.", tip: "Prior US/UK/Schengen visas significantly boost approval chances.", required: false },
       ]
     },
@@ -162,7 +162,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       origin: "Africa/Asia/LatAm",
       processingTime: "8–16 weeks",
       fee: "CAD $150 (~$110 USD)",
-      successTip: "Apply through the Student Direct Stream (SDS) if eligible , it is much faster and has higher approval rates.",
+      successTip: "Apply through the Student Direct Stream (SDS) if eligible — it is much faster and has higher approval rates.",
       items: [
         { id: "ca-s-1", title: "Valid Passport", description: "Valid for entire duration of your study program.", where: "Passport issuing authority.", required: true },
         { id: "ca-s-2", title: "Letter of Acceptance", description: "From a Designated Learning Institution (DLI) in Canada.", where: "Your Canadian school's admissions office.", required: true },
@@ -182,7 +182,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       items: [
         { id: "ca-w-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
         { id: "ca-w-2", title: "Job Offer / LMIA", description: "Labour Market Impact Assessment-approved job offer from a Canadian employer (for most streams).", where: "Your Canadian employer.", required: true },
-        { id: "ca-w-3", title: "Educational Credential Assessment (ECA)", description: "Verification that your foreign degree is equivalent to Canadian standards.", where: "WES (World Education Services) , wes.org", tip: "Takes 7–12 weeks. Apply early.", required: true },
+        { id: "ca-w-3", title: "Educational Credential Assessment (ECA)", description: "Verification that your foreign degree is equivalent to Canadian standards.", where: "WES (World Education Services) — wes.org", tip: "Takes 7–12 weeks. Apply early.", required: true },
         { id: "ca-w-4", title: "Language Test", description: "IELTS or CELPIP for English, TEF for French.", where: "British Council or approved centre.", required: true },
         { id: "ca-w-5", title: "Police Clearance Certificates", description: "From every country you have lived in for 6+ months.", where: "Your national police service.", required: true },
         { id: "ca-w-6", title: "Medical Exam", description: "From a panel physician approved by IRCC.", where: "IRCC panel physician list.", required: true },
@@ -230,9 +230,9 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "The DS-160 form and interview are everything. Be honest, concise, and confident. Show strong financial ties to home country.",
       items: [
         { id: "us-t-1", title: "Valid Passport", description: "Must be valid for at least 6 months beyond your intended stay.", where: "Your passport issuing authority.", required: true },
-        { id: "us-t-2", title: "DS-160 Confirmation Page", description: "Complete the online nonimmigrant visa application form.", where: "ceac.state.gov , official US State Department website.", tip: "Save your application ID frequently. The form times out.", required: true },
+        { id: "us-t-2", title: "DS-160 Confirmation Page", description: "Complete the online nonimmigrant visa application form.", where: "ceac.state.gov — official US State Department website.", tip: "Save your application ID frequently. The form times out.", required: true },
         { id: "us-t-3", title: "Visa Fee Payment Receipt", description: "Pay the $185 MRV fee before scheduling your interview.", where: "ustraveldocs.com for your country.", required: true },
-        { id: "us-t-4", title: "Interview Appointment Confirmation", description: "Schedule your visa interview at the US Embassy or Consulate.", where: "ustraveldocs.com", tip: "Book as early as possible , wait times in Nigeria can exceed 500 days.", required: true },
+        { id: "us-t-4", title: "Interview Appointment Confirmation", description: "Schedule your visa interview at the US Embassy or Consulate.", where: "ustraveldocs.com", tip: "Book as early as possible — wait times in Nigeria can exceed 500 days.", required: true },
         { id: "us-t-5", title: "Photo (5x5 cm, white background)", description: "Recent passport photograph meeting US visa photo requirements.", where: "Any photo studio.", required: true },
         { id: "us-t-6", title: "Bank Statements (6 months)", description: "Showing strong financial standing and ability to fund your trip.", where: "Your bank.", required: true },
         { id: "us-t-7", title: "Proof of Employment / Income", description: "Employer letter, pay slips, tax returns.", where: "Your HR department or accountant.", required: true },
@@ -352,7 +352,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       items: [
         { id: "de-w-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
         { id: "de-w-2", title: "Job Offer or Employment Contract", description: "From a German employer. Must show position and salary.", where: "Your German employer.", required: true },
-        { id: "de-w-3", title: "Recognized Qualification", description: "Your degree or professional qualification recognized as equivalent to German standards.", where: "anabin.kmk.org , check recognition status. Apply for recognition via German authorities.", required: true },
+        { id: "de-w-3", title: "Recognized Qualification", description: "Your degree or professional qualification recognized as equivalent to German standards.", where: "anabin.kmk.org — check recognition status. Apply for recognition via German authorities.", required: true },
         { id: "de-w-4", title: "Language Skills", description: "B1–B2 German required for most jobs. English sufficient for tech/international companies.", where: "Goethe Institut certification.", required: false },
         { id: "de-w-5", title: "CV in German Format", description: "German-style CV (Lebenslauf) with photo.", where: "Your personal records.", required: true },
         { id: "de-w-6", title: "Criminal Record Certificate", description: "Police clearance from your home country.", where: "National police service.", required: true },
@@ -405,11 +405,11 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "fr-t-2", title: "Schengen Visa Application Form", description: "Completed and signed form.", where: "French embassy website or VFS Global France.", required: true },
         { id: "fr-t-3", title: "Passport Photos (2)", description: "Biometric photos, 35x45mm, white background.", where: "Any professional photo studio.", required: true },
         { id: "fr-t-4", title: "Travel Insurance", description: "Minimum €30,000 coverage, valid across all Schengen countries.", where: "AXA, Allianz, or any approved Schengen insurer.", required: true },
-        { id: "fr-t-5", title: "Bank Statements (3 months)", description: "Showing at least €65/day for your stay.", where: "Your bank , stamped official statements.", required: true },
+        { id: "fr-t-5", title: "Bank Statements (3 months)", description: "Showing at least €65/day for your stay.", where: "Your bank — stamped official statements.", required: true },
         { id: "fr-t-6", title: "Proof of Employment", description: "Employer letter with salary, leave approval, and company letterhead.", where: "Your HR department.", required: true },
         { id: "fr-t-7", title: "Return Flight Ticket", description: "Confirmed refundable booking entering and exiting Schengen zone.", where: "Any airline. Use refundable fares.", tip: "Never book non-refundable tickets before visa approval.", required: true },
         { id: "fr-t-8", title: "Proof of Accommodation", description: "Hotel booking or signed invitation letter (Attestation d'accueil) from French host.", where: "Book on Booking.com or get attestation from host via French mairie.", required: true },
-        { id: "fr-t-9", title: "Ties to Home Country", description: "Evidence you will return , property, family, employment.", where: "Land documents, employer letter, family records.", tip: "Critical for African applicants. The consulate wants proof of strong home ties.", required: true },
+        { id: "fr-t-9", title: "Ties to Home Country", description: "Evidence you will return — property, family, employment.", where: "Land documents, employer letter, family records.", tip: "Critical for African applicants. The consulate wants proof of strong home ties.", required: true },
       ]
     },
     student: {
@@ -421,7 +421,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "You MUST register with Campus France in your country before applying for a student visa. This is mandatory and non-negotiable.",
       items: [
         { id: "fr-s-1", title: "Valid Passport", description: "Valid for your entire study period.", where: "Passport issuing authority.", required: true },
-        { id: "fr-s-2", title: "Campus France Registration", description: "Complete Campus France pre-application process in your country. Mandatory for most applicants.", where: "campusfrance.org , register in your country's Campus France portal.", tip: "Nigeria, Ghana, Senegal etc. are 'CEF countries' , you must use Campus France.", required: true },
+        { id: "fr-s-2", title: "Campus France Registration", description: "Complete Campus France pre-application process in your country. Mandatory for most applicants.", where: "campusfrance.org — register in your country's Campus France portal.", tip: "Nigeria, Ghana, Senegal etc. are 'CEF countries' — you must use Campus France.", required: true },
         { id: "fr-s-3", title: "University Acceptance Letter", description: "Official admission from a French university or grande école.", where: "Your French institution's admissions office.", required: true },
         { id: "fr-s-4", title: "Proof of Financial Resources", description: "At least €615/month or €7,380/year in a bank account or scholarship.", where: "Your bank or scholarship provider.", required: true },
         { id: "fr-s-5", title: "French or English Language Proof", description: "DELF/DALF for French programs, IELTS/TOEFL for English programs.", where: "Alliance Française for DELF, British Council for IELTS.", required: true },
@@ -487,12 +487,12 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "Australia is very strict with Visitor Visas for African applicants. Strong finances, ties to home country, and a clean travel history are essential.",
       items: [
         { id: "au-t-1", title: "Valid Passport", description: "Valid for your entire intended stay.", where: "Passport issuing authority.", required: true },
-        { id: "au-t-2", title: "Online Visitor Visa Application (Subclass 600)", description: "Apply online through the ImmiAccount portal.", where: "immi.homeaffairs.gov.au , create an ImmiAccount.", required: true },
+        { id: "au-t-2", title: "Online Visitor Visa Application (Subclass 600)", description: "Apply online through the ImmiAccount portal.", where: "immi.homeaffairs.gov.au — create an ImmiAccount.", required: true },
         { id: "au-t-3", title: "Passport-size Photo", description: "Recent photo meeting Australian specifications.", where: "Any professional photo studio.", required: true },
-        { id: "au-t-4", title: "Bank Statements (6 months)", description: "Demonstrating funds to support your stay , typically AUD $5,000+ minimum.", where: "Your bank. Official stamped statements.", required: true },
+        { id: "au-t-4", title: "Bank Statements (6 months)", description: "Demonstrating funds to support your stay — typically AUD $5,000+ minimum.", where: "Your bank. Official stamped statements.", required: true },
         { id: "au-t-5", title: "Proof of Employment", description: "Employer letter confirming position, salary, and approved leave.", where: "Your HR department.", required: true },
         { id: "au-t-6", title: "Return Flight Ticket", description: "Evidence of intention to return home.", where: "Any airline. Use refundable bookings.", required: true },
-        { id: "au-t-7", title: "Ties to Home Country", description: "Property, family, employment , proof you will return home.", where: "Land documents, school letters for children, employment contracts.", tip: "This is the single most scrutinized aspect for African applicants.", required: true },
+        { id: "au-t-7", title: "Ties to Home Country", description: "Property, family, employment — proof you will return home.", where: "Land documents, school letters for children, employment contracts.", tip: "This is the single most scrutinized aspect for African applicants.", required: true },
         { id: "au-t-8", title: "Invitation Letter (if visiting someone)", description: "From your Australian host with their visa/citizenship details.", where: "Your Australian host.", required: false },
         { id: "au-t-9", title: "Previous Travel History", description: "Previous visas (US, UK, Schengen) significantly help your application.", where: "Copies from your old passports.", required: false },
       ]
@@ -507,11 +507,11 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       items: [
         { id: "au-s-1", title: "Valid Passport", description: "Valid for entire course duration.", where: "Passport issuing authority.", required: true },
         { id: "au-s-2", title: "Confirmation of Enrolment (CoE)", description: "Issued by your Australian education provider after paying the deposit.", where: "Your Australian university or college (must be CRICOS-registered).", required: true },
-        { id: "au-s-3", title: "Genuine Temporary Entrant (GTE) Statement", description: "A written statement explaining why you want to study in Australia and your intention to return.", where: "Write yourself , be honest and specific.", tip: "This is critical. Answer why Australia, why this course, and what you plan to do after.", required: true },
+        { id: "au-s-3", title: "Genuine Temporary Entrant (GTE) Statement", description: "A written statement explaining why you want to study in Australia and your intention to return.", where: "Write yourself — be honest and specific.", tip: "This is critical. Answer why Australia, why this course, and what you plan to do after.", required: true },
         { id: "au-s-4", title: "Financial Evidence", description: "AUD $21,041/year for living expenses + tuition fees. Show in bank statements or sponsor letter.", where: "Your bank or sponsor.", required: true },
         { id: "au-s-5", title: "English Test Results", description: "IELTS (6.0+ Academic) or TOEFL for academic programs.", where: "British Council for IELTS, ETS for TOEFL.", required: true },
         { id: "au-s-6", title: "Academic Transcripts", description: "Previous school and university records.", where: "Your previous schools.", required: true },
-        { id: "au-s-7", title: "Overseas Student Health Cover (OSHC)", description: "Mandatory health insurance for student visa holders.", where: "Medibank, BUPA, Allianz, or NIB , buy before applying.", required: true },
+        { id: "au-s-7", title: "Overseas Student Health Cover (OSHC)", description: "Mandatory health insurance for student visa holders.", where: "Medibank, BUPA, Allianz, or NIB — buy before applying.", required: true },
       ]
     },
     work: {
@@ -523,7 +523,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "The Employer-Sponsored visa (Subclass 482) requires an Australian employer to sponsor you. Alternatively, if you are under 45 with high skills, explore the Skilled Independent visa (Subclass 189).",
       items: [
         { id: "au-w-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
-        { id: "au-w-2", title: "Nomination by Australian Employer", description: "Your employer must be an approved sponsor and nominate you for a specific role.", where: "Your Australian employer , they apply first.", required: true },
+        { id: "au-w-2", title: "Nomination by Australian Employer", description: "Your employer must be an approved sponsor and nominate you for a specific role.", where: "Your Australian employer — they apply first.", required: true },
         { id: "au-w-3", title: "Skills Assessment", description: "Your occupation must be on the skilled occupation list and assessed by the relevant body (e.g., Engineers Australia, ACS for IT).", where: "The assessing body for your occupation.", required: true },
         { id: "au-w-4", title: "English Language Test", description: "IELTS 5.0+ minimum (varies by visa stream).", where: "British Council for IELTS.", required: true },
         { id: "au-w-5", title: "Health Examination", description: "Medical check from a panel physician approved by the Department.", where: "BUPA Medical, or approved panel clinics.", required: true },
@@ -536,7 +536,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       origin: "Africa/Asia/LatAm",
       processingTime: "12–36 months",
       fee: "AUD $8,850 (~$5,850 USD)",
-      successTip: "The Partner visa has two stages , temporary then permanent. Processing is notoriously slow. Apply as early as possible and document every aspect of the relationship.",
+      successTip: "The Partner visa has two stages — temporary then permanent. Processing is notoriously slow. Apply as early as possible and document every aspect of the relationship.",
       items: [
         { id: "au-f-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
         { id: "au-f-2", title: "Sponsorship by Australian Partner", description: "Your Australian citizen or PR partner must sponsor you.", where: "Applied jointly online through ImmiAccount.", required: true },
@@ -611,7 +611,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "nl-w-3", title: "Employment Contract", description: "Contract showing salary meets minimum threshold.", where: "Your Dutch employer.", required: true },
         { id: "nl-w-4", title: "Educational Credentials", description: "Relevant diplomas and professional qualifications.", where: "Your school. May need certified translation.", required: true },
         { id: "nl-w-5", title: "Antecedents Certificate", description: "Police clearance from your home country.", where: "National police service.", required: true },
-        { id: "nl-w-6", title: "Health Insurance", description: "Mandatory Dutch health insurance (zorgverzekering) once you arrive.", where: "CZ, VGZ, Zilveren Kruis , sign up after arrival.", required: false },
+        { id: "nl-w-6", title: "Health Insurance", description: "Mandatory Dutch health insurance (zorgverzekering) once you arrive.", where: "CZ, VGZ, Zilveren Kruis — sign up after arrival.", required: false },
       ]
     },
     family: {
@@ -734,19 +734,19 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       destination: "Poland",
       origin: "Africa/Asia/LatAm",
       processingTime: "5–15 working days",
-      fee: "€80 (~$86 USD) , Schengen visa fee",
-      successTip: "Poland is a Schengen country, so your Polish visa allows travel across 26 Schengen countries. Applying in Poland (if already resident) is far faster than applying from Nigeria , use the Mazowieckie Voivodeship office in Warsaw.",
+      fee: "€80 (~$86 USD) — Schengen visa fee",
+      successTip: "Poland is a Schengen country, so your Polish visa allows travel across 26 Schengen countries. Applying in Poland (if already resident) is far faster than applying from Nigeria — use the Mazowieckie Voivodeship office in Warsaw.",
       items: [
         { id: "pl-t-1", title: "Valid Passport", description: "Must be issued within the last 10 years, valid at least 3 months beyond your intended stay, and have 2 blank pages.", where: "Your passport issuing authority in Nigeria (NIS). Renew at any Nigerian Immigration Service office.", required: true },
         { id: "pl-t-2", title: "Schengen Visa Application Form", description: "Completed and signed Schengen visa application form.", where: "Download from the Polish consulate website or fill in person at VFS Global / Polish embassy.", required: true },
         { id: "pl-t-3", title: "Passport Photos (2)", description: "Two recent biometric photos, 35x45mm, white background, taken within the last 6 months.", where: "Any professional photo studio. Confirm they meet Schengen biometric standards.", required: true },
-        { id: "pl-t-4", title: "Travel Insurance", description: "Minimum €30,000 coverage for medical emergencies and repatriation, valid for all Schengen countries.", where: "Allianz, AXA, ERGO, or any Polish/international insurer offering Schengen coverage.", tip: "Buy from a Polish insurer if applying from Warsaw , processing is faster and they know the requirements.", required: true },
-        { id: "pl-t-5", title: "Bank Statements (3 months)", description: "Showing sufficient funds , approximately €100/day or PLN equivalent. Polish accounts accepted if you are a resident.", where: "Your Polish bank (PKO, Santander, mBank) or Nigerian bank. Must be stamped official statements.", required: true },
-        { id: "pl-t-6", title: "Proof of Legal Stay in Poland", description: "If applying from Poland, you must show you are legally resident here , residence permit (karta pobytu), work permit, or student permit.", where: "Your karta pobytu card or residence permit document.", tip: "This is critical if you are applying from Poland. Without this, you must apply at the Nigerian consulate.", required: true },
+        { id: "pl-t-4", title: "Travel Insurance", description: "Minimum €30,000 coverage for medical emergencies and repatriation, valid for all Schengen countries.", where: "Allianz, AXA, ERGO, or any Polish/international insurer offering Schengen coverage.", tip: "Buy from a Polish insurer if applying from Warsaw — processing is faster and they know the requirements.", required: true },
+        { id: "pl-t-5", title: "Bank Statements (3 months)", description: "Showing sufficient funds — approximately €100/day or PLN equivalent. Polish accounts accepted if you are a resident.", where: "Your Polish bank (PKO, Santander, mBank) or Nigerian bank. Must be stamped official statements.", required: true },
+        { id: "pl-t-6", title: "Proof of Legal Stay in Poland", description: "If applying from Poland, you must show you are legally resident here — residence permit (karta pobytu), work permit, or student permit.", where: "Your karta pobytu card or residence permit document.", tip: "This is critical if you are applying from Poland. Without this, you must apply at the Nigerian consulate.", required: true },
         { id: "pl-t-7", title: "Accommodation Proof", description: "Hotel bookings or invitation letter from your host in the destination Schengen country.", where: "Booking.com (free cancellation), Airbnb, or written invitation from host.", required: true },
         { id: "pl-t-8", title: "Return Flight Ticket", description: "Confirmed booking entering and exiting the Schengen zone.", where: "Any airline. Use refundable fares before visa approval.", tip: "Never book non-refundable tickets before getting your visa.", required: true },
         { id: "pl-t-9", title: "Proof of Employment in Poland", description: "If employed in Poland, provide your employer letter and recent payslips confirming your position and that you will return.", where: "Your employer's HR department.", required: false },
-        { id: "pl-t-10", title: "Itinerary / Travel Plan", description: "Day-by-day plan of your trip including countries you will visit within Schengen.", where: "Prepare yourself , a simple Word/PDF document is sufficient.", required: false },
+        { id: "pl-t-10", title: "Itinerary / Travel Plan", description: "Day-by-day plan of your trip including countries you will visit within Schengen.", where: "Prepare yourself — a simple Word/PDF document is sufficient.", required: false },
       ]
     },
     student: {
@@ -760,11 +760,11 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "pl-s-1", title: "Valid Passport", description: "Valid for at least 3 months beyond your study end date.", where: "Nigerian Immigration Service.", required: true },
         { id: "pl-s-2", title: "University Acceptance Letter", description: "Official admission letter from a Polish university.", where: "Your Polish university's international office.", tip: "Top affordable options: University of Warsaw, AGH University Krakow, Wroclaw University of Technology.", required: true },
         { id: "pl-s-3", title: "Visa Application Form (National D-type)", description: "Polish national visa application form for stays over 90 days.", where: "Polish embassy in Nigeria (Abuja or Lagos) or consulate website.", required: true },
-        { id: "pl-s-4", title: "Proof of Financial Means", description: "Bank statements showing PLN 776/month (~€180) minimum for living expenses plus tuition coverage.", where: "Your bank , Nigerian or Polish account if already in Poland.", required: true },
+        { id: "pl-s-4", title: "Proof of Financial Means", description: "Bank statements showing PLN 776/month (~€180) minimum for living expenses plus tuition coverage.", where: "Your bank — Nigerian or Polish account if already in Poland.", required: true },
         { id: "pl-s-5", title: "Proof of Tuition Payment or Scholarship", description: "Receipt of first-year tuition payment or scholarship award letter.", where: "Your university's finance office.", required: true },
         { id: "pl-s-6", title: "Health Insurance", description: "Valid medical insurance for the duration of your studies in Poland.", where: "NFZ (Polish national insurance) or private provider like PZU, Signal Iduna.", required: true },
         { id: "pl-s-7", title: "Accommodation Confirmation", description: "Dormitory allocation letter or rental contract in Poland.", where: "Your university's student housing office or a private landlord.", required: true },
-        { id: "pl-s-8", title: "Academic Certificates (Apostilled)", description: "Secondary school and university certificates translated into Polish or English and apostilled.", where: "Your Nigerian school + Federal Ministry of Education for apostille + a certified translator.", tip: "Apostille is issued by the Nigerian Ministry of Foreign Affairs. Start this process early , it takes 2–4 weeks.", required: true },
+        { id: "pl-s-8", title: "Academic Certificates (Apostilled)", description: "Secondary school and university certificates translated into Polish or English and apostilled.", where: "Your Nigerian school + Federal Ministry of Education for apostille + a certified translator.", tip: "Apostille is issued by the Nigerian Ministry of Foreign Affairs. Start this process early — it takes 2–4 weeks.", required: true },
         { id: "pl-s-9", title: "Passport Photos (2)", description: "Biometric photos 35x45mm, white background.", where: "Any professional photo studio.", required: true },
       ]
     },
@@ -777,7 +777,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "Poland has one of the fastest work visa processes in Europe for non-EU nationals. Your employer must obtain a work permit (zezwolenie na pracę) before you can apply. Type A work permit is the most common.",
       items: [
         { id: "pl-w-1", title: "Valid Passport", description: "Valid passport.", where: "Nigerian Immigration Service.", required: true },
-        { id: "pl-w-2", title: "Work Permit (Zezwolenie na Pracę) , Type A", description: "Your Polish employer applies for this at the Voivodeship Office (Urząd Wojewódzki) before you apply for a visa.", where: "Your Polish employer handles this , confirm they have submitted the application.", tip: "Without this permit, you cannot apply for a Polish work visa. Make sure your employer has it before you start your visa process.", required: true },
+        { id: "pl-w-2", title: "Work Permit (Zezwolenie na Pracę) — Type A", description: "Your Polish employer applies for this at the Voivodeship Office (Urząd Wojewódzki) before you apply for a visa.", where: "Your Polish employer handles this — confirm they have submitted the application.", tip: "Without this permit, you cannot apply for a Polish work visa. Make sure your employer has it before you start your visa process.", required: true },
         { id: "pl-w-3", title: "Employment Contract", description: "Signed employment contract with your Polish employer showing salary and job title.", where: "Your Polish employer.", required: true },
         { id: "pl-w-4", title: "National Visa Application Form (Type D)", description: "Polish national visa application for stays over 90 days.", where: "Polish embassy in Abuja or Lagos.", required: true },
         { id: "pl-w-5", title: "Bank Statements", description: "Showing financial self-sufficiency during your stay.", where: "Your bank.", required: true },
@@ -799,7 +799,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "pl-f-2", title: "National Visa Application Form", description: "Polish national visa D-type application form.", where: "Polish embassy in Abuja or Lagos.", required: true },
         { id: "pl-f-3", title: "Proof of Family Relationship", description: "Marriage certificate or birth certificate showing relationship. Must be apostilled and translated into Polish.", where: "Nigerian registry office + Federal Ministry of Foreign Affairs for apostille + certified Polish translator.", required: true },
         { id: "pl-f-4", title: "Sponsor's Residence Documents", description: "Spouse/family member's karta pobytu, Polish citizenship ID, or permanent residency proof.", where: "Your family member in Poland provides copies.", required: true },
-        { id: "pl-f-5", title: "Sponsor's Income Proof", description: "Polish sponsor must show income above the social minimum , typically PLN 776/month per person in the household.", where: "Sponsor's payslips and ZUS contribution records.", required: true },
+        { id: "pl-f-5", title: "Sponsor's Income Proof", description: "Polish sponsor must show income above the social minimum — typically PLN 776/month per person in the household.", where: "Sponsor's payslips and ZUS contribution records.", required: true },
         { id: "pl-f-6", title: "Proof of Accommodation in Poland", description: "Rental contract or property ownership proof showing adequate living space.", where: "Sponsor's lease agreement or title deed.", required: true },
         { id: "pl-f-7", title: "Health Insurance", description: "Medical insurance valid in Poland.", where: "NFZ or private insurer.", required: true },
         { id: "pl-f-8", title: "Passport Photos (2)", description: "Biometric photos.", where: "Any photo studio.", required: true },
@@ -827,7 +827,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Italy", origin: "Africa/Asia/LatAm",
       processingTime: "2–5 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Italy is a Schengen country. Apply here only if Italy is your main destination. Consular appointments can be scarce , book as early as possible via VFS Global.",
+      successTip: "Italy is a Schengen country. Apply here only if Italy is your main destination. Consular appointments can be scarce — book as early as possible via VFS Global.",
       items: [
         { id: "it-t-1", title: "Valid Passport", description: "Issued within the last 10 years, valid 3 months beyond your stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
         { id: "it-t-2", title: "Schengen Visa Application Form", description: "Completed and signed application form.", where: "Italian consulate website or VFS Global Italy.", required: true },
@@ -837,7 +837,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "it-t-6", title: "Return Flight Ticket", description: "Confirmed booking into and out of the Schengen zone.", where: "Any airline. Use refundable fares.", required: true },
         { id: "it-t-7", title: "Proof of Accommodation", description: "Hotel bookings or host invitation letter for all nights.", where: "Booking.com or written host letter.", required: true },
         { id: "it-t-8", title: "Proof of Employment", description: "Employer letter with salary, position, and leave approval.", where: "Your HR department.", required: true },
-        { id: "it-t-9", title: "Ties to Home Country", description: "Property, family, employment , proof you will return.", where: "Land documents, employer letter, family records.", required: true },
+        { id: "it-t-9", title: "Ties to Home Country", description: "Property, family, employment — proof you will return.", where: "Land documents, employer letter, family records.", required: true },
       ]
     },
     student: {
@@ -857,7 +857,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     work: {
       visaType: "work", destination: "Italy", origin: "Africa/Asia/LatAm",
       processingTime: "3–6 months", fee: "€116 (~$125 USD)",
-      successTip: "Italy operates a quota system (Decreto Flussi) for non-EU workers. Slots are limited and open once a year , monitor the official site and apply the moment quotas open.",
+      successTip: "Italy operates a quota system (Decreto Flussi) for non-EU workers. Slots are limited and open once a year — monitor the official site and apply the moment quotas open.",
       items: [
         { id: "it-w-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
         { id: "it-w-2", title: "Work Permit Nulla Osta", description: "Your Italian employer applies for this from the local Immigration Office (Sportello Unico per l'Immigrazione) on your behalf.", where: "Your Italian employer handles this application.", required: true },
@@ -896,7 +896,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Spain", origin: "Africa/Asia/LatAm",
       processingTime: "2–5 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Spain is a Schengen country. Apply at Spanish embassy if Spain is your main destination. Spanish consulates are known for thorough document checks , submit a complete, well-organised file.",
+      successTip: "Spain is a Schengen country. Apply at Spanish embassy if Spain is your main destination. Spanish consulates are known for thorough document checks — submit a complete, well-organised file.",
       items: [
         { id: "es-t-1", title: "Valid Passport", description: "Issued within 10 years, valid 3 months beyond stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
         { id: "es-t-2", title: "Schengen Visa Application Form", description: "Completed and signed.", where: "Spanish consulate or BLS International.", required: true },
@@ -912,7 +912,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     student: {
       visaType: "student", destination: "Spain", origin: "Africa/Asia/LatAm",
       processingTime: "4–8 weeks", fee: "€80 (~$86 USD)",
-      successTip: "Spanish student visas are national long-stay visas valid for the duration of your course. Apply at the Spanish consulate in your country , do not try to apply on arrival.",
+      successTip: "Spanish student visas are national long-stay visas valid for the duration of your course. Apply at the Spanish consulate in your country — do not try to apply on arrival.",
       items: [
         { id: "es-s-1", title: "Valid Passport", description: "Valid for your entire study period.", where: "Passport issuing authority.", required: true },
         { id: "es-s-2", title: "University Acceptance Letter", description: "Official admission from a Spanish institution.", where: "Your Spanish university.", required: true },
@@ -1029,7 +1029,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Norway", origin: "Africa/Asia/LatAm",
       processingTime: "2–4 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Norway is part of the Schengen area. Although not an EU member, Schengen rules apply fully. Oslo is a major expense hub , show strong finances with at least €100/day.",
+      successTip: "Norway is part of the Schengen area. Although not an EU member, Schengen rules apply fully. Oslo is a major expense hub — show strong finances with at least €100/day.",
       items: [
         { id: "no-t-1", title: "Valid Passport", description: "Valid 3 months beyond stay.", where: "Passport issuing authority.", required: true },
         { id: "no-t-2", title: "Schengen Visa Application Form", description: "Completed application.", where: "Norwegian embassy or VFS Global Norway.", required: true },
@@ -1068,7 +1068,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     family: {
       visaType: "family", destination: "Norway", origin: "Africa/Asia/LatAm",
       processingTime: "6–15 months", fee: "NOK 5,900 (~$540 USD)",
-      successTip: "Norway's family immigration rules require the sponsor to meet an income requirement (NOK 311,348/year in 2024). Processing times are long , apply as early as possible.",
+      successTip: "Norway's family immigration rules require the sponsor to meet an income requirement (NOK 311,348/year in 2024). Processing times are long — apply as early as possible.",
       items: [
         { id: "no-f-1", title: "Valid Passport", description: "Valid passport.", where: "Passport issuing authority.", required: true },
         { id: "no-f-2", title: "Proof of Relationship", description: "Marriage or birth certificate.", where: "Registry office.", required: true },
@@ -1157,7 +1157,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Denmark", origin: "Africa/Asia/LatAm",
       processingTime: "2–4 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Denmark is a Schengen country. Danish consulates process applications carefully. Show strong home ties and sufficient finances , Copenhagen is one of Europe's most expensive cities.",
+      successTip: "Denmark is a Schengen country. Danish consulates process applications carefully. Show strong home ties and sufficient finances — Copenhagen is one of Europe's most expensive cities.",
       items: [
         { id: "dk-t-1", title: "Valid Passport", description: "Valid 3 months beyond stay.", where: "Passport issuing authority.", required: true },
         { id: "dk-t-2", title: "Schengen Visa Application Form", description: "Completed form.", where: "Danish embassy or VFS Global Denmark.", required: true },
@@ -1285,7 +1285,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Austria", origin: "Africa/Asia/LatAm",
       processingTime: "2–4 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Austria is a Schengen country. Applications are processed at the Austrian embassy. Vienna and Salzburg are expensive cities , show at least €75/day in finances.",
+      successTip: "Austria is a Schengen country. Applications are processed at the Austrian embassy. Vienna and Salzburg are expensive cities — show at least €75/day in finances.",
       items: [
         { id: "at-t-1", title: "Valid Passport", description: "Valid 3 months beyond stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
         { id: "at-t-2", title: "Schengen Visa Application Form", description: "Completed application.", where: "Austrian embassy or VFS Global Austria.", required: true },
@@ -1300,7 +1300,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     student: {
       visaType: "student", destination: "Austria", origin: "Africa/Asia/LatAm",
       processingTime: "4–8 weeks", fee: "€160 (~$173 USD)",
-      successTip: "Austrian universities charge modest tuition for non-EU students (€726/semester at public universities). Apply as soon as you receive your acceptance , residence permit must be obtained after arrival at Magistrat.",
+      successTip: "Austrian universities charge modest tuition for non-EU students (€726/semester at public universities). Apply as soon as you receive your acceptance — residence permit must be obtained after arrival at Magistrat.",
       items: [
         { id: "at-s-1", title: "Valid Passport", description: "Valid for study period.", where: "Passport issuing authority.", required: true },
         { id: "at-s-2", title: "University Acceptance Letter", description: "From an Austrian institution.", where: "Your university.", required: true },
@@ -1351,7 +1351,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Belgium", origin: "Africa/Asia/LatAm",
       processingTime: "2–5 weeks", fee: "€90 (~$97 USD)",
-      successTip: "Belgium is a Schengen country and home to EU headquarters in Brussels. Belgian embassies are thorough , provide a complete, well-organised application with full itinerary.",
+      successTip: "Belgium is a Schengen country and home to EU headquarters in Brussels. Belgian embassies are thorough — provide a complete, well-organised application with full itinerary.",
       items: [
         { id: "be-t-1", title: "Valid Passport", description: "Valid 3 months beyond stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
         { id: "be-t-2", title: "Schengen Visa Application Form", description: "Completed application.", where: "Belgian embassy or VFS Global Belgium.", required: true },
@@ -1415,7 +1415,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Switzerland", origin: "Africa/Asia/LatAm",
       processingTime: "2–4 weeks", fee: "CHF 80 (~$90 USD)",
-      successTip: "Switzerland is part of Schengen but not the EU. Swiss consulates are methodical , submit a very organised application. Zurich and Geneva are among the world's most expensive cities. Show at least CHF 100/day.",
+      successTip: "Switzerland is part of Schengen but not the EU. Swiss consulates are methodical — submit a very organised application. Zurich and Geneva are among the world's most expensive cities. Show at least CHF 100/day.",
       items: [
         { id: "ch-t-1", title: "Valid Passport", description: "Valid 3 months beyond stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
         { id: "ch-t-2", title: "Schengen Visa Application Form", description: "Completed form.", where: "Swiss embassy or VFS Global Switzerland.", required: true },
@@ -1436,7 +1436,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "ch-s-2", title: "University Acceptance Letter", description: "From a Swiss institution.", where: "Your university.", required: true },
         { id: "ch-s-3", title: "Cantonal Approval", description: "Pre-approval from the cantonal migration office (required before consulate visit).", where: "Your university usually coordinates this.", required: true },
         { id: "ch-s-4", title: "Proof of Finances", description: "CHF 21,000/year (~$23,000) in bank or scholarship.", where: "Your bank or scholarship provider.", required: true },
-        { id: "ch-s-5", title: "Health Insurance", description: "Swiss health coverage , mandatory.", where: "Helsana, CSS, or any Swiss insurer.", required: true },
+        { id: "ch-s-5", title: "Health Insurance", description: "Swiss health coverage — mandatory.", where: "Helsana, CSS, or any Swiss insurer.", required: true },
         { id: "ch-s-6", title: "Academic Certificates", description: "Previous qualifications.", where: "Your previous schools.", required: true },
       ]
     },
@@ -1485,7 +1485,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
         { id: "jp-t-1", title: "Valid Passport", description: "Valid for duration of intended stay.", where: "Passport issuing authority.", required: true },
         { id: "jp-t-2", title: "Visa Application Form", description: "Completed Japanese visa application form.", where: "Japanese embassy or consulate.", required: true },
         { id: "jp-t-3", title: "Passport Photo (1)", description: "Recent 45x45mm photo on white background.", where: "Professional photo studio.", required: true },
-        { id: "jp-t-4", title: "Detailed Itinerary", description: "Day-by-day travel plan showing all destinations and overnight stays.", where: "Prepare yourself , must be comprehensive.", tip: "Japanese consulates check this carefully. Include addresses of all hotels.", required: true },
+        { id: "jp-t-4", title: "Detailed Itinerary", description: "Day-by-day travel plan showing all destinations and overnight stays.", where: "Prepare yourself — must be comprehensive.", tip: "Japanese consulates check this carefully. Include addresses of all hotels.", required: true },
         { id: "jp-t-5", title: "Hotel Bookings", description: "Confirmed reservations for all nights in Japan.", where: "Booking.com, Jalan, or any hotel booking platform.", required: true },
         { id: "jp-t-6", title: "Return Flight Ticket", description: "Confirmed booking showing departure from Japan.", where: "Any airline.", required: true },
         { id: "jp-t-7", title: "Bank Statements (3 months)", description: "Showing sufficient funds for your trip.", where: "Your bank. Official statements.", required: true },
@@ -1544,14 +1544,14 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "South Korea", origin: "Africa/Asia/LatAm",
       processingTime: "3–5 working days", fee: "USD $45 (single entry)",
-      successTip: "South Korea processes tourist visas very efficiently. Show clear travel plans, hotel bookings, and sufficient funds. Nigerian passport holders require a visa , K-ETA does not apply to them.",
+      successTip: "South Korea processes tourist visas very efficiently. Show clear travel plans, hotel bookings, and sufficient funds. Nigerian passport holders require a visa — K-ETA does not apply to them.",
       items: [
         { id: "kr-t-1", title: "Valid Passport", description: "Valid for duration of stay.", where: "Passport issuing authority.", required: true },
         { id: "kr-t-2", title: "Visa Application Form (Form 17)", description: "Completed application form.", where: "Korean embassy or consulate.", required: true },
         { id: "kr-t-3", title: "Passport Photo (1)", description: "Recent 35x45mm photo on white background.", where: "Photo studio.", required: true },
         { id: "kr-t-4", title: "Return Flight Ticket", description: "Confirmed booking showing departure from Korea.", where: "Any airline.", required: true },
         { id: "kr-t-5", title: "Hotel Bookings", description: "Confirmed accommodation for all nights.", where: "Booking.com or hotel platform.", required: true },
-        { id: "kr-t-6", title: "Bank Statements (3 months)", description: "Showing sufficient funds , at least $50/day.", where: "Your bank.", required: true },
+        { id: "kr-t-6", title: "Bank Statements (3 months)", description: "Showing sufficient funds — at least $50/day.", where: "Your bank.", required: true },
         { id: "kr-t-7", title: "Proof of Employment", description: "Employer letter or self-employment proof.", where: "HR department.", required: true },
       ]
     },
@@ -1620,7 +1620,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     student: {
       visaType: "student", destination: "UAE", origin: "Africa/Asia/LatAm",
       processingTime: "2–4 weeks", fee: "AED 1,025 (~$280 USD)",
-      successTip: "UAE student visas are typically sponsored by the educational institution. Apply through your UAE university , they will handle the residence visa application on your behalf.",
+      successTip: "UAE student visas are typically sponsored by the educational institution. Apply through your UAE university — they will handle the residence visa application on your behalf.",
       items: [
         { id: "ae-s-1", title: "Valid Passport", description: "Valid for study period.", where: "Passport issuing authority.", required: true },
         { id: "ae-s-2", title: "University Acceptance Letter", description: "From a UAE institution (GEMS, NYU Abu Dhabi, AUS, etc.).", where: "Your university.", required: true },
@@ -1656,7 +1656,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     transit: {
       visaType: "transit", destination: "UAE", origin: "Africa/Asia/LatAm",
       processingTime: "1–3 working days", fee: "AED 50–150 (~$14–41 USD)",
-      successTip: "Dubai is a major international hub. Many nationalities can transit visa-free for up to 96 hours. Nigerian passport holders currently require a transit visa , apply through Emirates airline or a UAE agency.",
+      successTip: "Dubai is a major international hub. Many nationalities can transit visa-free for up to 96 hours. Nigerian passport holders currently require a transit visa — apply through Emirates airline or a UAE agency.",
       items: [
         { id: "ae-tr-1", title: "Valid Passport", description: "Valid for transit period.", where: "Passport issuing authority.", required: true },
         { id: "ae-tr-2", title: "Transit Visa Application", description: "Apply through Emirates, Etihad, or a UAE visa agency.", where: "Emirates.com, Etihad.com, or licensed UAE visa agency.", required: true },
@@ -1672,13 +1672,13 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       successTip: "New Zealand's Visitor Visa is applied for online through Immigration New Zealand. Strong bank statements, a clear itinerary, and ties to home country are the key approval factors.",
       items: [
         { id: "nz-t-1", title: "Valid Passport", description: "Valid for at least 3 months beyond your intended departure from NZ.", where: "Passport issuing authority.", required: true },
-        { id: "nz-t-2", title: "Online Visitor Visa Application", description: "Apply through the Immigration NZ online portal.", where: "immigration.govt.nz , create an account.", required: true },
+        { id: "nz-t-2", title: "Online Visitor Visa Application", description: "Apply through the Immigration NZ online portal.", where: "immigration.govt.nz — create an account.", required: true },
         { id: "nz-t-3", title: "Passport Photo", description: "Recent photo meeting INZ specifications.", where: "Professional photo studio.", required: true },
         { id: "nz-t-4", title: "Bank Statements (6 months)", description: "Showing NZD $1,000–$4,000/month equivalent.", where: "Your bank. Official statements.", required: true },
         { id: "nz-t-5", title: "Return Flight Ticket", description: "Confirmed booking showing departure from NZ.", where: "Any airline.", required: true },
         { id: "nz-t-6", title: "Accommodation Proof", description: "Hotel bookings or invitation letter from NZ host.", where: "Booking.com or NZ host.", required: true },
         { id: "nz-t-7", title: "Proof of Employment", description: "Employer letter confirming job and approved leave.", where: "HR department.", required: true },
-        { id: "nz-t-8", title: "Ties to Home Country", description: "Property, family, employment , proof you will return.", where: "Land documents, employer letter.", required: true },
+        { id: "nz-t-8", title: "Ties to Home Country", description: "Property, family, employment — proof you will return.", where: "Land documents, employer letter.", required: true },
       ]
     },
     student: {
@@ -1735,10 +1735,10 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
     tourist: {
       visaType: "tourist", destination: "Singapore", origin: "Africa/Asia/LatAm",
       processingTime: "3–5 working days", fee: "SGD $30 (~$22 USD)",
-      successTip: "Singapore tourist visas are processed efficiently but scrutinized carefully for African nationalities. Apply through an accredited Singapore travel agent , direct applications are not accepted from most countries. Show strong finances and clear travel purpose.",
+      successTip: "Singapore tourist visas are processed efficiently but scrutinized carefully for African nationalities. Apply through an accredited Singapore travel agent — direct applications are not accepted from most countries. Show strong finances and clear travel purpose.",
       items: [
         { id: "sg-t-1", title: "Valid Passport", description: "Valid for at least 6 months beyond stay, 2 blank pages.", where: "Passport issuing authority.", required: true },
-        { id: "sg-t-2", title: "Visa Application via Accredited Agent", description: "Must be submitted through a Singapore-based accredited hotel or travel agent.", where: "Any accredited Singapore agent. They submit on your behalf.", tip: "You cannot apply directly , the agent submits via ICA's SAVE portal.", required: true },
+        { id: "sg-t-2", title: "Visa Application via Accredited Agent", description: "Must be submitted through a Singapore-based accredited hotel or travel agent.", where: "Any accredited Singapore agent. They submit on your behalf.", tip: "You cannot apply directly — the agent submits via ICA's SAVE portal.", required: true },
         { id: "sg-t-3", title: "Passport Photo (1)", description: "Recent colour photo on white background.", where: "Professional photo studio.", required: true },
         { id: "sg-t-4", title: "Bank Statements (3 months)", description: "Showing minimum SGD $3,000 equivalent balance.", where: "Your bank. Official stamped statements.", required: true },
         { id: "sg-t-5", title: "Return Flight Ticket", description: "Confirmed booking into and out of Singapore.", where: "Any airline.", required: true },
@@ -1827,7 +1827,7 @@ const EMBASSY_URLS: Record<string, string> = {
   "Singapore": "https://www.ica.gov.sg/enter-depart/entry_requirements/visa_requirements",
 };
 
-// Last-verified dates , updated quarterly. Format: YYYY-MM-DD
+// Last-verified dates — updated quarterly. Format: YYYY-MM-DD
 const LAST_VERIFIED_DATES: Record<string, string> = {
   "United Kingdom": "2026-04-01",
   "Canada": "2026-04-01",
@@ -1864,7 +1864,7 @@ export function getChecklist(destination: string, visaType: VisaType): VisaCheck
   return {
     ...entry,
     lastVerified: LAST_VERIFIED_DATES[destination] ?? "2026-01-01",
-    embassyUrl: EMBASSY_URLS[destination] ?? "#",
+    embassyUrl: EMBASSY_URLS[destination],
   };
 }
 
@@ -1872,6 +1872,22 @@ export function getAvailableVisaTypes(destination: string): VisaType[] {
   const destData = CHECKLISTS[destination];
   if (!destData) return [];
   return Object.keys(destData) as VisaType[];
+}
+
+// Pure data, no DOM/browser dependency — safe to import from the Convex
+// backend too (see convex/dataFreshness.ts), so admins get a real,
+// server-computed view of which destinations are overdue for a recheck
+// instead of staleness silently going unnoticed.
+export function getDataFreshness(): Array<{
+  destination: string;
+  lastVerified: string;
+  visaTypeCount: number;
+}> {
+  return Object.keys(CHECKLISTS).map((destination) => ({
+    destination,
+    lastVerified: LAST_VERIFIED_DATES[destination] ?? "2026-01-01",
+    visaTypeCount: Object.keys(CHECKLISTS[destination]).length,
+  }));
 }
 
 export const CHECKLISTS_WITH_DATA = new Set(Object.keys(CHECKLISTS));

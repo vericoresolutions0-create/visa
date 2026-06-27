@@ -1,32 +1,7 @@
-import { HerculesAuthProvider } from "@usehercules/auth/react";
-import {
-  hasHerculesAuthConfig,
-  herculesAuthority,
-  herculesClientId,
-} from "@/lib/auth-config.ts";
-
+// Convex Auth's ConvexAuthProvider (wired in convex.tsx) is both the Convex
+// client provider and the auth provider in one — there's no separate OIDC
+// redirect wrapper needed the way Hercules required. This file stays only so
+// DefaultProviders' composition doesn't need to change.
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (!hasHerculesAuthConfig) {
-    return <>{children}</>;
-  }
-
-  return (
-    <HerculesAuthProvider
-      authority={herculesAuthority!}
-      client_id={herculesClientId!}
-      userManagerSettings={{
-        prompt: import.meta.env.VITE_HERCULES_OIDC_PROMPT ?? "select_account",
-        response_type:
-          import.meta.env.VITE_HERCULES_OIDC_RESPONSE_TYPE ?? "code",
-        scope:
-          import.meta.env.VITE_HERCULES_OIDC_SCOPE ??
-          "openid profile email offline_access",
-        redirect_uri:
-          import.meta.env.VITE_HERCULES_OIDC_REDIRECT_URI ??
-          `${window.location.origin}/auth/callback`,
-      }}
-    >
-      {children}
-    </HerculesAuthProvider>
-  );
+  return <>{children}</>;
 }

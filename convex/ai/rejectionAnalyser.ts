@@ -23,12 +23,9 @@ export const analyseRejection = action({
     origin: v.string(),
   },
   handler: async (ctx, args): Promise<RejectionAnalysisResult> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-
     // Server-side plan enforcement — Rejection Analyser requires Expert plan
     const user = await ctx.runQuery(api.users.getCurrentUser, {});
-    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    if (!user) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     const plan = user.plan ?? "free";
     const isTrialActive = user.trialStartedAt
       ? new Date() < new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)

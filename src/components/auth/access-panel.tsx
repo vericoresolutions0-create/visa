@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Globe, Mail, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Mail, ArrowRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth.ts";
-import { signInDemoUser } from "@/hooks/use-demo-auth.ts";
-import { signInLocalUser } from "@/lib/local-auth.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { DemoSignInButton } from "@/components/ui/signin.tsx";
-import { hasHerculesAuthConfig } from "@/lib/auth-config.ts";
+import { api } from "@/convex/_generated/api.js";
+import { getStoredPartnerSlug } from "@/hooks/use-partner-referral.ts";
 
 type AuthAccessPanelProps = {
   returnPath?: string;
@@ -25,94 +26,95 @@ export function AuthAccessPanel({
   onAuthStart,
   hideDemoOption = false,
 }: AuthAccessPanelProps) {
-  const { signinRedirect, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuth();
+  const isGoogleConfigured = useQuery(api.auth.isGoogleConfigured);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const requiresConsent = authMode === "signUp";
 
-  const startDemoAccess = () => {
-    sessionStorage.setItem("authReturnPath", returnPath);
-    signInDemoUser();
-    onAuthStart?.();
-    toast.success("Demo account is active.");
-    navigate(returnPath);
-  };
-
-  const handleGoogleFallback = () => {
-    navigate("/google-login");
-  };
-
-  const startAuth = async (mode: "google" | "email") => {
-    sessionStorage.setItem("authReturnPath", returnPath);
+  const startGoogleAuth = async () => {
     setError(null);
+    sessionStorage.setItem("authReturnPath", returnPath);
 
-    if (mode === "google" && !hasHerculesAuthConfig) {
-      handleGoogleFallback();
+    if (!isGoogleConfigured) {
+      navigate("/google-login");
       return;
     }
 
-    if (mode === "email") {
-      if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-      if (!password.trim()) {
-        setError("Please enter your password.");
-        return;
-      }
-    }
-
-    if (!hasHerculesAuthConfig) {
-      try {
-        if (mode === "google") {
-          handleGoogleFallback();
-          return;
-        }
-        signInLocalUser(email.trim(), password);
-        sessionStorage.setItem("authReturnPath", returnPath);
-        onAuthStart?.();
-        toast.success("Account created or signed in successfully.");
-        navigate(returnPath);
-        return;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not sign in. Please try again.";
-        setError(message);
-        toast.error(message);
-        return;
-      }
-    }
-
     onAuthStart?.();
-
     try {
-      if (mode === "google") {
-        await signinRedirect();
-        return;
-      }
-
-      await signinRedirect({
-        extraQueryParams: email.trim()
-          ? {
-              login_hint: email.trim(),
-            }
-          : undefined,
-      });
+      await signIn("google");
     } catch {
-      setError("Could not start sign in. Please try again.");
-      toast.error("Could not start sign in. Please try again.");
+      setError("Could not start Google sign-in. Please try again.");
+      toast.error("Could not start Google sign-in. Please try again.");
+    }
+  };
+
+  const startEmailAuth = async () => {
+    setError(null);
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!password.trim()) {
+      setError("Please enter your password.");
+      return;
+    }
+    if (requiresConsent && !agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
+
+    sessionStorage.setItem("authReturnPath", returnPath);
+    setSubmitting(true);
+    try {
+      const partnerReferralSlug = authMode === "signUp" ? getStoredPartnerSlug() : null;
+      await signIn("password", {
+        email: email.trim(),
+        password,
+        flow: authMode,
+        ...(authMode === "signUp" ? { agreedToTermsAt: new Date().toISOString() } : {}),
+        ...(partnerReferralSlug ? { partnerReferralSlug } : {}),
+      });
+      onAuthStart?.();
+      toast.success(authMode === "signUp" ? "Account created." : "Signed in successfully.");
+      // replace: true — same reasoning as startDemoAccess above.
+      navigate(returnPath, { replace: true });
+    } catch (err) {
+      const message =
+        err instanceof ConvexError
+          ? (err.data as { message: string }).message
+          : authMode === "signIn"
+            ? "Incorrect email or password, or you don't have an account yet — try \"Create an account\" below."
+            : "Could not create your account. It may already exist — try signing in instead.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 text-left">
       <div className="space-y-3">
+        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+          By continuing, you agree to VisaClear's{" "}
+          <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms of Service</Link>
+          {" "}and{" "}
+          <Link to="/privacy" target="_blank" className="underline hover:text-primary">Privacy Policy</Link>.
+        </p>
         <Button
           type="button"
           size="lg"
           className="w-full cursor-pointer font-semibold bg-[#4285F4] hover:bg-[#357ae8] text-white border-0"
           onClick={() => {
-            void startAuth("google");
+            void startGoogleAuth();
           }}
           disabled={isLoading}
         >
@@ -146,7 +148,7 @@ export function AuthAccessPanel({
           className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            void startAuth("email");
+            void startEmailAuth();
           }}
         >
           <div>
@@ -169,10 +171,26 @@ export function AuthAccessPanel({
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter a secure password"
+              placeholder={authMode === "signUp" ? "Create a secure password" : "Enter your password"}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+          {requiresConsent && (
+            <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(event) => setAgreedToTerms(event.target.checked)}
+                className="mt-0.5 cursor-pointer"
+              />
+              <span>
+                I agree to the{" "}
+                <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms of Service</Link>
+                {" "}and{" "}
+                <Link to="/privacy" target="_blank" className="underline hover:text-primary">Privacy Policy</Link>.
+              </span>
+            </label>
+          )}
           {error ? (
             <div className="text-sm text-destructive/90">{error}</div>
           ) : null}
@@ -181,12 +199,27 @@ export function AuthAccessPanel({
             variant="secondary"
             size="lg"
             className="w-full cursor-pointer font-semibold"
-            disabled={isLoading}
+            disabled={isLoading || submitting || (requiresConsent && !agreedToTerms)}
           >
             <Mail className="w-4 h-4" />
-            Continue with email/password
+            {submitting
+              ? authMode === "signUp" ? "Creating account…" : "Signing in…"
+              : authMode === "signUp" ? "Create account" : "Continue with email/password"}
             <ArrowRight className="w-4 h-4 ml-auto" />
           </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode((m) => (m === "signIn" ? "signUp" : "signIn"));
+              setError(null);
+              setAgreedToTerms(false);
+            }}
+            className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+          >
+            {authMode === "signIn"
+              ? "New to VisaClear? Create an account"
+              : "Already have an account? Sign in"}
+          </button>
         </form>
 
         {!hideDemoOption && (

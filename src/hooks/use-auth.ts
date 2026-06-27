@@ -1,40 +1,12 @@
-import {
-  useAuth as herculesUseAuth,
-  useUser as herculesUseUser,
-} from "@usehercules/auth/react";
-import { hasHerculesAuthConfig } from "@/lib/auth-config.ts";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 
-type HerculesAuth = ReturnType<typeof herculesUseAuth>;
-type HerculesUser = ReturnType<typeof herculesUseUser>;
-
-async function authUnavailable() {
-  throw new Error("Hercules auth is not configured for this workspace.");
-}
-
-const fallbackAuth = {
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
-  signin: authUnavailable,
-  signout: authUnavailable,
-  signinRedirect: authUnavailable,
-  removeUser: async () => undefined,
-} as unknown as HerculesAuth;
-
-const fallbackUser = null as unknown as HerculesUser;
-
+// Single chokepoint for real (non-demo) auth state on the frontend, mirroring
+// convex/authHelpers.ts on the backend. signIn/signOut here are Convex
+// Auth's real primitives — there's no separate "redirect" step the way the
+// old Hercules/OIDC integration needed.
 export function useAuth() {
-  if (!hasHerculesAuthConfig) {
-    return fallbackAuth;
-  }
-
-  return herculesUseAuth();
-}
-
-export function useUser() {
-  if (!hasHerculesAuthConfig) {
-    return fallbackUser;
-  }
-
-  return herculesUseUser();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { signIn, signOut } = useAuthActions();
+  return { isAuthenticated, isLoading, signIn, signOut };
 }

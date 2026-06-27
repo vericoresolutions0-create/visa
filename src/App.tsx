@@ -13,12 +13,18 @@ import { ErrorBoundary } from "@/components/error-boundary.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useServiceWorker } from "@/hooks/use-service-worker.ts";
 import { useAnalytics } from "@/hooks/use-analytics.ts";
+import { usePartnerReferralCapture } from "@/hooks/use-partner-referral.ts";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top.ts";
+import { NavigationDepthProvider } from "@/hooks/use-navigation-depth.tsx";
 import CookieBanner from "@/components/cookie-banner.tsx";
 import { InstallAppPrompt } from "@/components/pwa/install-prompt.tsx";
 import "./i18n.ts";
 
 const ChecklistPage = lazy(() => import("./pages/checklist/page.tsx"));
+const RiskScorePage = lazy(() => import("./pages/risk-score/page.tsx"));
+const RiskScoreResultPage = lazy(() => import("./pages/risk-score/result.tsx"));
+const WallOfFamePage = lazy(() => import("./pages/wall-of-fame/page.tsx"));
+const WaitTimesPage = lazy(() => import("./pages/wait-times/page.tsx"));
 const PricingPage = lazy(() => import("./pages/pricing/page.tsx"));
 const LoginPage = lazy(() => import("./pages/login/page.tsx"));
 const PaymentPage = lazy(() => import("./pages/payment/page.tsx"));
@@ -37,10 +43,12 @@ const DashboardTripWorkspacePage = lazy(
   () => import("./pages/dashboard/trips/page.tsx"),
 );
 const DocumentVaultPage = lazy(() => import("./pages/dashboard/vault/page.tsx"));
+const HouseholdPage = lazy(() => import("./pages/dashboard/household/page.tsx"));
 const CountryWatchPage = lazy(() => import("./pages/dashboard/country-watch/page.tsx"));
 const ProfileSettingsPage = lazy(
   () => import("./pages/settings/profile/page.tsx"),
 );
+const ConfirmEmailPage = lazy(() => import("./pages/settings/confirm-email.tsx"));
 const RejectionAnalyserPage = lazy(
   () => import("./pages/rejection-analyser/page.tsx"),
 );
@@ -54,6 +62,10 @@ const TermsPage = lazy(() => import("./pages/terms/page.tsx"));
 const PrivacyPage = lazy(() => import("./pages/privacy/page.tsx"));
 const AdminPage = lazy(() => import("./pages/admin/page.tsx"));
 const WhiteLabelPage = lazy(() => import("./pages/white-label/page.tsx"));
+const BusinessLandingPage = lazy(() => import("./pages/business/page.tsx"));
+const BusinessOnboardingPage = lazy(() => import("./pages/business/onboarding.tsx"));
+const BusinessDashboardPage = lazy(() => import("./pages/business/dashboard.tsx"));
+const BusinessInvitePage = lazy(() => import("./pages/business/invite.tsx"));
 const ContactPage = lazy(() => import("./pages/contact/page.tsx"));
 const AboutPage = lazy(() => import("./pages/about/page.tsx"));
 const BlogPage = lazy(() => import("./pages/blog/page.tsx"));
@@ -98,11 +110,15 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/contact",
       "/blog",
       "/white-label",
+      "/business",
       "/checklist",
       "/dashboard",
       "/rejection-analyser",
       "/passport-photo",
       "/admin",
+      "/risk-score",
+      "/wall-of-fame",
+      "/wait-times",
     ];
     if (!onboarded && !skipPaths.some((p) => location.pathname.startsWith(p))) {
       navigate("/onboarding", { replace: true });
@@ -116,13 +132,19 @@ function AppRoutes() {
   useServiceWorker();
   useAnalytics();
   useScrollToTop();
+  usePartnerReferralCapture();
 
   return (
+    <NavigationDepthProvider>
     <OnboardingGate>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/checklist" element={<ChecklistPage />} />
+          <Route path="/risk-score" element={<RiskScorePage />} />
+          <Route path="/risk-score/:resultId" element={<RiskScoreResultPage />} />
+          <Route path="/wall-of-fame" element={<WallOfFamePage />} />
+          <Route path="/wait-times" element={<WaitTimesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<LoginPage />} />
@@ -147,8 +169,10 @@ function AppRoutes() {
             element={<DashboardTripWorkspacePage />}
           />
           <Route path="/dashboard/vault" element={<DocumentVaultPage />} />
+          <Route path="/dashboard/household" element={<HouseholdPage />} />
           <Route path="/dashboard/country-watch" element={<CountryWatchPage />} />
           <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+          <Route path="/settings/confirm-email/:token" element={<ConfirmEmailPage />} />
           <Route
             path="/rejection-analyser"
             element={<RejectionAnalyserPage />}
@@ -163,6 +187,10 @@ function AppRoutes() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/white-label" element={<WhiteLabelPage />} />
+          <Route path="/business" element={<BusinessLandingPage />} />
+          <Route path="/business/onboarding" element={<BusinessOnboardingPage />} />
+          <Route path="/business/dashboard" element={<BusinessDashboardPage />} />
+          <Route path="/business/invite/:token" element={<BusinessInvitePage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/blog" element={<BlogPage />} />
@@ -173,6 +201,7 @@ function AppRoutes() {
         </Routes>
       </Suspense>
     </OnboardingGate>
+    </NavigationDepthProvider>
   );
 }
 

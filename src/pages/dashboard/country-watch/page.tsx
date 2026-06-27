@@ -14,31 +14,64 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { api } from "@/convex/_generated/api.js";
+import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { canUseCountryWatch, COUNTRY_WATCH_LIMIT } from "@/lib/plan-gates.ts";
 import { ALL_COUNTRIES } from "@/lib/countries.ts";
+
+const DEMO_WATCHES: Doc<"country_watches">[] = [
+  { _id: "demo_watch_uk" as Id<"country_watches">, _creationTime: Date.now(), userId: "demo_user" as Id<"users">, countryName: "United Kingdom", createdAt: new Date().toISOString() },
+  { _id: "demo_watch_ca" as Id<"country_watches">, _creationTime: Date.now(), userId: "demo_user" as Id<"users">, countryName: "Canada", createdAt: new Date().toISOString() },
+];
+
+const DEMO_FEED: Doc<"country_policy_updates">[] = [
+  {
+    _id: "demo_update_uk" as Id<"country_policy_updates">,
+    _creationTime: Date.now(),
+    countryName: "United Kingdom",
+    title: "UK raises minimum salary threshold for Skilled Worker visa",
+    body: "The UK Home Office has increased the minimum salary requirement for most Skilled Worker visa sponsorships. Applicants with an existing Certificate of Sponsorship issued before the change date are unaffected.",
+    publishedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
+    publishedByUserId: "demo_admin" as Id<"users">,
+  },
+  {
+    _id: "demo_update_ca" as Id<"country_policy_updates">,
+    _creationTime: Date.now() - 1,
+    countryName: "Canada",
+    title: "IRCC updates proof-of-funds amounts for Temporary Resident Visa",
+    body: "Immigration, Refugees and Citizenship Canada has revised the recommended proof-of-funds figures used to assess visitor visa applications. Check the official IRCC page before submitting your bank statements.",
+    publishedAt: new Date(Date.now() - 13 * 86400000).toISOString(),
+    publishedByUserId: "demo_admin" as Id<"users">,
+  },
+];
 
 export default function CountryWatchPage() {
   useSeo({ title: "Country Watch — VisaClear Pro", description: "Real policy change alerts for the countries you care about." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
-  const { isDemoAuthenticated, signOut } = useDemoAuth();
-  const { isAuthenticated, signoutRedirect } = useAuth();
+  const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
+  const { isAuthenticated, signOut: signOutReal } = useAuth();
   const canAccess = isDemoAuthenticated || isAuthenticated;
 
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
-  const watches = useQuery(api.countryWatch.getMyWatches, isDemoAuthenticated ? "skip" : {});
-  const feed = useQuery(api.countryWatch.getMyFeed, isDemoAuthenticated ? "skip" : {});
+  const realWatches = useQuery(api.countryWatch.getMyWatches, isDemoAuthenticated ? "skip" : {});
+  const realFeed = useQuery(api.countryWatch.getMyFeed, isDemoAuthenticated ? "skip" : {});
   const addWatch = useMutation(api.countryWatch.addWatch);
   const removeWatch = useMutation(api.countryWatch.removeWatch);
 
-  const plan = user?.plan ?? "free";
+  const [demoWatches, setDemoWatches] = useState<Doc<"country_watches">[]>(DEMO_WATCHES);
+  const watches = isDemoAuthenticated ? demoWatches : realWatches;
+  const watchedCountrySet = new Set(demoWatches.map((w) => w.countryName));
+  const feed = isDemoAuthenticated ? DEMO_FEED.filter((u) => watchedCountrySet.has(u.countryName)) : realFeed;
+
+  const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (user?.plan ?? "free");
   const canWatch = canUseCountryWatch(plan);
   const limit = COUNTRY_WATCH_LIMIT[plan];
   const [selected, setSelected] = useState("");
 
   const handleSignOut = async () => {
     if (isAuthenticated) {
-      await signoutRedirect();
+      await signOutReal();
+      navigate("/");
       return;
     }
     signOut();
@@ -47,6 +80,19 @@ export default function CountryWatchPage() {
 
   const handleAdd = async () => {
     if (!selected) return;
+    if (isDemoAuthenticated) {
+      if (demoWatches.length >= limit) {
+        toast.error(`Your ${plan === "expert" ? "Expert" : "Pro"} plan can watch up to ${limit} countries. Remove one to add another.`);
+        return;
+      }
+      setDemoWatches((prev) => [
+        ...prev,
+        { _id: `demo_watch_${Date.now()}` as Id<"country_watches">, _creationTime: Date.now(), userId: "demo_user" as Id<"users">, countryName: selected, createdAt: new Date().toISOString() },
+      ]);
+      toast.success(`Now watching ${selected}.`);
+      setSelected("");
+      return;
+    }
     try {
       await addWatch({ countryName: selected });
       toast.success(`Now watching ${selected}.`);
@@ -61,6 +107,11 @@ export default function CountryWatchPage() {
   };
 
   const handleRemove = async (id: Parameters<typeof removeWatch>[0]["id"]) => {
+    if (isDemoAuthenticated) {
+      setDemoWatches((prev) => prev.filter((w) => w._id !== id));
+      toast.success("Removed.");
+      return;
+    }
     try {
       await removeWatch({ id });
       toast.success("Removed.");

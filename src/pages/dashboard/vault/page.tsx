@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, Shield, Upload, Trash2, FileText,
-  AlertTriangle, AlertCircle, LayoutDashboard, Settings, LogOut, LogIn,
+  AlertTriangle, AlertCircle, LayoutDashboard, Settings, LogOut, LogIn, Bell, BellRing,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -13,8 +13,55 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { api } from "@/convex/_generated/api.js";
+import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { canUseDocumentVault } from "@/lib/plan-gates.ts";
 import { cn } from "@/lib/utils.ts";
+
+type DemoVaultDocument = Doc<"vault_documents"> & { url: string | null };
+
+const DEMO_VAULT_DOCUMENTS: DemoVaultDocument[] = [
+  {
+    _id: "demo_doc_passport" as Id<"vault_documents">,
+    _creationTime: Date.now(),
+    userId: "demo_user" as Id<"users">,
+    category: "identity",
+    label: "UK Passport",
+    storageId: "demo_storage" as Id<"_storage">,
+    fileName: "passport-scan.pdf",
+    fileSize: 482_000,
+    mimeType: "application/pdf",
+    expiryDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45).toISOString().slice(0, 10),
+    uploadedAt: new Date().toISOString(),
+    url: "#",
+  },
+  {
+    _id: "demo_doc_bankstatement" as Id<"vault_documents">,
+    _creationTime: Date.now(),
+    userId: "demo_user" as Id<"users">,
+    category: "financial",
+    label: "March Bank Statement",
+    storageId: "demo_storage" as Id<"_storage">,
+    fileName: "march-statement.pdf",
+    fileSize: 215_000,
+    mimeType: "application/pdf",
+    uploadedAt: new Date().toISOString(),
+    url: "#",
+  },
+];
+
+const DEMO_VAULT_REMINDERS: Doc<"reminders">[] = [
+  {
+    _id: "demo_reminder_passport" as Id<"reminders">,
+    _creationTime: Date.now(),
+    userId: "demo_user" as Id<"users">,
+    vaultDocumentId: "demo_doc_passport" as Id<"vault_documents">,
+    title: "UK Passport expires soon",
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 15).toISOString().slice(0, 10),
+    email: "demo@visaclear.local",
+    sent: false,
+    createdAt: new Date().toISOString(),
+  },
+];
 
 const CATEGORIES = [
   { value: "identity", label: "Identity", hint: "Passport copies, national ID, birth certificate" },
@@ -41,27 +88,38 @@ export default function DocumentVaultPage() {
   useSeo({ title: "Document Vault — VisaClear Pro", description: "Your permanent, organized store for every visa document." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
-  const { isDemoAuthenticated, signOut } = useDemoAuth();
-  const { isAuthenticated, signoutRedirect } = useAuth();
+  const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
+  const { isAuthenticated, signOut: signOutReal } = useAuth();
   const canAccess = isDemoAuthenticated || isAuthenticated;
 
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
   const documents = useQuery(api.vault.listMyDocuments, isDemoAuthenticated ? "skip" : {});
+  const reminders = useQuery(api.reminders.getReminders, isDemoAuthenticated ? "skip" : {});
   const generateUploadUrl = useMutation(api.vault.generateUploadUrl);
   const addDocument = useMutation(api.vault.addDocument);
   const deleteDocument = useMutation(api.vault.deleteDocument);
+  const createExpiryReminder = useMutation(api.vault.createExpiryReminder);
 
-  const plan = user?.plan ?? "free";
+  const [demoDocuments, setDemoDocuments] = useState<DemoVaultDocument[]>(DEMO_VAULT_DOCUMENTS);
+  const [demoReminders, setDemoReminders] = useState<Doc<"reminders">[]>(DEMO_VAULT_REMINDERS);
+  const visibleDocuments = isDemoAuthenticated ? demoDocuments : (documents ?? []);
+  const visibleReminders = isDemoAuthenticated ? demoReminders : (reminders ?? []);
+
+  const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (user?.plan ?? "free");
   const canUseVault = canUseDocumentVault(plan);
 
   const [category, setCategory] = useState<typeof CATEGORIES[number]["value"]>("identity");
   const [label, setLabel] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [editingExpiryId, setEditingExpiryId] = useState<string | null>(null);
+  const [editingExpiryValue, setEditingExpiryValue] = useState("");
+  const updateDocumentExpiry = useMutation(api.vault.updateDocumentExpiry);
 
   const handleSignOut = async () => {
     if (isAuthenticated) {
-      await signoutRedirect();
+      await signOutReal();
+      navigate("/");
       return;
     }
     signOut();
@@ -81,6 +139,29 @@ export default function DocumentVaultPage() {
       toast.error("Please upload a JPG, PNG, WEBP, or PDF file.");
       return;
     }
+
+    if (isDemoAuthenticated) {
+      const newDoc: DemoVaultDocument = {
+        _id: `demo_doc_${Date.now()}` as Id<"vault_documents">,
+        _creationTime: Date.now(),
+        userId: "demo_user" as Id<"users">,
+        category,
+        label: label.trim(),
+        storageId: "demo_storage" as Id<"_storage">,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        expiryDate: expiryDate || undefined,
+        uploadedAt: new Date().toISOString(),
+        url: "#",
+      };
+      setDemoDocuments((prev) => [newDoc, ...prev]);
+      toast.success(`${label.trim()} added to your vault. (demo only)`);
+      setLabel("");
+      setExpiryDate("");
+      return;
+    }
+
     setUploading(true);
     try {
       const uploadUrl = await generateUploadUrl({});
@@ -110,12 +191,65 @@ export default function DocumentVaultPage() {
     }
   };
 
-  const handleDelete = async (id: Parameters<typeof deleteDocument>[0]["id"]) => {
+  const handleDelete = async (id: string) => {
+    if (isDemoAuthenticated) {
+      setDemoDocuments((prev) => prev.filter((d) => d._id !== id));
+      setDemoReminders((prev) => prev.filter((r) => r.vaultDocumentId !== id));
+      toast.success("Document removed. (demo only)");
+      return;
+    }
     try {
-      await deleteDocument({ id });
+      await deleteDocument({ id: id as Parameters<typeof deleteDocument>[0]["id"] });
       toast.success("Document removed.");
     } catch {
       toast.error("Failed to remove document.");
+    }
+  };
+
+  const handleRemindMe = async (id: string) => {
+    if (isDemoAuthenticated) {
+      const doc = demoDocuments.find((d) => d._id === id);
+      if (!doc) return;
+      const dueDate = doc.expiryDate;
+      if (!dueDate) return;
+      setDemoReminders((prev) => [
+        ...prev,
+        {
+          _id: `demo_reminder_${Date.now()}` as Id<"reminders">,
+          _creationTime: Date.now(),
+          userId: "demo_user" as Id<"users">,
+          vaultDocumentId: id as Id<"vault_documents">,
+          title: `${doc.label} expires soon`,
+          dueDate,
+          email: "demo@visaclear.local",
+          sent: false,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      toast.success("Reminder set — we'll email you before it expires. (demo only)");
+      return;
+    }
+    try {
+      await createExpiryReminder({ id: id as Parameters<typeof createExpiryReminder>[0]["id"] });
+      toast.success("Reminder set — we'll email you before it expires.");
+    } catch {
+      toast.error("Could not set a reminder for this document.");
+    }
+  };
+
+  const handleSaveExpiry = async (id: string) => {
+    if (isDemoAuthenticated) {
+      setDemoDocuments((prev) => prev.map((d) => (d._id === id ? { ...d, expiryDate: editingExpiryValue || undefined } : d)));
+      toast.success("Expiry date updated. (demo only)");
+      setEditingExpiryId(null);
+      return;
+    }
+    try {
+      await updateDocumentExpiry({ id: id as Parameters<typeof updateDocumentExpiry>[0]["id"], expiryDate: editingExpiryValue || undefined });
+      toast.success("Expiry date updated.");
+      setEditingExpiryId(null);
+    } catch {
+      toast.error("Could not update the expiry date.");
     }
   };
 
@@ -245,7 +379,7 @@ export default function DocumentVaultPage() {
             </div>
 
             {CATEGORIES.map((cat) => {
-              const docsInCategory = (documents ?? []).filter((d) => d.category === cat.value);
+              const docsInCategory = visibleDocuments.filter((d) => d.category === cat.value);
               return (
                 <div key={cat.value}>
                   <div className="flex items-baseline justify-between mb-2">
@@ -258,6 +392,7 @@ export default function DocumentVaultPage() {
                     <div className="space-y-2 mb-2">
                       {docsInCategory.map((doc) => {
                         const status = expiryStatus(doc.expiryDate);
+                        const hasReminder = visibleReminders.some((r) => r.vaultDocumentId === doc._id && !r.sent);
                         return (
                           <div key={doc._id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
                             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -267,16 +402,55 @@ export default function DocumentVaultPage() {
                               </a>
                               <div className="text-xs text-muted-foreground truncate">{doc.fileName}</div>
                             </div>
-                            {status && (
-                              <span className={cn(
-                                "flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full shrink-0",
-                                status.tone === "red" && "bg-destructive/10 text-destructive",
-                                status.tone === "amber" && "bg-amber-500/10 text-amber-600",
-                                status.tone === "ok" && "bg-muted text-muted-foreground",
-                              )}>
-                                {status.tone !== "ok" && (status.tone === "red" ? <AlertCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />)}
-                                {status.label}
-                              </span>
+                            {editingExpiryId === doc._id ? (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <input
+                                  type="date"
+                                  value={editingExpiryValue}
+                                  onChange={(e) => setEditingExpiryValue(e.target.value)}
+                                  className="w-32 px-2 py-1 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                  autoFocus
+                                />
+                                <button onClick={() => void handleSaveExpiry(doc._id)} className="text-[11px] font-semibold text-accent hover:underline cursor-pointer">Save</button>
+                                <button onClick={() => setEditingExpiryId(null)} className="text-[11px] text-muted-foreground hover:underline cursor-pointer">Cancel</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setEditingExpiryId(doc._id); setEditingExpiryValue(doc.expiryDate ?? ""); }}
+                                className="shrink-0 cursor-pointer"
+                                title="Edit expiry date"
+                              >
+                                {status ? (
+                                  <span className={cn(
+                                    "flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full",
+                                    status.tone === "red" && "bg-destructive/10 text-destructive",
+                                    status.tone === "amber" && "bg-amber-500/10 text-amber-600",
+                                    status.tone === "ok" && "bg-muted text-muted-foreground",
+                                  )}>
+                                    {status.tone !== "ok" && (status.tone === "red" ? <AlertCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />)}
+                                    {status.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-semibold px-2 py-1 rounded-full border border-dashed border-border text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors">
+                                    Add expiry
+                                  </span>
+                                )}
+                              </button>
+                            )}
+                            {doc.expiryDate && (
+                              hasReminder ? (
+                                <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 bg-accent/10 text-accent" title="We'll email you before this expires">
+                                  <BellRing className="w-3 h-3" /> Reminder set
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => void handleRemindMe(doc._id)}
+                                  className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 border border-border text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors cursor-pointer"
+                                  title="Get an email reminder before this expires"
+                                >
+                                  <Bell className="w-3 h-3" /> Remind me
+                                </button>
+                              )
                             )}
                             <button
                               onClick={() => void handleDelete(doc._id)}

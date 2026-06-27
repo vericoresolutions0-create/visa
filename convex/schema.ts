@@ -1,12 +1,20 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
   users: defineTable({
-    tokenIdentifier: v.string(),
+    // Convex Auth's own fields (required shape for its account-linking
+    // queries) — image/verification times are unused by VisaClear today but
+    // kept so Convex Auth's internals keep working if a provider sets them.
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
     country: v.optional(v.string()),
     plan: v.optional(
       v.union(v.literal("free"), v.literal("pro"), v.literal("expert")),
@@ -33,6 +41,7 @@ export default defineSchema({
     lastAgentPaymentAt: v.optional(v.string()),
     referralCode: v.optional(v.string()),
     referredByCode: v.optional(v.string()),
+    referralRewardMonthsGranted: v.optional(v.number()),
     paymentMethod: v.optional(
       v.object({
         type: v.union(v.literal("card"), v.literal("bank")),
@@ -63,11 +72,24 @@ export default defineSchema({
     ),
     role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     onboarded: v.optional(v.boolean()),
+    agreedToTermsAt: v.optional(v.string()),
+    // Which institutional partner (university, agency) this user arrived
+    // via, if any — entirely separate from referralCode/referredByCode
+    // below, which is the unrelated peer-to-peer user referral system.
+    partnerReferralSlug: v.optional(v.string()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    agentStripeSubscriptionId: v.optional(v.string()),
+    paystackReference: v.optional(v.string()),
   })
-    .index("by_token", ["tokenIdentifier"])
+    .index("email", ["email"])
+    .index("phone", ["phone"])
     .index("by_role", ["role"])
     .index("by_referral_code", ["referralCode"])
-    .index("by_plan", ["plan"]),
+    .index("by_referred_by_code", ["referredByCode"])
+    .index("by_plan", ["plan"])
+    .index("by_stripe_subscription", ["stripeSubscriptionId"])
+    .index("by_agent_stripe_subscription", ["agentStripeSubscriptionId"]),
 
   // A saved_checklists row is a "trip": the checklist IS the trip's core
   // workspace. Pro fields below extend it into the full Multi-Trip Manager
@@ -95,6 +117,13 @@ export default defineSchema({
     ),
     notes: v.optional(v.string()),
     archived: v.optional(v.boolean()),
+    settleInCheckedItems: v.optional(v.array(v.string())),
+    settleInProgress: v.optional(v.number()),
+    // Set when this trip is being tracked by a parent on behalf of a
+    // dependent who has no VisaClear account of their own — userId stays
+    // the PARENT's id (the dependent has none), so every existing ownership
+    // check in checklists.ts keeps working unmodified.
+    managedDependentId: v.optional(v.id("managed_dependents")),
   })
     .index("by_user", ["userId"])
     .index("by_user_archived", ["userId", "archived"]),
@@ -149,9 +178,24 @@ export default defineSchema({
     count: v.number(),
   }).index("by_user_month", ["userId", "yearMonth"]),
 
+  // Tracks plans paid for via a one-time charge (Stripe Pix/boleto/OXXO,
+  // Paystack mobile money/bank transfer/USSD) — these methods have no
+  // stored instrument to auto-renew, unlike a real Stripe subscription. A
+  // row here only ever exists for someone on this billing path, so the
+  // expiry cron's range query never has to reason about undefined values —
+  // every row it scans genuinely needs checking. Deleted on renewal or on
+  // switching to a real recurring subscription.
+  one_time_plan_expirations: defineTable({
+    userId: v.id("users"),
+    expiresAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_expires", ["expiresAt"]),
+
   reminders: defineTable({
     userId: v.id("users"),
     checklistId: v.optional(v.id("saved_checklists")),
+    vaultDocumentId: v.optional(v.id("vault_documents")),
     title: v.string(),
     note: v.optional(v.string()),
     dueDate: v.string(),
@@ -186,7 +230,35 @@ export default defineSchema({
     rating: v.optional(v.number()),
     reviewCount: v.optional(v.number()),
     createdAt: v.string(),
-  }).index("by_user", ["userId"]),
+    // Denormalized from users.agentPlan at checkout time, so listing/ranking
+    // queries never need to join against the users table.
+    tier: v.optional(
+      v.union(
+        v.literal("agent_listing"),
+        v.literal("agent_featured"),
+        v.literal("agency_white_label"),
+      ),
+    ),
+    // Drives the real-upload "new since you last looked" indicator on the
+    // agent dashboard — no email provider is configured yet, so this is the
+    // honest, real notification signal available right now.
+    lastDashboardViewAt: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_tier", ["tier"]),
+
+  // A real lead generated by an applicant clicking "Contact Agent" in the
+  // marketplace — replaces the old client-side-only toast that never
+  // reached the agent.
+  agent_contact_requests: defineTable({
+    agentProfileId: v.id("agent_profiles"),
+    fromUserId: v.id("users"),
+    fromName: v.optional(v.string()),
+    fromEmail: v.optional(v.string()),
+    message: v.optional(v.string()),
+    createdAt: v.string(),
+    read: v.boolean(),
+  }).index("by_agent", ["agentProfileId"]),
   contact_messages: defineTable({
     name: v.string(),
     email: v.string(),
@@ -201,6 +273,7 @@ export default defineSchema({
     token: v.string(),
     clientName: v.string(),
     clientEmail: v.optional(v.string()),
+    clientPhone: v.optional(v.string()),
     destination: v.string(),
     visaType: v.string(),
     status: v.union(
@@ -234,6 +307,314 @@ export default defineSchema({
     count: v.number(),
   }).index("by_date", ["dateKey"]),
 
+  // Same backstop pattern, for the public (no-sign-in) contact form.
+  contact_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
+
+  // Same backstop pattern, for the public (no-sign-in) Risk Score quiz.
+  risk_score_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
+
+  // Every real incoming Telegram message the bot answered (or failed to
+  // match) — gives the admin panel real visibility into bot usage and
+  // match rate without needing the founder to watch logs manually.
+  telegram_bot_log: defineTable({
+    chatId: v.string(),
+    questionText: v.string(),
+    matchedDestination: v.optional(v.string()),
+    matchedVisaType: v.optional(v.string()),
+    matched: v.boolean(),
+    createdAt: v.string(),
+  }).index("by_created", ["createdAt"]),
+
+  // Exact mirror of telegram_bot_log for the WhatsApp (Twilio) companion
+  // bot — fromNumber instead of chatId is the only conceptual difference.
+  whatsapp_bot_log: defineTable({
+    fromNumber: v.string(),
+    questionText: v.string(),
+    matchedDestination: v.optional(v.string()),
+    matchedVisaType: v.optional(v.string()),
+    matched: v.boolean(),
+    createdAt: v.string(),
+  }).index("by_created", ["createdAt"]),
+
+  // A single real applicant's processing-time data point. waitDays is
+  // computed at submission time so every downstream query is just reading
+  // a plain number, not re-deriving dates — and so a later rubric/timezone
+  // change can never silently change a previously-submitted report's value.
+  wait_time_reports: defineTable({
+    destination: v.string(),
+    visaType: v.string(),
+    applicationDate: v.string(),
+    decisionDate: v.string(),
+    waitDays: v.number(),
+    outcome: v.optional(v.union(v.literal("approved"), v.literal("refused"))),
+    submittedByUserId: v.id("users"),
+    createdAt: v.string(),
+  })
+    .index("by_destination_visatype", ["destination", "visaType"])
+    .index("by_user", ["submittedByUserId"]),
+
+  // A real applicant's "refused then approved" story. Always anonymous to
+  // readers (submittedByUserId is only ever used for moderation/abuse
+  // follow-up, never returned by the public query) and always reviewed by
+  // an admin before going live — public, user-generated content about real
+  // refusals carries real risk of spam, defamation, or accidental PII, so
+  // nothing here is visible to readers until status is "approved".
+  wall_of_fame_stories: defineTable({
+    submittedByUserId: v.id("users"),
+    destination: v.string(),
+    visaType: v.string(),
+    refusalCount: v.number(),
+    whatWentWrong: v.string(),
+    whatFixedIt: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    createdAt: v.string(),
+    moderatedAt: v.optional(v.string()),
+    moderatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_status", ["status"])
+    .index("by_user", ["submittedByUserId"]),
+
+  // A submitted Risk Score result — deliberately readable by anyone with
+  // the _id (no auth check on the read), since the whole point is a
+  // shareable link people send to friends/family. userId is set only when
+  // the submitter happens to be signed in; the feature works fully for
+  // guests, which is what makes it viral-shareable with zero signup friction.
+  risk_score_results: defineTable({
+    userId: v.optional(v.id("users")),
+    destination: v.string(),
+    visaType: v.string(),
+    answers: v.record(v.string(), v.string()),
+    rawScore: v.number(),
+    displayScore: v.number(),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_created", ["createdAt"]),
+
+  // A pre-submission audit run against the SAME deterministic rubric as the
+  // Risk Score (src/lib/risk-score.ts) — reused here, not duplicated, so
+  // the two features can never silently disagree about what's a red flag.
+  // Distinct purpose from Risk Score: this is framed as "fix these specific
+  // things before you submit," not a shareable score.
+  checklist_audits: defineTable({
+    userId: v.id("users"),
+    destination: v.string(),
+    visaType: v.string(),
+    answers: v.record(v.string(), v.string()),
+    flaggedCount: v.number(),
+    createdAt: v.string(),
+  }).index("by_user_route", ["userId", "destination", "visaType"]),
+
+  // A real institutional partner (university, agency) whose students/clients
+  // get a tagged link (?ref=<slug>). Generic by design — adding a new
+  // partner is just a new row, never new code. No hard delete: turning a
+  // partner inactive preserves its historical stats rather than erasing them.
+  partners: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    partnerType: v.union(v.literal("university"), v.literal("agency"), v.literal("other")),
+    active: v.boolean(),
+    createdAt: v.string(),
+  }).index("by_slug", ["slug"]),
+
+  // Every real visit/signup/checklist-completion attributed to a partner
+  // link. Scoped strictly by slug so one partner's numbers can never read
+  // or be affected by another's — no shared counters, no cross-talk.
+  partner_referral_events: defineTable({
+    slug: v.string(),
+    eventType: v.union(v.literal("visit"), v.literal("signup"), v.literal("checklist_completed")),
+    userId: v.optional(v.id("users")),
+    createdAt: v.string(),
+  }).index("by_slug", ["slug"]),
+
+  // Real leads from the white-label "Apply for a Licence" form — public,
+  // no-sign-in, same shape/lifecycle as contact_messages.
+  whitelabel_applications: defineTable({
+    agencyName: v.string(),
+    website: v.optional(v.string()),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    country: v.optional(v.string()),
+    volume: v.optional(v.string()),
+    plan: v.string(),
+    message: v.optional(v.string()),
+    createdAt: v.string(),
+    read: v.boolean(),
+  }).index("by_read", ["read"]),
+
+  // Single-use, email-locked activation codes — an alternate on-ramp into
+  // the SAME real agentPlan/agent_profiles.tier system real paying agents
+  // already use via completeAgentCheckout. Never carries fabricated
+  // payment data; redemption only ever sets the plan field itself.
+  license_codes: defineTable({
+    code: v.string(),
+    email: v.string(),
+    plan: v.union(v.literal("agent_listing"), v.literal("agent_featured"), v.literal("agency_white_label")),
+    whitelabelApplicationId: v.optional(v.id("whitelabel_applications")),
+    issuedByUserId: v.id("users"),
+    issuedAt: v.string(),
+    expiresAt: v.string(),
+    redeemedAt: v.optional(v.string()),
+    redeemedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_code", ["code"])
+    .index("by_email", ["email"]),
+
+  // A pending, unverified request to change users.email. Nothing here is
+  // trusted as a real identity change until consumedAt is set by
+  // confirmEmailChange — which only happens once the user proves control of
+  // newEmail by visiting the emailed link while signed in as the account
+  // that requested it. This is what keeps users.email trustworthy for
+  // employerInvites.ts's and licenseCodes.ts's email-match consent checks.
+  pending_email_changes: defineTable({
+    userId: v.id("users"),
+    newEmail: v.string(),
+    token: v.string(),
+    requestedAt: v.string(),
+    expiresAt: v.string(),
+    consumedAt: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
+
+  // Same backstop pattern as contact_daily_usage, for the public white-label
+  // application form.
+  whitelabel_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
+
+  // Real blog newsletter subscribers — public, no-sign-in, deduped by email.
+  newsletter_subscribers: defineTable({
+    email: v.string(),
+    subscribedAt: v.string(),
+  }).index("by_email", ["email"]),
+
+  // Same backstop pattern, for the public newsletter subscribe form.
+  newsletter_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
+
+  // One row per company account — the tenant root for the Employer Cohort
+  // B2B feature. A user's relationship to an org is additive context (see
+  // org_members), never a replacement for their individual-consumer identity.
+  organizations: defineTable({
+    name: v.string(),
+    // Distinguishes real B2B employer orgs (the original use case) from
+    // households (a family unit using the exact same invite/consent
+    // machinery to track a spouse/adult child's relocation readiness).
+    // Optional rather than required: every row that predates this field has
+    // no value here, and every read site treats a missing value as
+    // "employer" (org?.type ?? "employer") rather than requiring a
+    // production data migration before this schema can deploy.
+    type: v.optional(v.union(v.literal("employer"), v.literal("household"))),
+    createdByUserId: v.id("users"),
+    createdAt: v.string(),
+  })
+    .index("by_creator", ["createdByUserId"])
+    .index("by_type", ["type"]),
+
+  // Join table: who belongs to which org, and with what role inside it.
+  // Deliberately separate from users.role, which is reserved for VisaClear
+  // platform admin — same reasoning as agent_profiles being its own table.
+  org_members: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    orgRole: v.union(v.literal("org_admin"), v.literal("org_member")),
+    joinedAt: v.string(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_user", ["userId"]),
+
+  // The consent gate for the Employer Cohort feature. A row existing does
+  // NOT mean the employer can see anything about that person — only
+  // status === "accepted" unlocks read access, enforced in every query that
+  // touches this table, never just in the UI. employeeUserId is set only on
+  // acceptance, and linkedChecklistId is chosen by the employee themselves
+  // at accept time — the employer never infers which trip is "the" trip.
+  org_employee_links: defineTable({
+    organizationId: v.id("organizations"),
+    invitedEmail: v.string(),
+    token: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("revoked"),
+    ),
+    invitedByUserId: v.id("users"),
+    employeeUserId: v.optional(v.id("users")),
+    linkedChecklistId: v.optional(v.id("saved_checklists")),
+    // Employer-authored business context — never derived from the
+    // employee's private data, always safe regardless of consent status.
+    department: v.optional(v.string()),
+    roleTitle: v.optional(v.string()),
+    // Household-context equivalent of department/roleTitle, e.g. "Spouse",
+    // "Adult child" — left unset for employer-type links.
+    relationship: v.optional(v.string()),
+    targetRelocationDate: v.optional(v.string()),
+    pipelineStage: v.union(
+      v.literal("invited"),
+      v.literal("accepted"),
+      v.literal("in_progress"),
+      v.literal("ready"),
+      v.literal("relocated"),
+    ),
+    createdAt: v.string(),
+    respondedAt: v.optional(v.string()),
+    revokedAt: v.optional(v.string()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_token", ["token"])
+    .index("by_org_email", ["organizationId", "invitedEmail"])
+    .index("by_employee_user", ["employeeUserId"])
+    .index("by_invited_email", ["invitedEmail"]),
+
+  // Private HR notes — employer-authored, NEVER shown to the employee. No
+  // employee-facing query in convex/employerInvites.ts ever reads this.
+  org_employee_notes: defineTable({
+    linkId: v.id("org_employee_links"),
+    organizationId: v.id("organizations"),
+    authorUserId: v.id("users"),
+    note: v.string(),
+    createdAt: v.string(),
+  })
+    .index("by_link", ["linkId"])
+    .index("by_org", ["organizationId"]),
+
+  // A minor (or any dependent with no VisaClear account of their own) that a
+  // parent manages directly — no token/consent flow at all, since the
+  // parent is the legal data controller for their own minor child. This is
+  // deliberately NOT a users row: inventing an account for a child would
+  // break every assumption tied to users.email (uniqueness, referral codes,
+  // sign-in), so a lightweight sub-record the parent fully owns is simplest
+  // and safest.
+  managed_dependents: defineTable({
+    parentUserId: v.id("users"),
+    fullName: v.string(),
+    relationship: v.string(),
+    dateOfBirth: v.optional(v.string()),
+    createdAt: v.string(),
+  }).index("by_parent", ["parentUserId"]),
+
+  // Audit trail for sensitive admin actions (plan/role changes, deletions,
+  // agent verification) — who did what, to whom, when.
+  admin_audit_log: defineTable({
+    adminUserId: v.id("users"),
+    adminEmail: v.optional(v.string()),
+    action: v.string(),
+    targetId: v.optional(v.string()),
+    details: v.optional(v.string()),
+    createdAt: v.string(),
+  }).index("by_created", ["createdAt"]),
+
   // Single-row denormalized counters for the admin dashboard. See
   // convex/platformStats.ts — never read with collect() across the real
   // tables, which would be a full scan at scale.
@@ -242,5 +623,7 @@ export default defineSchema({
     totalChecklists: v.number(),
     totalAgents: v.number(),
     totalRejectionAnalyses: v.number(),
+    proUsers: v.optional(v.number()),
+    expertUsers: v.optional(v.number()),
   }),
 });

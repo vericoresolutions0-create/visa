@@ -1,0 +1,254 @@
+import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+import { internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { bumpPlanCounters } from "./platformStats.ts";
+
+// Lets the frontend know whether to redirect to real Stripe Checkout or
+// fall back to the existing simulated flow — same "not configured yet"
+// pattern used for Google sign-in and the AI features.
+export const isStripeConfigured = query({
+  args: {},
+  handler: async () => Boolean(process.env.STRIPE_SECRET_KEY),
+});
+
+const APPLICANT_PLAN = v.union(v.literal("pro"), v.literal("expert"));
+const AGENT_PLAN = v.union(
+  v.literal("agent_listing"),
+  v.literal("agent_featured"),
+  v.literal("agency_white_label"),
+);
+const BILLING_CYCLE = v.union(v.literal("monthly"), v.literal("yearly"));
+
+// Called only from the Stripe webhook handler in http.ts, once a Checkout
+// Session actually completes — this is the single place a subscription
+// becomes "active" for real money, as opposed to completeCheckout's
+// simulated path which is now a fallback when Stripe isn't configured.
+export const applyCheckoutCompleted = internalMutation({
+  args: {
+    userId: v.id("users"),
+    product: v.union(v.literal("applicant"), v.literal("agent")),
+    plan: v.union(APPLICANT_PLAN, AGENT_PLAN),
+    billingCycle: BILLING_CYCLE,
+    amountCents: v.number(),
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return;
+    const now = new Date().toISOString();
+
+    if (args.product === "applicant") {
+      await bumpPlanCounters(ctx, user.plan, args.plan as "pro" | "expert");
+      await ctx.db.patch(user._id, {
+        plan: args.plan as "pro" | "expert",
+        billingCycle: args.billingCycle,
+        subscriptionAmountCents: args.amountCents,
+        subscriptionStartedAt: user.subscriptionStartedAt ?? now,
+        lastPaymentAt: now,
+        stripeCustomerId: args.stripeCustomerId,
+        stripeSubscriptionId: args.stripeSubscriptionId,
+      });
+
+      // Now on a real auto-renewing subscription — clear any leftover
+      // one-time-payment expiry tracking so the cron never downgrades them.
+      const staleExpiration = await ctx.db
+        .query("one_time_plan_expirations")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .unique();
+      if (staleExpiration) {
+        await ctx.db.delete(staleExpiration._id);
+      }
+    } else {
+      await ctx.db.patch(user._id, {
+        agentPlan: args.plan as
+          | "agent_listing"
+          | "agent_featured"
+          | "agency_white_label",
+        agentBillingCycle: args.billingCycle,
+        agentSubscriptionAmountCents: args.amountCents,
+        agentSubscriptionStartedAt: user.agentSubscriptionStartedAt ?? now,
+        lastAgentPaymentAt: now,
+        stripeCustomerId: args.stripeCustomerId,
+        agentStripeSubscriptionId: args.stripeSubscriptionId,
+      });
+
+      const agentProfile = await ctx.db
+        .query("agent_profiles")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .unique();
+      if (agentProfile) {
+        await ctx.db.patch(agentProfile._id, {
+          tier: args.plan as
+            | "agent_listing"
+            | "agent_featured"
+            | "agency_white_label",
+        });
+      }
+    }
+  },
+});
+
+const REMINDER_DAYS_BEFORE_EXPIRY = 3;
+const CYCLE_DAYS = { monthly: 30, yearly: 365 } as const;
+
+// Shared completion path for any payment method with no stored instrument
+// to auto-renew — Stripe Pix/boleto/OXXO and Paystack mobile money/bank
+// transfer/USSD all land here, since none of them can be auto-charged next
+// cycle the way a real card subscription can. Activates the plan exactly
+// like a Stripe subscription would, but also schedules a real renewal
+// reminder (reusing the existing reminders/email pipeline) and records an
+// expiry date the daily cron checks, so an unrenewed plan actually lapses
+// back to free instead of staying active forever after one payment.
+export const applyOneTimePlanPayment = internalMutation({
+  args: {
+    userId: v.id("users"),
+    plan: APPLICANT_PLAN,
+    billingCycle: BILLING_CYCLE,
+    amountCents: v.number(),
+    paystackReference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || !user.email) return;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const expiresAt = new Date(now.getTime() + CYCLE_DAYS[args.billingCycle] * 24 * 60 * 60 * 1000);
+    const reminderDue = new Date(expiresAt.getTime() - REMINDER_DAYS_BEFORE_EXPIRY * 24 * 60 * 60 * 1000);
+
+    await bumpPlanCounters(ctx, user.plan, args.plan);
+    await ctx.db.patch(user._id, {
+      plan: args.plan,
+      billingCycle: args.billingCycle,
+      subscriptionAmountCents: args.amountCents,
+      subscriptionStartedAt: user.subscriptionStartedAt ?? nowIso,
+      lastPaymentAt: nowIso,
+      ...(args.paystackReference ? { paystackReference: args.paystackReference } : {}),
+    });
+
+    // Replace any existing expiration row for this user (e.g. renewing
+    // before the previous cycle lapsed) rather than leaving a stale one.
+    const existingExpiration = await ctx.db
+      .query("one_time_plan_expirations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (existingExpiration) {
+      await ctx.db.patch(existingExpiration._id, { expiresAt: expiresAt.toISOString() });
+    } else {
+      await ctx.db.insert("one_time_plan_expirations", {
+        userId: user._id,
+        expiresAt: expiresAt.toISOString(),
+      });
+    }
+
+    await ctx.db.insert("reminders", {
+      userId: user._id,
+      title: `Renew your VisaClear ${args.plan === "expert" ? "Expert" : "Pro"} plan`,
+      note: "Your plan was paid for with a one-time payment method, so it won't renew automatically — pay again to keep your benefits active.",
+      dueDate: reminderDue.toISOString().split("T")[0],
+      email: user.email,
+      sent: false,
+      createdAt: nowIso,
+    });
+  },
+});
+
+// Subscription cancelled or lapsed (customer.subscription.deleted, or a
+// final failed-payment retry) — downgrades back to free/no agent plan
+// rather than leaving a paid plan active with no money behind it.
+export const applySubscriptionEnded = internalMutation({
+  args: { stripeSubscriptionId: v.string() },
+  handler: async (ctx, args) => {
+    const byApplicant = await ctx.db
+      .query("users")
+      .withIndex("by_stripe_subscription", (q) =>
+        q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
+      )
+      .unique();
+    if (byApplicant) {
+      await bumpPlanCounters(ctx, byApplicant.plan, "free");
+      await ctx.db.patch(byApplicant._id, {
+        plan: "free",
+        stripeSubscriptionId: undefined,
+      });
+      return;
+    }
+
+    const byAgent = await ctx.db
+      .query("users")
+      .withIndex("by_agent_stripe_subscription", (q) =>
+        q.eq("agentStripeSubscriptionId", args.stripeSubscriptionId),
+      )
+      .unique();
+    if (byAgent) {
+      await ctx.db.patch(byAgent._id, {
+        agentPlan: undefined,
+        agentStripeSubscriptionId: undefined,
+      });
+      const agentProfile = await ctx.db
+        .query("agent_profiles")
+        .withIndex("by_user", (q) => q.eq("userId", byAgent._id))
+        .unique();
+      if (agentProfile) {
+        await ctx.db.patch(agentProfile._id, { tier: undefined });
+      }
+    }
+  },
+});
+
+const EXPIRY_PAGE_SIZE = 50;
+
+export const getExpiredOneTimePlansPage = internalQuery({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const today = new Date().toISOString();
+    return await ctx.db
+      .query("one_time_plan_expirations")
+      .withIndex("by_expires", (q) => q.lte("expiresAt", today))
+      .paginate(args.paginationOpts);
+  },
+});
+
+export const downgradeOneTimePlan = internalMutation({
+  args: { expirationId: v.id("one_time_plan_expirations"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (user) {
+      await bumpPlanCounters(ctx, user.plan, "free");
+      await ctx.db.patch(user._id, { plan: "free" });
+    }
+    await ctx.db.delete(args.expirationId);
+  },
+});
+
+// Called by cron once a day. One-time payment methods (Pix, boleto, OXXO,
+// Paystack) have no stored instrument to auto-charge, so without this an
+// unrenewed plan would just stay "pro"/"expert" forever after a single
+// payment — this is what actually makes the renewal reminder mean
+// something. Paginated + self-chaining for the same reason the reminder
+// dispatcher is: never let one invocation risk timing out partway through.
+export const dispatchExpiredPlanDowngrades = internalAction({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args): Promise<void> => {
+    const { page, isDone, continueCursor } = await ctx.runQuery(
+      internal.billing.getExpiredOneTimePlansPage,
+      { paginationOpts: { cursor: args.cursor ?? null, numItems: EXPIRY_PAGE_SIZE } },
+    );
+
+    await Promise.allSettled(
+      page.map((row) =>
+        ctx.runMutation(internal.billing.downgradeOneTimePlan, {
+          expirationId: row._id,
+          userId: row.userId,
+        }),
+      ),
+    );
+
+    if (!isDone) {
+      await ctx.scheduler.runAfter(0, internal.billing.dispatchExpiredPlanDowngrades, {
+        cursor: continueCursor,
+      });
+    }
+  },
+});

@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // Pro: 10 AI Visa Assistant questions/month. Expert: unlimited. Free: none.
 const MONTHLY_LIMIT: Record<string, number | null> = { free: 0, pro: 10, expert: null };
@@ -12,12 +13,7 @@ function currentYearMonth(): string {
 export const getMyUsage = query({
   args: {},
   handler: async (ctx): Promise<{ plan: string; limit: number | null; used: number } | null> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return null;
     const plan = user.plan ?? "free";
     const limit = MONTHLY_LIMIT[plan] ?? 0;
@@ -35,15 +31,7 @@ export const getMyUsage = query({
 export const checkAndIncrementUsage = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Please sign in to use the AI Visa Assistant." });
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const user = await getCurrentUserOrThrow(ctx);
 
     const plan = user.plan ?? "free";
     const limit = MONTHLY_LIMIT[plan] ?? 0;

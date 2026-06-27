@@ -1,11 +1,10 @@
-import { forwardRef, useCallback, useEffect } from "react";
+import { forwardRef, useCallback } from "react";
 import { type VariantProps } from "class-variance-authority";
 import { Loader2, LogIn, LogOut, UserRoundCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { Button, buttonVariants } from "@/components/ui/button.tsx";
-import { hasHerculesAuthConfig } from "@/lib/auth-config.ts";
 import { signInDemoUser } from "@/hooks/use-demo-auth.ts";
 
 export interface SignInButtonProps
@@ -71,16 +70,7 @@ export const SignInButton = forwardRef<HTMLButtonElement, SignInButtonProps>(
     ref,
   ) => {
     const navigate = useNavigate();
-    const { isAuthenticated, signin, signout, isLoading, error } = useAuth();
-
-    useEffect(() => {
-      if (error) {
-        toast.error("Login error", {
-          description: error.message,
-        });
-        console.error("Login error", error);
-      }
-    }, [error]);
+    const { isAuthenticated, signOut, isLoading } = useAuth();
 
     const handleClick = useCallback(
       async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -88,24 +78,18 @@ export const SignInButton = forwardRef<HTMLButtonElement, SignInButtonProps>(
         onClick?.(event);
 
         try {
-          if (!hasHerculesAuthConfig) {
-            signInDemoUser();
-            toast.success("Demo account is active.");
-            navigate(redirectTo);
+          if (isAuthenticated) {
+            await signOut();
+            navigate("/");
             return;
           }
-
-          if (isAuthenticated) {
-            await signout();
-          } else {
-            await signin();
-          }
+          sessionStorage.setItem("authReturnPath", redirectTo);
+          navigate("/login");
         } catch (err) {
           console.error("Authentication error:", err);
-          // Don't prevent the default here as the auth library handles errors
         }
       },
-      [isAuthenticated, navigate, redirectTo, signout, signin, onClick],
+      [isAuthenticated, navigate, redirectTo, signOut, onClick],
     );
 
     const isDisabled = disabled || isLoading;
@@ -142,7 +126,6 @@ export const SignInButton = forwardRef<HTMLButtonElement, SignInButtonProps>(
             ? "Sign out of your account"
             : "Sign in to your account"
         }
-        aria-describedby={error ? "auth-error" : undefined}
         {...props}
       >
         {showIcon && icon}
@@ -179,7 +162,11 @@ export function DemoSignInButton({
         signInDemoUser();
         onSignedIn?.();
         toast.success("Demo account is active.");
-        navigate(redirectTo);
+        // replace: true — this is usually the exact same URL (the page
+        // just re-renders authenticated instead of showing the auth gate),
+        // so a plain push leaves a redundant history entry that makes the
+        // page's own back button feel broken (back lands on the same URL).
+        navigate(redirectTo, { replace: true });
       }}
     >
       <UserRoundCheck className="size-4" />

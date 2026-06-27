@@ -1,8 +1,34 @@
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
-import hercules from "@usehercules/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
+
+// Kept in sync by hand with the CSP in index.html and vercel.json — there's
+// no single shared source across a .ts config, static HTML, and JSON.
+// http://127.0.0.1:* / ws://127.0.0.1:* cover local Convex dev; the
+// *.convex.cloud / *.convex.site wildcards cover the real deployment once
+// one exists, with no edit needed when that URL is set.
+const SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https:",
+    "upgrade-insecure-requests",
+  ].join("; "),
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+};
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,8 +39,12 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
+    headers: SECURITY_HEADERS,
   },
-  plugins: [react(), tailwindcss(), hercules()],
+  preview: {
+    headers: SECURITY_HEADERS,
+  },
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@/convex": path.resolve(__dirname, "./convex"),

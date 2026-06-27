@@ -8,41 +8,24 @@ import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { SignInButton } from "@/components/ui/signin.tsx";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Globe, ArrowLeft, AlertCircle, CheckCircle2, ChevronRight,
   FileText, Shield, Lock, TrendingUp, Lightbulb, LogIn,
-  RotateCcw, Upload, X, LayoutDashboard, Settings, LogOut,
+  RotateCcw, Upload, X, LayoutDashboard, Settings, LogOut, Award,
 } from "lucide-react";
 import { VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 
 const REJECTION_DESTINATIONS = [
-  { name: "United Kingdom", flag: "🇬🇧" },
-  { name: "United States", flag: "🇺🇸" },
-  { name: "Canada", flag: "🇨🇦" },
-  { name: "Germany", flag: "🇩🇪" },
-  { name: "France", flag: "🇫🇷" },
-  { name: "Netherlands", flag: "🇳🇱" },
-  { name: "Australia", flag: "🇦🇺" },
-  { name: "Ireland", flag: "🇮🇪" },
-  { name: "Italy", flag: "🇮🇹" },
-  { name: "Spain", flag: "🇪🇸" },
-  { name: "Poland", flag: "🇵🇱" },
-  { name: "Portugal", flag: "🇵🇹" },
-  { name: "Belgium", flag: "🇧🇪" },
-  { name: "Sweden", flag: "🇸🇪" },
-  { name: "Norway", flag: "🇳🇴" },
-  { name: "Switzerland", flag: "🇨🇭" },
-  { name: "Austria", flag: "🇦🇹" },
-  { name: "Denmark", flag: "🇩🇰" },
-  { name: "Finland", flag: "🇫🇮" },
-  { name: "Czech Republic", flag: "🇨🇿" },
-  { name: "New Zealand", flag: "🇳🇿" },
-];
+  "United Kingdom", "United States", "Canada", "Germany", "France", "Netherlands",
+  "Australia", "Ireland", "Italy", "Spain", "Poland", "Portugal", "Belgium", "Sweden",
+  "Norway", "Switzerland", "Austria", "Denmark", "Finland", "Czech Republic", "New Zealand",
+].map((name) => ({ name, flag: DESTINATION_FLAGS[name] }));
 
 type AnalysisResult = {
   rootCauses: string[];
@@ -54,6 +37,7 @@ type AnalysisResult = {
 };
 
 function RejectionAnalyserInner() {
+  const navigate = useNavigate();
   const [destination, setDestination] = useState("");
   const [visaType, setVisaType] = useState<VisaType | "">("");
   const [origin, setOrigin] = useState("");
@@ -407,6 +391,15 @@ function RejectionAnalyserInner() {
                 ))}
               </div>
             </div>
+
+            <button
+              onClick={() => navigate("/wall-of-fame")}
+              className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors cursor-pointer py-2"
+            >
+              <Award className="w-4 h-4" />
+              Read real stories of refused applicants who were later approved
+              <ChevronRight className="w-4 h-4" />
+            </button>
 
             {/* Actions */}
             <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api.js";
+import { ConvexError } from "convex/values";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -8,9 +11,12 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
+import { StatsBar } from "@/components/stats-bar.tsx";
+import { StarRating } from "@/components/star-rating.tsx";
 import {
   Globe, ArrowLeft, CheckCircle2, Shield, Building2, Users,
-  Palette, Link2, LayoutDashboard, Zap, Star, ChevronRight,
+  Palette, Link2, LayoutDashboard, Zap, ChevronRight,
   Mail, Phone, Lock, TrendingUp, Award,
 } from "lucide-react";
 
@@ -37,7 +43,7 @@ const FEATURES = [
   { icon: Link2, title: "Custom Domain", desc: "Deploy on your own domain, e.g. visas.youragency.com or tools.yourfirm.co." },
   { icon: LayoutDashboard, title: "Agent Dashboard", desc: "Track all your clients, their checklist progress, and document status from one place." },
   { icon: Users, title: "Unlimited Client Accounts", desc: "Add as many clients as you need. No per-seat charges for your end users." },
-  { icon: Shield, title: "GDPR & NDPA Compliant", desc: "Full compliance documentation included. Safe for UK, EU, and African applicants." },
+  { icon: Shield, title: "Built with GDPR & NDPA Principles", desc: "Full compliance documentation included. Safe for UK, EU, and African applicants." },
   { icon: Zap, title: "All Pro Features Included", desc: "AI assistant, PDF exports, rejection analyser, passport photo checker, and reminders." },
 ];
 
@@ -134,22 +140,45 @@ const EMPTY_FORM: FormState = {
 export default function WhiteLabelPage() {
   useSeo({ title: "White-Label Solutions", description: "Launch your own visa preparation platform under your brand. VisaClear's white-label solution for immigration agencies and consultants." });
   const navigate = useNavigate();
+  const goBack = useSmartBack("/");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submitApplication = useMutation(api.whitelabel.submit);
 
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agencyName || !form.email || !form.plan) {
       toast.error("Please fill in your agency name, email, and preferred plan.");
       return;
     }
-    // In production this would send to a Convex mutation / email
-    setSubmitted(true);
-    toast.success("Application received. We will contact you within 24 hours.");
+    setSubmitting(true);
+    try {
+      await submitApplication({
+        agencyName: form.agencyName,
+        website: form.website || undefined,
+        email: form.email,
+        phone: form.phone || undefined,
+        country: form.country || undefined,
+        volume: form.volume || undefined,
+        plan: form.plan,
+        message: form.message || undefined,
+      });
+      setSubmitted(true);
+      toast.success("Application received. We will contact you within 24 hours.");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Failed to submit application. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -157,7 +186,7 @@ export default function WhiteLabelPage() {
       {/* Nav */}
       <header className="border-b border-border/40 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+          <button onClick={goBack} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <button onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -213,22 +242,16 @@ export default function WhiteLabelPage() {
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="bg-primary py-10 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { value: "24+", label: "Destination countries" },
-            { value: "5 visa types", label: "Per destination" },
-            { value: "2-3 days", label: "Setup turnaround" },
-            { value: "100%", label: "Your branding" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="font-serif text-3xl font-semibold text-accent mb-1">{s.value}</div>
-              <div className="text-xs text-primary-foreground/60 uppercase tracking-widest">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <StatsBar
+        padding="py-10"
+        valueSize="text-3xl"
+        stats={[
+          { value: "24+", label: "Destination countries" },
+          { value: "5 visa types", label: "Per destination" },
+          { value: "2-3 days", label: "Site live after approval" },
+          { value: "100%", label: "Your branding" },
+        ]}
+      />
 
       {/* How it works */}
       <section id="how-it-works" className="py-20 px-6">
@@ -359,16 +382,17 @@ export default function WhiteLabelPage() {
       <section className="py-20 px-6 bg-muted/30">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Agency Stories</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">Agencies already using VisaClear</h2>
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Illustrative Examples</p>
+            <h2 className="font-serif text-4xl font-semibold text-primary">What an agency's experience can look like</h2>
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-3">
+              Sample scenarios based on common agency situations — not verified customer quotes.
+            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {TESTIMONIALS.map((t) => (
               <div key={t.name} className="bg-background rounded-2xl p-8 border border-border/50">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-accent text-accent" />
-                  ))}
+                <div className="mb-4">
+                  <StarRating count={t.stars} />
                 </div>
                 <p className="text-foreground leading-relaxed mb-6 italic">"{t.quote}"</p>
                 <div>
@@ -527,13 +551,13 @@ export default function WhiteLabelPage() {
               <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-xl text-xs text-muted-foreground">
                 <Lock className="w-4 h-4 shrink-0 mt-0.5 text-accent" />
                 <span>
-                  Your information is kept strictly confidential and will only be used to process your licence application. We will never share your details with third parties. Covered under GDPR and NDPA.
+                  Your information is kept strictly confidential and will only be used to process your licence application. We will never share your details with third parties. Handled in line with GDPR and NDPA principles.
                 </span>
               </div>
 
-              <Button type="submit" size="lg" className="w-full cursor-pointer font-semibold">
-                Submit Application
-                <ChevronRight className="w-4 h-4 ml-1" />
+              <Button type="submit" size="lg" disabled={submitting} className="w-full cursor-pointer font-semibold disabled:opacity-60">
+                {submitting ? "Submitting…" : "Submit Application"}
+                {!submitting && <ChevronRight className="w-4 h-4 ml-1" />}
               </Button>
             </form>
           )}
@@ -609,7 +633,7 @@ export default function WhiteLabelPage() {
       {/* Bottom trust bar */}
       <div className="border-t border-border/40 px-6 py-6">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> GDPR and NDPA Compliant</div>
+          <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> GDPR & NDPA Principles</div>
           <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> 256-bit Encrypted</div>
           <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> 24+ Destination Countries</div>
           <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Built by Vericore</div>

@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api.js";
+import { ConvexError } from "convex/values";
 import { Button } from "@/components/ui/button.tsx";
 import { Globe, ArrowLeft, Clock, ChevronRight, BookOpen, Tag } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { toast } from "sonner";
 
 type Post = {
@@ -114,7 +118,32 @@ const CATEGORIES = ["All", "Visa Tips", "Destination Guides", "Document Guides",
 export default function BlogPage() {
   useSeo({ title: "Blog", description: "Visa tips, country guides, and immigration insights from the VisaClear team. Everything you need to know to get your visa approved." });
   const navigate = useNavigate();
+  const goBack = useSmartBack("/");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [subscribing, setSubscribing] = useState(false);
+  const subscribeToNewsletter = useMutation(api.newsletter.subscribe);
+
+  const handleSubscribe = async () => {
+    if (!newsletterEmail.trim()) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+    setSubscribing(true);
+    try {
+      const result = await subscribeToNewsletter({ email: newsletterEmail });
+      toast.success(result.alreadySubscribed ? "You're already subscribed." : "Subscribed. Watch your inbox.");
+      setNewsletterEmail("");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Failed to subscribe. Please try again.");
+      }
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const filtered = activeCategory === "All" ? POSTS : POSTS.filter((p) => p.category === activeCategory);
   const featured = POSTS.find((p) => p.featured);
@@ -125,7 +154,7 @@ export default function BlogPage() {
       {/* Nav */}
       <header className="border-b border-border/40 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+          <button onClick={goBack} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <button onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -229,14 +258,18 @@ export default function BlogPage() {
             <input
               type="email"
               placeholder="example@gmail.com"
-              className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-primary-foreground placeholder:text-primary-foreground/40 text-sm focus:outline-none focus:border-accent"
+              value={newsletterEmail}
+              onChange={(e) => setNewsletterEmail(e.target.value)}
+              disabled={subscribing}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-primary-foreground placeholder:text-primary-foreground/40 text-sm focus:outline-none focus:border-accent disabled:opacity-60"
             />
             <Button
               size="sm"
-              className="bg-white text-primary hover:bg-white/90 cursor-pointer font-semibold whitespace-nowrap"
-              onClick={() => toast.success("Subscribed. Watch your inbox.")}
+              disabled={subscribing}
+              className="bg-white text-primary hover:bg-white/90 cursor-pointer font-semibold whitespace-nowrap disabled:opacity-60"
+              onClick={handleSubscribe}
             >
-              Subscribe
+              {subscribing ? "Subscribing…" : "Subscribe"}
             </Button>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { ArrowLeft, Globe, Clock, Tag, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 type Article = {
   id: string;
@@ -24,11 +25,11 @@ const ARTICLES: Article[] = [
     excerpt: "Rejection is rarely about the applicant being unqualified. In most cases, it comes down to documentation errors that are completely preventable with the right checklist.",
     body: `Visa rejection is one of the most frustrating experiences for any traveller. But after reviewing thousands of refusal cases, one pattern emerges clearly: **most rejections are preventable**.
 
-Here are the seven most common reasons , and what you can do about each one.
+Here are the seven most common reasons — and what you can do about each one.
 
 ## 1. Incomplete Documentation
 
-The single most common reason for rejection. Missing a single supporting document , even a minor one , can lead to an outright refusal. Officers are not required to contact you for missing items; they simply reject and move on.
+The single most common reason for rejection. Missing a single supporting document — even a minor one — can lead to an outright refusal. Officers are not required to contact you for missing items; they simply reject and move on.
 
 **Fix:** Use a precise, destination-specific checklist. VisaClear generates one for your exact nationality, destination, and visa type in under 60 seconds.
 
@@ -36,7 +37,7 @@ The single most common reason for rejection. Missing a single supporting documen
 
 Embassies want to see that you can support yourself during your trip and return home. A bank statement with erratic deposits or a balance that appears recently inflated raises immediate red flags.
 
-**Fix:** Ensure your bank statement shows at least 3–6 months of consistent transactions. The required minimum balance varies by destination , VisaClear includes exact figures.
+**Fix:** Ensure your bank statement shows at least 3–6 months of consistent transactions. The required minimum balance varies by destination — VisaClear includes exact figures.
 
 ## 3. Weak Ties to Home Country
 
@@ -54,7 +55,7 @@ Any discrepancy between your application form, supporting documents, or previous
 
 No prior travel is not automatically a problem. But lying about past visa refusals or omitting travel history is grounds for permanent bans in some countries.
 
-**Fix:** Disclose everything honestly. A previous refusal does not automatically mean another one , but dishonesty almost certainly does.
+**Fix:** Disclose everything honestly. A previous refusal does not automatically mean another one — but dishonesty almost certainly does.
 
 ## 6. Passport Photo Non-Compliance
 
@@ -64,7 +65,7 @@ Rejected photos are more common than applicants realise. Background colour, head
 
 ## 7. Late or Rushed Applications
 
-Submitting too close to your travel date , or not leaving enough time for processing , leads to rejections on procedural grounds. This is especially true for Schengen and UK visas.
+Submitting too close to your travel date — or not leaving enough time for processing — leads to rejections on procedural grounds. This is especially true for Schengen and UK visas.
 
 **Fix:** Apply at minimum 6–8 weeks before your travel date. Premium VisaClear users receive deadline reminders automatically.
 
@@ -97,16 +98,16 @@ You must apply at the embassy of the country where you will spend the most time.
 
 Every Schengen application requires:
 
-1. **Schengen visa application form** , signed and dated
-2. **Valid passport** , minimum 3 months beyond intended stay, at least 2 blank pages
-3. **Recent passport photographs** , 35x45mm, plain white background, no glasses
-4. **Travel itinerary** , confirmed flights or detailed travel plan
+1. **Schengen visa application form** — signed and dated
+2. **Valid passport** — minimum 3 months beyond intended stay, at least 2 blank pages
+3. **Recent passport photographs** — 35x45mm, plain white background, no glasses
+4. **Travel itinerary** — confirmed flights or detailed travel plan
 5. **Hotel bookings or accommodation proof**
-6. **Travel insurance** , minimum €30,000 coverage, valid for all Schengen states
-7. **Bank statements** , last 3–6 months, showing sufficient funds
-8. **Proof of employment or business** , appointment letter, payslip, or business registration
+6. **Travel insurance** — minimum €30,000 coverage, valid for all Schengen states
+7. **Bank statements** — last 3–6 months, showing sufficient funds
+8. **Proof of employment or business** — appointment letter, payslip, or business registration
 9. **Cover letter** explaining purpose of travel and ties to Nigeria
-10. **Visa application fee** , currently €80 for adults
+10. **Visa application fee** — currently €80 for adults
 
 ## Financial Requirements
 
@@ -137,15 +138,15 @@ Use VisaClear's Rejection Analyser to understand exactly what went wrong and how
     readTime: "4 min read",
     date: "April 14, 2026",
     excerpt: "Your bank statement can make or break your application. Here is exactly what officers look for, what amounts are acceptable, and how to present your finances correctly.",
-    body: `Of all the documents in a visa application, the bank statement is the one most frequently misunderstood , and most frequently responsible for rejections.
+    body: `Of all the documents in a visa application, the bank statement is the one most frequently misunderstood — and most frequently responsible for rejections.
 
 ## What Officers Are Actually Looking For
 
 A visa officer reviewing your bank statement asks three questions:
 
-1. **Can this person afford the trip?** , Is the balance sufficient to cover accommodation, food, transport, and unexpected costs?
-2. **Is this money genuinely theirs?** , Does the account show consistent income, or were large sums deposited just before application?
-3. **Will this person return home?** , Does their financial situation suggest they have reason to go back?
+1. **Can this person afford the trip?** — Is the balance sufficient to cover accommodation, food, transport, and unexpected costs?
+2. **Is this money genuinely theirs?** — Does the account show consistent income, or were large sums deposited just before application?
+3. **Will this person return home?** — Does their financial situation suggest they have reason to go back?
 
 ## The Right Balance
 
@@ -171,7 +172,7 @@ VisaClear provides exact figures for your specific destination and visa type.
 - Request a stamped and signed statement from your bank, not just a printed digital statement
 - Ensure the statement clearly shows your full name, account number, and address
 - Include at least 3 months, ideally 6 months
-- If you have multiple accounts, include all of them , hiding an account looks worse than having an empty one
+- If you have multiple accounts, include all of them — hiding an account looks worse than having an empty one
 
 ## If Your Balance is Low
 
@@ -194,23 +195,23 @@ You can only apply **up to 6 months before your course starts**.
 
 ## Core Document Requirements
 
-1. **Valid passport** , must be valid for the duration of your studies
+1. **Valid passport** — must be valid for the duration of your studies
 2. **CAS number** from your institution
-3. **Proof of English language proficiency** , IELTS, TOEFL, or institutional assessment
-4. **Proof of financial funds** , see details below
-5. **Academic qualifications** , certificates and transcripts
-6. **Tuberculosis test results** , required for applicants from Nigeria, Ghana, Kenya, and most African countries
-7. **ATAS certificate** , required for certain science and engineering subjects (check with your institution)
+3. **Proof of English language proficiency** — IELTS, TOEFL, or institutional assessment
+4. **Proof of financial funds** — see details below
+5. **Academic qualifications** — certificates and transcripts
+6. **Tuberculosis test results** — required for applicants from Nigeria, Ghana, Kenya, and most African countries
+7. **ATAS certificate** — required for certain science and engineering subjects (check with your institution)
 
 ## Financial Requirements
 
 You must show funds sufficient to cover:
-- **Course fees for the first year** , or the full course if under 9 months
-- **Living costs** , £1,334/month in London, £1,023/month outside London, for up to 9 months
+- **Course fees for the first year** — or the full course if under 9 months
+- **Living costs** — £1,334/month in London, £1,023/month outside London, for up to 9 months
 
 Funds must be held in your account (or a sponsor's account) for **at least 28 consecutive days** before you apply. Day 28 must be within 31 days of your application date.
 
-This 28-day rule catches many applicants. The money must be continuously present , not just there on the day you apply.
+This 28-day rule catches many applicants. The money must be continuously present — not just there on the day you apply.
 
 ## TB Test
 
@@ -241,11 +242,11 @@ Apply early. Delays do happen and universities have deadlines.`,
 
 ## Types of Work Authorisation
 
-**Type A Work Permit** , For employment with a Polish employer. Most common route.
+**Type A Work Permit** — For employment with a Polish employer. Most common route.
 
-**Work Declaration (Oświadczenie)** , For citizens of certain countries, allows up to 24 months of work for a single employer without a formal permit. Check current eligibility as rules change.
+**Work Declaration (Oświadczenie)** — For citizens of certain countries, allows up to 24 months of work for a single employer without a formal permit. Check current eligibility as rules change.
 
-**EU Blue Card** , For highly skilled workers earning above a threshold salary. Provides stronger residence rights.
+**EU Blue Card** — For highly skilled workers earning above a threshold salary. Provides stronger residence rights.
 
 ## The Type A Work Permit Process
 
@@ -282,7 +283,7 @@ Poland's minimum wage in 2026 is approximately PLN 4,300/month (~€1,000). Most
 
 ## Important Caution
 
-Immigration rules in Poland , particularly around work declarations and permit categories , change frequently. Always verify current requirements with the Polish embassy in your country before beginning the process. VisaClear's checklist for Poland is updated regularly.`,
+Immigration rules in Poland — particularly around work declarations and permit categories — change frequently. Always verify current requirements with the Polish embassy in your country before beginning the process. VisaClear's checklist for Poland is updated regularly.`,
   },
   {
     id: "travel-insurance-visa-applications",
@@ -291,7 +292,7 @@ Immigration rules in Poland , particularly around work declarations and permit c
     readTime: "3 min read",
     date: "March 25, 2026",
     excerpt: "Short answer: yes, especially for Schengen. We break down what type of insurance officers actually want to see and common mistakes applicants make.",
-    body: `Many applicants treat travel insurance as an afterthought , something to buy at the last minute or skip entirely if it is not listed as mandatory. This is a mistake.
+    body: `Many applicants treat travel insurance as an afterthought — something to buy at the last minute or skip entirely if it is not listed as mandatory. This is a mistake.
 
 ## Where It Is Mandatory
 
@@ -299,16 +300,16 @@ Immigration rules in Poland , particularly around work declarations and permit c
 
 **UK:** Not formally required but strongly recommended and frequently requested by officers assessing your application.
 
-**Canada, USA, Australia:** Not mandatory but demonstrates financial responsibility and planning , which positively influences approval decisions.
+**Canada, USA, Australia:** Not mandatory but demonstrates financial responsibility and planning — which positively influences approval decisions.
 
 ## What Officers Look For
 
 When reviewing your insurance:
 
-- **Coverage amount** , must meet the minimum (€30,000 for Schengen)
-- **Coverage area** , must include the destination country/countries
-- **Validity period** , must cover your entire intended stay, including potential delays
-- **Provider legitimacy** , some officers verify that the policy is from a recognised insurer
+- **Coverage amount** — must meet the minimum (€30,000 for Schengen)
+- **Coverage area** — must include the destination country/countries
+- **Validity period** — must cover your entire intended stay, including potential delays
+- **Provider legitimacy** — some officers verify that the policy is from a recognised insurer
 
 ## Common Mistakes
 
@@ -320,9 +321,9 @@ When reviewing your insurance:
 
 ## Our Recommendation
 
-For Schengen: purchase from a well-known insurer, ensure medical coverage is at least €30,000, and print the policy document , not just a confirmation email.
+For Schengen: purchase from a well-known insurer, ensure medical coverage is at least €30,000, and print the policy document — not just a confirmation email.
 
-For other destinations: include insurance regardless. The cost is modest and the signal it sends , that you are a prepared, organised traveller , is worth far more.`,
+For other destinations: include insurance regardless. The cost is modest and the signal it sends — that you are a prepared, organised traveller — is worth far more.`,
   },
   {
     id: "visa-agent-or-self-apply",
@@ -356,7 +357,7 @@ What they **cannot** do: guarantee approval. Any agent claiming a guaranteed vis
 
 **Tourist visas to well-documented destinations.** A UK tourist visa or Schengen visa from Nigeria is applied for by thousands of people every month. The process is well-documented, and with the right checklist, most applicants can handle it themselves.
 
-**If your case is straightforward.** Stable employment, consistent income, clean travel history, purpose of travel is clear , you have what it takes to apply yourself.
+**If your case is straightforward.** Stable employment, consistent income, clean travel history, purpose of travel is clear — you have what it takes to apply yourself.
 
 ## Cost Comparison
 
@@ -368,7 +369,7 @@ What they **cannot** do: guarantee approval. Any agent claiming a guaranteed vis
 
 ## Our Take
 
-Use VisaClear's checklist as your first step. It was built to give individual applicants the same level of document precision that a good agent provides , at a fraction of the cost. If your case is genuinely complex, use an agent. If not, you can likely handle it yourself.
+Use VisaClear's checklist as your first step. It was built to give individual applicants the same level of document precision that a good agent provides — at a fraction of the cost. If your case is genuinely complex, use an agent. If not, you can likely handle it yourself.
 
 Our Agents Marketplace connects you with verified agents for cases that genuinely warrant professional help.`,
   },
@@ -379,7 +380,7 @@ Our Agents Marketplace connects you with verified agents for cases that genuinel
     readTime: "6 min read",
     date: "March 10, 2026",
     excerpt: "Recent policy changes have affected approval rates for applicants from several African countries. Here is what you need to know and how to strengthen your application.",
-    body: `Canada remains one of the most desirable destinations for African travellers , and one of the most competitive to obtain a visa for. Several policy and processing changes in 2026 have shifted the landscape.
+    body: `Canada remains one of the most desirable destinations for African travellers — and one of the most competitive to obtain a visa for. Several policy and processing changes in 2026 have shifted the landscape.
 
 ## What Changed in 2026
 
@@ -391,13 +392,13 @@ Our Agents Marketplace connects you with verified agents for cases that genuinel
 
 ## Core Requirements
 
-1. **Valid passport** , minimum 6 months beyond intended stay
-2. **Completed IMM 5257 form** , via the online IRCC portal
-3. **Proof of purpose** , invitation letter, conference documentation, tourism itinerary
-4. **Financial evidence** , bank statements (3–6 months), employment proof, payslips
-5. **Ties to home country** , employment letter, property, family commitments
-6. **Travel history** , previous visas and travel stamps are highly beneficial
-7. **Biometrics** , required for most African applicants
+1. **Valid passport** — minimum 6 months beyond intended stay
+2. **Completed IMM 5257 form** — via the online IRCC portal
+3. **Proof of purpose** — invitation letter, conference documentation, tourism itinerary
+4. **Financial evidence** — bank statements (3–6 months), employment proof, payslips
+5. **Ties to home country** — employment letter, property, family commitments
+6. **Travel history** — previous visas and travel stamps are highly beneficial
+7. **Biometrics** — required for most African applicants
 
 ## Financial Expectations
 
@@ -409,7 +410,7 @@ Canada has no published minimum balance requirement, but case officers informall
 
 ## Strengthening Your Application
 
-**Previous travel to developed countries** significantly improves your chances. A US, UK, or Schengen visa , even if expired , demonstrates that other immigration authorities have already assessed you favourably.
+**Previous travel to developed countries** significantly improves your chances. A US, UK, or Schengen visa — even if expired — demonstrates that other immigration authorities have already assessed you favourably.
 
 **A clear and specific itinerary** reduces officer discretion. Vague applications invite refusals. Be specific about where you will stay, who you will see, and what you will do.
 
@@ -463,7 +464,7 @@ Contradicting your application form is another frequent error. If your form stat
 
 ## One Final Point
 
-A cover letter does not save a weak application. If your financial proof is inadequate or your ties to home country are thin, no letter will fix that. The letter works best when your core documents are already strong , it adds context and removes doubt.`,
+A cover letter does not save a weak application. If your financial proof is inadequate or your ties to home country are thin, no letter will fix that. The letter works best when your core documents are already strong — it adds context and removes doubt.`,
   },
   {
     id: "uae-visa-from-nigeria-ghana",
@@ -472,27 +473,27 @@ A cover letter does not save a weak application. If your financial proof is inad
     readTime: "6 min read",
     date: "February 15, 2026",
     excerpt: "Dubai is one of the fastest-growing destinations for West African travellers. Here is every document you need, current processing times, and tips to avoid the most common rejections.",
-    body: `The UAE , and Dubai in particular , has become one of the most popular short-haul destinations for Nigerians and Ghanaians over the past five years. It is also one of the more accessible destinations to get a visa for, provided your application is properly prepared.
+    body: `The UAE — and Dubai in particular — has become one of the most popular short-haul destinations for Nigerians and Ghanaians over the past five years. It is also one of the more accessible destinations to get a visa for, provided your application is properly prepared.
 
 ## How the UAE Visa System Works
 
 UAE visas are not applied for directly at an embassy in most cases. They are processed through:
 
-- **Emirates, Flydubai, or Air Arabia** , airlines often issue visa sponsorship as part of booking
-- **UAE-based hotels** , four and five-star hotels can sponsor tourist visas
+- **Emirates, Flydubai, or Air Arabia** — airlines often issue visa sponsorship as part of booking
+- **UAE-based hotels** — four and five-star hotels can sponsor tourist visas
 - **Licensed travel agencies** in the UAE
 
 The most straightforward route for Nigerian and Ghanaian applicants is applying through Emirates airline when booking your ticket, or through a verified UAE travel agent.
 
 ## Required Documents
 
-1. **Valid passport** , minimum 6 months validity beyond your intended travel date
-2. **Passport photograph** , white background, no glasses, taken within the last 3 months
-3. **Return flight ticket** , confirmed booking
-4. **Bank statements (3 months)** , showing sufficient funds for your stay
-5. **Hotel booking or host invitation** , confirmed accommodation details
-6. **Proof of employment** , letter from employer stating your designation and salary
-7. **Travel insurance** , not always mandatory but strengthens the application
+1. **Valid passport** — minimum 6 months validity beyond your intended travel date
+2. **Passport photograph** — white background, no glasses, taken within the last 3 months
+3. **Return flight ticket** — confirmed booking
+4. **Bank statements (3 months)** — showing sufficient funds for your stay
+5. **Hotel booking or host invitation** — confirmed accommodation details
+6. **Proof of employment** — letter from employer stating your designation and salary
+7. **Travel insurance** — not always mandatory but strengthens the application
 
 ## Financial Requirements
 
@@ -515,7 +516,7 @@ Apply at least **2 weeks before** your travel date to allow for any complication
 
 ## After Arrival
 
-On a standard tourist visa, you can stay up to **30 days**, with an option to extend once for another 30 days through the ICA (Federal Authority for Identity, Citizenship, Customs and Ports Security) online portal. Do not overstay , fines are AED 50 per day.
+On a standard tourist visa, you can stay up to **30 days**, with an option to extend once for another 30 days through the ICA (Federal Authority for Identity, Citizenship, Customs and Ports Security) online portal. Do not overstay — fines are AED 50 per day.
 
 Use VisaClear's checklist for UAE to get your full document list in under 60 seconds.`,
   },
@@ -524,6 +525,7 @@ Use VisaClear's checklist for UAE to get your full document list in under 60 sec
 export default function BlogArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const goBack = useSmartBack("/blog");
   const article = ARTICLES.find((a) => a.id === id);
 
   useSeo({
@@ -600,7 +602,7 @@ export default function BlogArticlePage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/40 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+          <button onClick={goBack} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2">

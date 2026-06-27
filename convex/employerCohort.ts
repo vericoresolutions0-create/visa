@@ -1,0 +1,219 @@
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel.js";
+import { internal } from "./_generated/api";
+import { getMyOrgAdminMembershipOrThrow } from "./organizations.ts";
+
+function generateToken() {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+async function getOwnedLinkOrThrow(
+  ctx: QueryCtx | MutationCtx,
+  organizationId: Id<"organizations">,
+  linkId: Id<"org_employee_links">,
+) {
+  const link = await ctx.db.get(linkId);
+  if (!link) throw new ConvexError({ code: "NOT_FOUND", message: "Invite not found" });
+  if (link.organizationId !== organizationId) {
+    throw new ConvexError({ code: "FORBIDDEN", message: "This invite doesn't belong to your organisation" });
+  }
+  return link;
+}
+
+export const inviteEmployee = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const email = args.email.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
+    }
+
+    const existingLinks = await ctx.db
+      .query("org_employee_links")
+      .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId).eq("invitedEmail", email))
+      .collect();
+    if (existingLinks.some((l) => l.status === "pending" || l.status === "accepted")) {
+      throw new ConvexError({ code: "ALREADY_INVITED", message: "This person already has an active invite or is already linked." });
+    }
+
+    const org = await ctx.db.get(organizationId);
+    const token = generateToken();
+    await ctx.db.insert("org_employee_links", {
+      organizationId,
+      invitedEmail: email,
+      token,
+      status: "pending",
+      invitedByUserId: user._id,
+      pipelineStage: "invited",
+      createdAt: new Date().toISOString(),
+    });
+    await ctx.scheduler.runAfter(0, internal.emails.employerInvite.sendEmployerInviteEmail, {
+      to: email,
+      orgName: org?.name ?? "an employer",
+      token,
+    });
+    return { token };
+  },
+});
+
+export const resendInvite = mutation({
+  args: { linkId: v.id("org_employee_links") },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const link = await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    if (link.status !== "pending") {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "This invite is no longer pending." });
+    }
+    const org = await ctx.db.get(organizationId);
+    await ctx.scheduler.runAfter(0, internal.emails.employerInvite.sendEmployerInviteEmail, {
+      to: link.invitedEmail,
+      orgName: org?.name ?? "an employer",
+      token: link.token,
+    });
+  },
+});
+
+export const revokeInvite = mutation({
+  args: { linkId: v.id("org_employee_links") },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const link = await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    if (link.status !== "pending" && link.status !== "accepted") {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "This invite can't be revoked from its current state." });
+    }
+    await ctx.db.patch(link._id, { status: "revoked", revokedAt: new Date().toISOString() });
+  },
+});
+
+export const updateEmployeeDetails = mutation({
+  args: {
+    linkId: v.id("org_employee_links"),
+    department: v.optional(v.string()),
+    roleTitle: v.optional(v.string()),
+    targetRelocationDate: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    await ctx.db.patch(args.linkId, {
+      department: args.department,
+      roleTitle: args.roleTitle,
+      targetRelocationDate: args.targetRelocationDate,
+    });
+  },
+});
+
+export const setPipelineStage = mutation({
+  args: {
+    linkId: v.id("org_employee_links"),
+    pipelineStage: v.union(
+      v.literal("invited"),
+      v.literal("accepted"),
+      v.literal("in_progress"),
+      v.literal("ready"),
+      v.literal("relocated"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    await ctx.db.patch(args.linkId, { pipelineStage: args.pipelineStage });
+  },
+});
+
+export const addEmployeeNote = mutation({
+  args: { linkId: v.id("org_employee_links"), note: v.string() },
+  handler: async (ctx, args) => {
+    const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    if (!args.note.trim()) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Note can't be empty." });
+    }
+    await ctx.db.insert("org_employee_notes", {
+      linkId: args.linkId,
+      organizationId,
+      authorUserId: user._id,
+      note: args.note.trim(),
+      createdAt: new Date().toISOString(),
+    });
+  },
+});
+
+export const listEmployeeNotes = query({
+  args: { linkId: v.id("org_employee_links") },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    return await ctx.db
+      .query("org_employee_notes")
+      .withIndex("by_link", (q) => q.eq("linkId", args.linkId))
+      .order("desc")
+      .collect();
+  },
+});
+
+function bucketReadiness(progress: number): "Ready" | "Needs Attention" | "Not Started" {
+  if (progress <= 0) return "Not Started";
+  if (progress >= 90) return "Ready";
+  return "Needs Attention";
+}
+
+export const listMyCohort = query({
+  args: {},
+  handler: async (ctx) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const links = await ctx.db
+      .query("org_employee_links")
+      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+      .order("desc")
+      .collect();
+
+    return await Promise.all(
+      links.map(async (link) => {
+        const noteCount = (
+          await ctx.db.query("org_employee_notes").withIndex("by_link", (q) => q.eq("linkId", link._id)).collect()
+        ).length;
+
+        const base = {
+          linkId: link._id,
+          invitedEmail: link.invitedEmail,
+          status: link.status,
+          department: link.department,
+          roleTitle: link.roleTitle,
+          targetRelocationDate: link.targetRelocationDate,
+          pipelineStage: link.pipelineStage,
+          createdAt: link.createdAt,
+          noteCount,
+          employeeName: null as string | null,
+          readinessPercent: null as number | null,
+          employerVisibleStatus: null as "Ready" | "Needs Attention" | "Not Started" | null,
+        };
+
+        // The real enforcement point: only an *accepted* link with a
+        // linked checklist ever resolves employee data. A status that was
+        // accepted in the past but is now declined/revoked must never keep
+        // surfacing readiness — this branch checks current status, not
+        // whether employeeUserId happens to be set.
+        if (link.status !== "accepted" || !link.employeeUserId || !link.linkedChecklistId) {
+          return base;
+        }
+
+        const [employee, checklist] = await Promise.all([
+          ctx.db.get(link.employeeUserId),
+          ctx.db.get(link.linkedChecklistId),
+        ]);
+        if (!checklist) return base;
+
+        return {
+          ...base,
+          employeeName: employee?.name ?? null,
+          readinessPercent: checklist.progress,
+          employerVisibleStatus: bucketReadiness(checklist.progress),
+        };
+      }),
+    );
+  },
+});

@@ -1,16 +1,20 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { bumpStat } from "./platformStats.ts";
+import { bumpStat, bumpPlanCounters } from "./platformStats.ts";
+import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow } from "./authHelpers.ts";
 
-const PLAN_PRICES_CENTS = {
+// Exported so the real Stripe checkout action (convex/stripe.ts) prices
+// sessions from the exact same numbers as the simulated fallback path —
+// one source of truth, no risk of the two ever drifting apart.
+export const PLAN_PRICES_CENTS = {
   pro: { monthly: 900, yearly: 7900 },
   expert: { monthly: 1900, yearly: 14900 },
 } as const;
 
-const AGENT_PLAN_PRICES_CENTS = {
+export const AGENT_PLAN_PRICES_CENTS = {
   agent_listing: { monthly: 2900, yearly: 29000 },
   agent_featured: { monthly: 7900, yearly: 79000 },
   agency_white_label: { monthly: 14900, yearly: 149000 },
@@ -30,24 +34,6 @@ function makeReferralCode(name: string | undefined, userId: string) {
   return `${prefix}${userId.slice(-6).toUpperCase()}`;
 }
 
-async function getCurrentUserOrThrow(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity)
-    throw new ConvexError({
-      code: "UNAUTHENTICATED",
-      message: "Not logged in",
-    });
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-  if (!user)
-    throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-  return user;
-}
-
 function normalizeReferralCode(code: string) {
   return code
     .trim()
@@ -56,7 +42,7 @@ function normalizeReferralCode(code: string) {
 }
 
 async function getReferralDiscount(
-  ctx: MutationCtx,
+  ctx: QueryCtx | MutationCtx,
   code: string | undefined,
   currentUser?: Doc<"users">,
 ) {
@@ -81,6 +67,16 @@ async function getReferralDiscount(
   return { discountPercent: 15, normalizedCode };
 }
 
+// Lets the Stripe checkout action (which has no direct db access) price a
+// session with the exact same referral logic as the simulated checkout path.
+export const getReferralDiscountForCheckout = internalQuery({
+  args: { code: v.optional(v.string()), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const currentUser = args.userId ? await ctx.db.get(args.userId) : undefined;
+    return getReferralDiscount(ctx, args.code, currentUser ?? undefined);
+  },
+});
+
 function detectCardBrand(cardNumber: string) {
   const digits = cardNumber.replace(/\D/g, "");
   if (digits.startsWith("4")) return "Visa";
@@ -93,62 +89,48 @@ function detectCardBrand(cardNumber: string) {
 export const updateCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHENTICATED",
-        message: "User not logged in",
-      });
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    if (user !== null) {
-      if (!user.referralCode) {
-        await ctx.db.patch(user._id, {
-          referralCode: makeReferralCode(user.name, user._id),
-        });
-      }
+    // Convex Auth already creates the users row itself on sign-up/sign-in
+    // (via the provider's profile() callback) — this mutation only ever
+    // needs to apply VisaClear's own first-time defaults on top of it.
+    const user = await getCurrentUserOrThrow(ctx);
+
+    if (user.referralCode && user.role) {
       return user._id;
     }
 
-    // New user — create account and send welcome email
-    const userId = await ctx.db.insert("users", {
-      name: identity.name,
-      email: identity.email,
-      tokenIdentifier: identity.tokenIdentifier,
-      plan: "free",
-      role: "user",
+    const isFirstTime = !user.role;
+    await ctx.db.patch(user._id, {
+      referralCode: user.referralCode ?? makeReferralCode(user.name, user._id),
+      plan: user.plan ?? "free",
+      role: user.role ?? "user",
     });
 
-    await ctx.db.patch(userId, {
-      referralCode: makeReferralCode(identity.name, userId),
-    });
-    await bumpStat(ctx, "totalUsers", 1);
-
-    // Trigger welcome email asynchronously (non-blocking)
-    if (identity.email) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.emails.welcome.sendWelcomeEmail,
-        {
-          to: identity.email,
-          name: identity.name,
-        },
-      );
+    if (isFirstTime) {
+      await bumpStat(ctx, "totalUsers", 1);
+      if (user.email) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.welcome.sendWelcomeEmail,
+          {
+            to: user.email,
+            name: user.name,
+          },
+        );
+      }
     }
 
-    return userId;
+    return user._id;
   },
 });
 
+// email is deliberately NOT an arg here — it can only change via the
+// verified emailChange.ts flow (request + confirm-by-link), since
+// employerInvites.ts and licenseCodes.ts both trust user.email as a proven
+// identity. Letting this mutation overwrite it directly would let anyone
+// impersonate an invited/licensed email with no verification.
 export const updateProfile = mutation({
   args: {
     name: v.string(),
-    email: v.string(),
     phone: v.optional(v.string()),
     country: v.optional(v.string()),
   },
@@ -156,7 +138,6 @@ export const updateProfile = mutation({
     const user = await getCurrentUserOrThrow(ctx);
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
-      email: args.email.trim(),
       phone: args.phone?.trim() || undefined,
       country: args.country?.trim() || undefined,
     });
@@ -237,6 +218,23 @@ export const updatePayoutSetup = mutation({
   },
 });
 
+// Real referral signups — counts users whose referredByCode matches this
+// user's own code, via a real index (never an unindexed scan of the users
+// table). Commission payout itself still depends on real billing being
+// connected, which is why this returns a signup count, not a dollar figure.
+export const getMyReferralStats = query({
+  args: {},
+  handler: async (ctx): Promise<{ referralCode: string | null; signupCount: number }> => {
+    const user = await getCurrentUserDoc(ctx);
+    if (!user || !user.referralCode) return { referralCode: null, signupCount: 0 };
+    const referred = await ctx.db
+      .query("users")
+      .withIndex("by_referred_by_code", (q) => q.eq("referredByCode", user.referralCode))
+      .collect();
+    return { referralCode: user.referralCode, signupCount: referred.length };
+  },
+});
+
 export const validateReferralCode = query({
   args: { code: v.string() },
   handler: async (ctx, args) => {
@@ -259,15 +257,7 @@ export const validateReferralCode = query({
       };
     }
 
-    const identity = await ctx.auth.getUserIdentity();
-    const currentUser = identity
-      ? await ctx.db
-          .query("users")
-          .withIndex("by_token", (q) =>
-            q.eq("tokenIdentifier", identity.tokenIdentifier),
-          )
-          .unique()
-      : null;
+    const currentUser = await getCurrentUserDoc(ctx);
     const owner = await ctx.db
       .query("users")
       .withIndex("by_referral_code", (q) =>
@@ -353,6 +343,7 @@ export const completeCheckout = mutation({
     }
 
     const now = new Date().toISOString();
+    await bumpPlanCounters(ctx, user.plan, args.plan);
     await ctx.db.patch(user._id, {
       plan: args.plan,
       billingCycle: args.billingCycle,
@@ -457,6 +448,17 @@ export const completeAgentCheckout = mutation({
       },
     });
 
+    // Keep the agent's marketplace tier in sync — this is what actually
+    // makes Featured Placement / White-Label surface in getFeaturedAgents,
+    // instead of the plan only existing on the billing record.
+    const agentProfile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (agentProfile) {
+      await ctx.db.patch(agentProfile._id, { tier: args.plan });
+    }
+
     return {
       plan: args.plan,
       billingCycle: args.billingCycle,
@@ -536,6 +538,7 @@ export const deleteCurrentAccount = mutation({
     await bumpStat(ctx, "totalRejectionAnalyses", -analyses.length);
     await bumpStat(ctx, "totalAgents", -agentProfiles.length);
     await bumpStat(ctx, "totalUsers", -1);
+    await bumpPlanCounters(ctx, user.plan, undefined);
 
     return { deleted: true };
   },
@@ -544,34 +547,15 @@ export const deleteCurrentAccount = mutation({
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    return await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    return await getCurrentUserDoc(ctx);
   },
 });
 
 export const startTrial = mutation({
   args: { plan: v.union(v.literal("pro"), v.literal("expert")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity)
-      throw new ConvexError({
-        code: "UNAUTHENTICATED",
-        message: "Not logged in",
-      });
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    if (!user)
-      throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const user = await getCurrentUserOrThrow(ctx);
+    await bumpPlanCounters(ctx, user.plan, args.plan);
     await ctx.db.patch(user._id, {
       plan: args.plan,
       trialStartedAt: new Date().toISOString(),

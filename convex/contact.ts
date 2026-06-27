@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
+import { requireAdmin } from "./admin.ts";
 
 export const submit = mutation({
   args: {
@@ -13,6 +15,9 @@ export const submit = mutation({
     if (!args.name.trim() || !args.email.trim() || !args.message.trim()) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Name, email, and message are required." });
     }
+    // No sign-in required for this guest form, so there's no account to
+    // gate by — this is a platform-wide backstop against scripted spam.
+    await ctx.runMutation(internal.rateLimits.checkAndIncrementContactUsage, {});
     await ctx.db.insert("contact_messages", {
       name: args.name.trim(),
       email: args.email.trim(),
@@ -27,10 +32,7 @@ export const submit = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in." });
-    const user = await ctx.db.query("users").withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier)).unique();
-    if (!user || user.role !== "admin") throw new ConvexError({ code: "FORBIDDEN", message: "Admins only." });
+    await requireAdmin(ctx);
     return await ctx.db.query("contact_messages").order("desc").take(100);
   },
 });
@@ -38,10 +40,7 @@ export const list = query({
 export const markRead = mutation({
   args: { id: v.id("contact_messages") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in." });
-    const user = await ctx.db.query("users").withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier)).unique();
-    if (!user || user.role !== "admin") throw new ConvexError({ code: "FORBIDDEN", message: "Admins only." });
+    await requireAdmin(ctx);
     await ctx.db.patch(args.id, { read: true });
   },
 });

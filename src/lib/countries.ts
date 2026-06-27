@@ -45,3 +45,11 @@ export const ALL_COUNTRIES = [
   "Yemen",
   "Zambia", "Zimbabwe",
 ];
+
+// Plain country names only — strips the Nigeria-diaspora-residency variants
+// above (e.g. "Nigeria (living in Poland)"), which exist for ALL_COUNTRIES'
+// origin/residency use cases (checklist origin, country-of-residence
+// fields) but would be nonsensical as a travel destination ("refused a
+// visa to Nigeria (living in Poland)" isn't a real place). Use this list
+// anywhere a real, plain destination country is needed.
+export const WORLD_DESTINATIONS = ALL_COUNTRIES.filter((c) => !c.includes("(living in"));

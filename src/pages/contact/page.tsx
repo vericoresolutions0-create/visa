@@ -7,17 +7,19 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
 import {
-  Globe, ArrowLeft, Mail, Phone, MessageCircle,
+  Globe, ArrowLeft, Mail, Phone,
   Shield, Clock, CheckCircle2,
 } from "lucide-react";
 
 export default function ContactPage() {
   useSeo({ title: "Contact Us", description: "Get in touch with the VisaClear team. We're here to help with questions about your visa checklist, premium plans, or white-label solutions." });
   const navigate = useNavigate();
+  const goBack = useSmartBack("/");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
@@ -50,7 +52,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <header className="border-b border-border/40 px-6 py-4 flex items-center gap-3 sticky top-0 z-40 bg-background/95 backdrop-blur">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+        <button onClick={goBack} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <button onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -76,14 +78,6 @@ export default function ContactPage() {
               <h2 className="font-serif text-2xl font-semibold text-primary mb-6">Ways to Reach Us</h2>
               <div className="space-y-5">
                 {[
-                  {
-                    icon: MessageCircle,
-                    label: "WhatsApp (Fastest)",
-                    value: "+48 000 000 000",
-                    hint: "Typically replies within 2 hours during business hours.",
-                    action: "https://wa.me/48000000000",
-                    actionLabel: "Open WhatsApp",
-                  },
                   {
                     icon: Mail,
                     label: "Email Support",
@@ -135,7 +129,7 @@ export default function ContactPage() {
 
             <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-xl text-xs text-muted-foreground">
               <Shield className="w-4 h-4 shrink-0 mt-0.5 text-accent" />
-              <span>All communications are encrypted and handled in compliance with GDPR and NDPA. We never share your data with third parties.</span>
+              <span>All communications are encrypted and handled in line with GDPR and NDPA principles. We never share your data with third parties.</span>
             </div>
           </div>
 

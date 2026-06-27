@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useTranslation } from "react-i18next";
 import LocaleSwitcher from "@/components/ui/locale-switcher.tsx";
+import { PartnerWelcomeBanner } from "@/components/partner-welcome-banner.tsx";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
+import { StarRating } from "@/components/star-rating.tsx";
 import {
   Shield,
   Globe,
@@ -16,13 +19,14 @@ import {
   Award,
   Users,
   Camera,
+  TrendingUp,
 } from "lucide-react";
 
 const STATS = [
   { value: "50+", label: "Visa Types" },
-  { value: "10+", label: "Destinations" },
+  { value: "24+", label: "Destinations" },
   { value: "CISA", label: "Certified Security" },
-  { value: "GDPR", label: "Compliant" },
+  { value: "GDPR", label: "Aligned" },
 ];
 
 const FEATURES = [
@@ -43,7 +47,7 @@ const FEATURES = [
   },
   {
     icon: <Lock className="w-5 h-5" />,
-    title: "GDPR & NDPA Compliant",
+    title: "Built with GDPR & NDPA Principles",
     desc: "Your data is never sold, never shared. Built to the highest data protection standards by a CISA-certified compliance professional.",
   },
 ];
@@ -69,13 +73,10 @@ const TESTIMONIALS = [
   },
 ];
 
-const DESTINATIONS = [
-  { name: "United Kingdom", flag: "🇬🇧" },
-  { name: "United States", flag: "🇺🇸" },
-  { name: "Canada", flag: "🇨🇦" },
-  { name: "Germany", flag: "🇩🇪" },
-  { name: "Poland", flag: "🇵🇱" },
-];
+const DESTINATIONS = ["United Kingdom", "United States", "Canada", "Germany", "Poland"].map((name) => ({
+  name,
+  flag: DESTINATION_FLAGS[name],
+}));
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -222,6 +223,8 @@ export default function Index() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 lg:py-28 xl:py-36 text-center">
+          <PartnerWelcomeBanner />
+
           <motion.div
             variants={fadeUp}
             custom={0}
@@ -294,6 +297,22 @@ export default function Index() {
             >
               See pricing
             </Button>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            custom={3.1}
+            initial="hidden"
+            animate="show"
+          >
+            <button
+              onClick={() => navigate("/risk-score")}
+              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Not sure where you stand? Get your free approval Risk Score
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </motion.div>
 
           <motion.div
@@ -519,11 +538,14 @@ export default function Index() {
           viewport={{ once: true }}
         >
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
-            Real Results
+            Illustrative Examples
           </p>
           <h2 className="font-serif text-4xl font-semibold text-primary">
-            Real people. Real approvals.
+            What an applicant's experience can look like
           </h2>
+          <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-3">
+            Sample scenarios based on common applicant situations — not verified customer quotes.
+          </p>
         </motion.div>
         <div className="grid md:grid-cols-3 gap-6">
           {TESTIMONIALS.map((t, i) => (
@@ -536,10 +558,8 @@ export default function Index() {
               whileInView="show"
               viewport={{ once: true }}
             >
-              <div className="flex gap-0.5 mb-5">
-                {Array.from({ length: t.stars }).map((_, j) => (
-                  <Star key={j} className="w-4 h-4 fill-accent text-accent" />
-                ))}
+              <div className="mb-5">
+                <StarRating count={t.stars} />
               </div>
               <p className="text-foreground/80 text-sm leading-relaxed mb-6 flex-1">
                 &ldquo;{t.text}&rdquo;
@@ -564,12 +584,12 @@ export default function Index() {
             {[
               {
                 icon: <Shield className="w-5 h-5" />,
-                label: "GDPR Compliant",
+                label: "GDPR-Aligned",
                 sub: "EU Data Protection Standard",
               },
               {
                 icon: <Lock className="w-5 h-5" />,
-                label: "NDPA Compliant",
+                label: "NDPA-Aligned",
                 sub: "Nigerian Data Protection Act",
               },
               {
@@ -704,6 +724,12 @@ export default function Index() {
                 {
                   label: "White-Label",
                   path: "/white-label",
+                  color:
+                    "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40",
+                },
+                {
+                  label: "For Employers",
+                  path: "/business",
                   color:
                     "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40",
                 },

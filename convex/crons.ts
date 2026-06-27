@@ -11,4 +11,23 @@ crons.daily(
   {},
 );
 
+// Run daily at 9:00 AM UTC — downgrades plans paid via a one-time payment
+// method (Pix, boleto, OXXO, Paystack) whose cycle lapsed without renewal.
+crons.daily(
+  "downgrade expired one-time plans",
+  { hourUTC: 9, minuteUTC: 0 },
+  internal.billing.dispatchExpiredPlanDowngrades,
+  {},
+);
+
+// Run weekly (Monday 8:00 AM UTC) — emails admins when any destination's
+// checklist hasn't been re-verified in 90+ days, so staleness gets noticed
+// and acted on instead of silently sitting there.
+crons.weekly(
+  "visa data freshness digest",
+  { dayOfWeek: "monday", hourUTC: 8, minuteUTC: 0 },
+  internal.dataFreshnessDigest.sendStaleDataDigest,
+  {},
+);
+
 export default crons;

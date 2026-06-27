@@ -4,7 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { api } from "@/convex/_generated/api.js";
 import {
@@ -39,7 +41,10 @@ export default function AgentRegisterPage() {
   });
 
   const navigate = useNavigate();
+  const goBack = useSmartBack("/agents");
   const { isDemoAuthenticated } = useDemoAuth();
+  const { isAuthenticated } = useAuth();
+  const canContinue = isDemoAuthenticated || isAuthenticated;
   const [params] = useSearchParams();
   const initialPlan = getAgentPlan(params.get("plan"));
   const [step, setStep] = useState(1);
@@ -103,7 +108,7 @@ export default function AgentRegisterPage() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer">
@@ -123,7 +128,7 @@ export default function AgentRegisterPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-10 md:py-14">
-        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-8 items-start">
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -156,7 +161,7 @@ export default function AgentRegisterPage() {
                   <p className="text-[10px] uppercase tracking-[0.24em] text-accent font-semibold">Partner plan</p>
                   <h2 className="font-serif text-2xl font-semibold text-primary">Monetize your listing</h2>
                 </div>
-                <div className="grid grid-cols-2 rounded-full border border-border bg-card p-1 text-xs font-semibold">
+                <div className="flex rounded-full border border-border bg-card p-1 text-xs font-semibold">
                   {(["monthly", "yearly"] as BillingCycle[]).map((cycle) => (
                     <button
                       key={cycle}
@@ -234,14 +239,14 @@ export default function AgentRegisterPage() {
                   Verified agent accounts only. Sign in with Google or create an account with your real email and password to begin your partner journey.
                 </div>
                 <AuthAccessPanel returnPath="/agents/register" hideDemoOption />
-                <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                   <Button variant="ghost" onClick={() => navigate("/login")} className="cursor-pointer">Already have an account?</Button>
                   <Button
                     onClick={() => setStep(2)}
-                    disabled={!isDemoAuthenticated}
+                    disabled={!canContinue}
                     className="cursor-pointer"
                   >
-                    {isDemoAuthenticated ? "Continue to profile setup" : "Sign in above to continue"}
+                    {canContinue ? "Continue to profile setup" : "Sign in above to continue"}
                   </Button>
                 </div>
               </div>

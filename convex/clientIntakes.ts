@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { validateUploadedFile } from "./fileValidation";
+import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -10,17 +12,12 @@ export const createIntake = mutation({
   args: {
     clientName: v.string(),
     clientEmail: v.optional(v.string()),
+    clientPhone: v.optional(v.string()),
     destination: v.string(),
     visaType: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-    const agent = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const agent = await getCurrentUserOrThrow(ctx);
 
     const token = generateToken();
     await ctx.db.insert("client_intakes", {
@@ -28,6 +25,7 @@ export const createIntake = mutation({
       token,
       clientName: args.clientName,
       clientEmail: args.clientEmail,
+      clientPhone: args.clientPhone,
       destination: args.destination,
       visaType: args.visaType,
       status: "awaiting_documents",
@@ -41,12 +39,7 @@ export const createIntake = mutation({
 export const listMyIntakes = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const agent = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const agent = await getCurrentUser(ctx);
     if (!agent) return [];
 
     const intakes = await ctx.db
@@ -80,6 +73,7 @@ export const listMyIntakes = query({
           token: intake.token,
           clientName: intake.clientName,
           clientEmail: intake.clientEmail,
+          clientPhone: intake.clientPhone,
           destination: intake.destination,
           visaType: intake.visaType,
           status: intake.status,
@@ -104,13 +98,7 @@ export const updateIntakeStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-    const agent = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const agent = await getCurrentUserOrThrow(ctx);
 
     const intake = await ctx.db
       .query("client_intakes")
@@ -147,12 +135,7 @@ export const getIntakeByToken = query({
 export const listMyUploadsForIntake = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const client = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const client = await getCurrentUser(ctx);
     if (!client) return [];
 
     const intake = await ctx.db
@@ -175,8 +158,7 @@ export const listMyUploadsForIntake = query({
 export const generateUploadUrl = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Please sign in to upload documents" });
+    await getCurrentUserOrThrow(ctx);
 
     const intake = await ctx.db
       .query("client_intakes")
@@ -199,19 +181,15 @@ export const recordDocument = mutation({
     mimeType: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Please sign in to upload documents" });
-    const client = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    if (!client) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const client = await getCurrentUserOrThrow(ctx);
 
     const intake = await ctx.db
       .query("client_intakes")
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
     if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired" });
+
+    await validateUploadedFile(ctx, args.storageId);
 
     await ctx.db.insert("client_documents", {
       intakeId: intake._id,

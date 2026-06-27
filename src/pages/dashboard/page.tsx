@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { canUseMultiTripManager, canUseSuccessProbabilityScore, canUseDocumentVault } from "@/lib/plan-gates.ts";
 import { getChecklist, type VisaType } from "@/lib/visa-data.ts";
+import { SettleInToolkit } from "@/pages/dashboard/trips/settle-in-toolkit.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import {
@@ -38,24 +39,15 @@ import {
   ArchiveRestore,
   StickyNote,
   Sparkles,
+  Award,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 
-const DEST_FLAGS: Record<string, string> = {
-  "United Kingdom": "🇬🇧",
-  "United States": "🇺🇸",
-  Canada: "🇨🇦",
-  Germany: "🇩🇪",
-  Poland: "🇵🇱",
-  France: "🇫🇷",
-  Australia: "🇦🇺",
-  Netherlands: "🇳🇱",
-  Ireland: "🇮🇪",
-  Italy: "🇮🇹",
-  Spain: "🇪🇸",
-};
+const DEST_FLAGS = DESTINATION_FLAGS;
 
 const DEMO_USER_ID = "demo_user" as Id<"users">;
 const DEMO_CHECKLISTS = [
@@ -80,8 +72,11 @@ const DEMO_CHECKLISTS = [
     visaType: "tourist",
     checkedItems: ["passport", "invitation-letter"],
     title: "Canada Visitor Visa Checklist",
-    progress: 42,
+    progress: 100,
     savedAt: new Date().toISOString(),
+    status: "approved",
+    settleInCheckedItems: ["ca-bank-1"],
+    settleInProgress: 20,
   },
 ] satisfies Doc<"saved_checklists">[];
 
@@ -764,9 +759,29 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 path: "/dashboard/country-watch",
               },
               {
+                icon: <Home className="w-4 h-4" />,
+                label: "Family & Household",
+                path: "/dashboard/household",
+              },
+              {
                 icon: <AlertCircle className="w-4 h-4" />,
                 label: "Rejection Analyser",
                 path: "/rejection-analyser",
+              },
+              {
+                icon: <TrendingUp className="w-4 h-4" />,
+                label: "Risk Score",
+                path: "/risk-score",
+              },
+              {
+                icon: <Award className="w-4 h-4" />,
+                label: "Wall of Fame",
+                path: "/wall-of-fame",
+              },
+              {
+                icon: <Clock className="w-4 h-4" />,
+                label: "Wait Times",
+                path: "/wait-times",
               },
               {
                 icon: <Camera className="w-4 h-4" />,
@@ -817,11 +832,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 return (
                   <button
                     key={cl._id}
-                    onClick={() =>
-                      isDemoAuthenticated
-                        ? navigate(`/checklist?from=${encodeURIComponent(cl.origin)}&to=${encodeURIComponent(cl.destination)}&type=${cl.visaType}`)
-                        : navigate(`/dashboard/trips/${cl._id}`)
-                    }
+                    onClick={() => navigate(`/dashboard/trips/${cl._id}`)}
                     className={cn(
                       "snap-start shrink-0 w-60 text-left rounded-2xl border p-4 shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer bg-card",
                       needsAttention ? "border-accent/40 shadow-accent/10" : "border-border",
@@ -1023,15 +1034,13 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {!isDemoAuthenticated && (
-                        <button
-                          onClick={() => navigate(`/dashboard/trips/${cl._id}`)}
-                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                          title="Trip workspace"
-                        >
-                          <StickyNote className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => navigate(`/dashboard/trips/${cl._id}`)}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                        title="Trip workspace"
+                      >
+                        <StickyNote className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() =>
                           setReminderModal({ checklistId: cl._id })
@@ -1254,7 +1263,7 @@ function DashboardShell({
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
   const { isDemoAuthenticated, signOut } = useDemoAuth();
-  const { isAuthenticated, signoutRedirect } = useAuth();
+  const { isAuthenticated, signOut: signOutReal } = useAuth();
   // Real, Convex-authenticated users must be able to reach their own
   // dashboard, not just demo-mode sessions — this gate previously checked
   // isDemoAuthenticated only, which would have locked every real signed-in
@@ -1263,7 +1272,8 @@ function DashboardShell({
 
   const handleSignOut = async () => {
     if (isAuthenticated) {
-      await signoutRedirect();
+      await signOutReal();
+      navigate("/");
       return;
     }
     signOut();
@@ -1377,16 +1387,22 @@ const TRIP_STATUS_OPTIONS: {
 function TripWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const trip = useQuery(
+  const { isDemoAuthenticated, user: demoUser } = useDemoAuth();
+  const realTrip = useQuery(
     api.checklists.getTrip,
-    id ? { id: id as Id<"saved_checklists"> } : "skip",
+    !isDemoAuthenticated && id ? { id } : "skip",
   );
-  const user = useQuery(api.users.getCurrentUser, {});
-  const reminders = useQuery(api.reminders.getReminders, {});
+  const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
+  const reminders = useQuery(api.reminders.getReminders, isDemoAuthenticated ? "skip" : {});
   const updateTripDetails = useMutation(api.checklists.updateTripDetails);
   const setTripArchived = useMutation(api.checklists.setTripArchived);
+  const updateSettleInProgress = useMutation(api.checklists.updateSettleInProgress);
   const estimateSuccessProbability = useAction(api.ai.successProbability.estimateSuccessProbability);
-  const plan = user?.plan ?? "free";
+
+  const [demoChecklists, setDemoChecklists] = useState<Doc<"saved_checklists">[]>(DEMO_CHECKLISTS);
+  const effectiveTrip = isDemoAuthenticated ? (demoChecklists.find((c) => c._id === id) ?? null) : realTrip;
+
+  const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (user?.plan ?? "free");
   const canManage = canUseMultiTripManager(plan);
   const canUseScore = canUseSuccessProbabilityScore(plan);
   const [scoreResult, setScoreResult] = useState<{
@@ -1405,16 +1421,16 @@ function TripWorkspace() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (trip && !hydrated) {
-      setTripName(trip.tripName ?? trip.title);
-      setTravelDate(trip.travelDate ?? "");
-      setStatus(trip.status ?? "planning");
-      setNotes(trip.notes ?? "");
+    if (effectiveTrip && !hydrated) {
+      setTripName(effectiveTrip.tripName ?? effectiveTrip.title);
+      setTravelDate(effectiveTrip.travelDate ?? "");
+      setStatus(effectiveTrip.status ?? "planning");
+      setNotes(effectiveTrip.notes ?? "");
       setHydrated(true);
     }
-  }, [trip, hydrated]);
+  }, [effectiveTrip, hydrated]);
 
-  if (trip === undefined) {
+  if (effectiveTrip === undefined) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-24 w-full" />
@@ -1423,7 +1439,7 @@ function TripWorkspace() {
     );
   }
 
-  if (trip === null) {
+  if (effectiveTrip === null) {
     return (
       <div className="border border-dashed border-border rounded-xl p-8 text-center">
         <AlertCircle className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
@@ -1438,9 +1454,21 @@ function TripWorkspace() {
     );
   }
 
-  const tripReminders = (reminders ?? []).filter((r) => r.checklistId === trip._id);
+  const trip = effectiveTrip;
+  const tripReminders = isDemoAuthenticated ? [] : (reminders ?? []).filter((r) => r.checklistId === trip._id);
 
   const handleSave = async () => {
+    if (isDemoAuthenticated) {
+      setDemoChecklists((prev) =>
+        prev.map((c) =>
+          c._id === trip._id
+            ? { ...c, tripName: tripName.trim() || c.title, travelDate: travelDate || undefined, status, notes }
+            : c,
+        ),
+      );
+      toast.success("Trip updated. (demo only)");
+      return;
+    }
     setSaving(true);
     try {
       await updateTripDetails({
@@ -1459,6 +1487,12 @@ function TripWorkspace() {
   };
 
   const handleArchive = async () => {
+    if (isDemoAuthenticated) {
+      setDemoChecklists((prev) => prev.map((c) => (c._id === trip._id ? { ...c, archived: !c.archived } : c)));
+      toast.success(trip.archived ? "Trip restored. (demo only)" : "Trip archived. (demo only)");
+      navigate("/dashboard");
+      return;
+    }
     try {
       await setTripArchived({ id: trip._id, archived: !trip.archived });
       toast.success(trip.archived ? "Trip restored." : "Trip archived.");
@@ -1471,6 +1505,20 @@ function TripWorkspace() {
   const handleEstimateScore = async () => {
     setScoreLoading(true);
     try {
+      if (isDemoAuthenticated) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        setScoreResult({
+          probability: 78,
+          reasoning: "This is a demo estimate: a strong checklist completion rate and consistent document history typically correlate with a higher approval likelihood, but every embassy's review is ultimately discretionary.",
+          recommendations: [
+            "Double-check that every required document is current, not just present.",
+            "Make sure proof-of-funds figures match what you state in your application form.",
+          ],
+          disclaimer: "Demo estimate only — not generated by AI. Real accounts get a live, AI-estimated score based on your actual checklist.",
+        });
+        return;
+      }
+
       const fullChecklist = getChecklist(trip.destination, trip.visaType as VisaType);
       const checkedSet = new Set(trip.checkedItems);
       const missingRequiredItems = (fullChecklist?.items ?? [])
@@ -1658,6 +1706,23 @@ function TripWorkspace() {
           </div>
         )}
       </div>
+
+      {trip.status === "approved" && (
+        <SettleInToolkit
+          trip={trip}
+          onSave={async (checkedItems, progress) => {
+            if (isDemoAuthenticated) {
+              setDemoChecklists((prev) =>
+                prev.map((c) =>
+                  c._id === trip._id ? { ...c, settleInCheckedItems: checkedItems, settleInProgress: progress } : c,
+                ),
+              );
+              return;
+            }
+            await updateSettleInProgress({ id: trip._id, settleInCheckedItems: checkedItems, settleInProgress: progress });
+          }}
+        />
+      )}
 
       <div>
         <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">

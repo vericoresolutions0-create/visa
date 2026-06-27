@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
+import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
 import { api } from "@/convex/_generated/api.js";
-import { AVAILABLE_DESTINATIONS, getAvailableVisaTypes, type VisaType } from "@/lib/visa-data.ts";
+import type { Id } from "@/convex/_generated/dataModel.js";
+import { AVAILABLE_DESTINATIONS, getAvailableVisaTypes, getChecklist, VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -23,8 +27,6 @@ import {
   Clock3,
   Copy,
   CreditCard,
-  FileArchive,
-  FileCheck2,
   FileText,
   FolderOpen,
   Globe,
@@ -32,6 +34,7 @@ import {
   ListChecks,
   LockKeyhole,
   LogIn,
+  MessageCircle,
   Send,
   Shield,
   Star,
@@ -42,263 +45,62 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-type DeadlineTone = "safe" | "warning" | "danger";
+type IntakeStatus = "awaiting_documents" | "documents_received" | "in_review" | "complete";
 
-type PipelineClient = {
-  name: string;
+type IntakeDocument = {
+  _id: string;
+  label: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+  url: string | null;
+};
+
+type Intake = {
+  _id: Id<"client_intakes">;
+  token: string;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
   destination: string;
   visaType: string;
-  deadlineDays: number;
-  tone: DeadlineTone;
+  status: IntakeStatus;
+  createdAt: string;
+  claimedByEmail?: string;
+  documents: IntakeDocument[];
 };
 
-type PipelineColumn = {
-  stage: string;
-  total: number;
-  clients: PipelineClient[];
+const intakeStatusLabels: Record<IntakeStatus, string> = {
+  awaiting_documents: "Awaiting documents",
+  documents_received: "Documents received",
+  in_review: "In review",
+  complete: "Complete",
 };
 
-type FeaturePanel = {
-  title: string;
-  eyebrow: string;
-  description: string;
-  Icon: LucideIcon;
-  items: string[];
+const intakeStatusStyles: Record<IntakeStatus, string> = {
+  awaiting_documents: "bg-secondary text-secondary-foreground",
+  documents_received: "bg-amber-100 text-amber-900",
+  in_review: "bg-primary/10 text-primary",
+  complete: "bg-accent/15 text-accent-foreground",
 };
 
-const kpis: Array<{
-  label: string;
-  value: string;
-  detail: string;
-  Icon: LucideIcon;
-}> = [
-  {
-    label: "Active clients this month",
-    value: "142",
-    detail: "+18 this week",
-    Icon: Users,
-  },
-  {
-    label: "Applications pending submission",
-    value: "37",
-    detail: "9 ready today",
-    Icon: ClipboardCheck,
-  },
-  {
-    label: "Applications approved this week",
-    value: "21",
-    detail: "94% approval rate",
-    Icon: BadgeCheck,
-  },
-  {
-    label: "Revenue from referrals",
-    value: "$4,860",
-    detail: "25% recurring commission",
-    Icon: CircleDollarSign,
-  },
-];
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+}
 
-const pipelineColumns: PipelineColumn[] = [
-  {
-    stage: "Inquiry",
-    total: 18,
-    clients: [
-      {
-        name: "Amara Okafor",
-        destination: "United Kingdom",
-        visaType: "Visit visa",
-        deadlineDays: 12,
-        tone: "safe",
-      },
-      {
-        name: "Ravi Patel",
-        destination: "Canada",
-        visaType: "Student visa",
-        deadlineDays: 6,
-        tone: "warning",
-      },
-    ],
-  },
-  {
-    stage: "Documents",
-    total: 31,
-    clients: [
-      {
-        name: "Maria Silva",
-        destination: "Portugal",
-        visaType: "Schengen",
-        deadlineDays: 3,
-        tone: "danger",
-      },
-      {
-        name: "Noah Mensah",
-        destination: "UAE",
-        visaType: "Business",
-        deadlineDays: 8,
-        tone: "safe",
-      },
-    ],
-  },
-  {
-    stage: "Ready to Submit",
-    total: 14,
-    clients: [
-      {
-        name: "James Carter",
-        destination: "Australia",
-        visaType: "Work visa",
-        deadlineDays: 5,
-        tone: "warning",
-      },
-      {
-        name: "Aisha Bello",
-        destination: "France",
-        visaType: "Tourist",
-        deadlineDays: 10,
-        tone: "safe",
-      },
-    ],
-  },
-  {
-    stage: "Submitted",
-    total: 22,
-    clients: [
-      {
-        name: "Daniel Park",
-        destination: "Japan",
-        visaType: "Transit",
-        deadlineDays: 16,
-        tone: "safe",
-      },
-    ],
-  },
-  {
-    stage: "Decision",
-    total: 11,
-    clients: [
-      {
-        name: "Fatima Khan",
-        destination: "Germany",
-        visaType: "Family",
-        deadlineDays: 2,
-        tone: "danger",
-      },
-    ],
-  },
-  {
-    stage: "Closed",
-    total: 46,
-    clients: [
-      {
-        name: "Liam Hughes",
-        destination: "Spain",
-        visaType: "Digital nomad",
-        deadlineDays: 0,
-        tone: "safe",
-      },
-    ],
-  },
-];
+function toWhatsAppNumber(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
 
-const actions = [
-  {
-    title: "Chase Maria",
-    detail: "Passport still missing",
-    priority: "Red",
-    Icon: Bell,
-  },
-  {
-    title: "Review James",
-    detail: "Documents complete, ready to submit",
-    priority: "Amber",
-    Icon: FileCheck2,
-  },
-  {
-    title: "Send portal link",
-    detail: "Ravi accepted quotation",
-    priority: "Today",
-    Icon: Send,
-  },
-  {
-    title: "Passport expiry alert",
-    detail: "Fatima expires in 87 days",
-    priority: "90-day",
-    Icon: CalendarClock,
-  },
-];
+function visaTypeLabel(visaType: string): string {
+  return VISA_TYPES.find((v) => v.value === visaType)?.label ?? visaType;
+}
 
-const checklist = [
-  { label: "Passport bio page", done: true },
-  { label: "3 months bank statements", done: true },
-  { label: "Employment letter", done: false },
-  { label: "Travel itinerary", done: false },
-];
-
-const templates = [
-  {
-    name: "UK Visit Visa",
-    detail: "14 documents, 3 client instructions, 21-day timeline",
-  },
-  {
-    name: "Schengen Tourist",
-    detail: "12 documents, embassy notes, insurance reminder",
-  },
-  {
-    name: "Canada Student",
-    detail: "18 documents, study-plan guidance, biometrics step",
-  },
-];
-
-const featurePanels: FeaturePanel[] = [
-  {
-    eyebrow: "Team management",
-    title: "Scale the agency without losing control.",
-    description:
-      "Owners add staff, assign clients, set roles, and keep a full activity trail.",
-    Icon: Users,
-    items: [
-      "Owner, Senior Consultant, Junior Consultant",
-      "Assigned-client visibility",
-      "Activity log for every action",
-    ],
-  },
-  {
-    eyebrow: "Agent analytics",
-    title: "Business intelligence for every route.",
-    description:
-      "Agents see submissions, approval rate, processing time, top destinations, and returning-client health.",
-    Icon: BarChart3,
-    items: [
-      "Applications submitted vs last month",
-      "Average processing time by country",
-      "Client retention and route volume",
-    ],
-  },
-  {
-    eyebrow: "Referral centre",
-    title: "Turn every agent into a growth channel.",
-    description:
-      "A unique referral link tracks upgrades, pending payout, lifetime earnings, and monthly commission.",
-    Icon: CircleDollarSign,
-    items: [
-      "25% recurring commission",
-      "Referrals sent and converted",
-      "Bank or PayPal payout tracking",
-    ],
-  },
-];
-
-const deadlineStyles: Record<DeadlineTone, string> = {
-  safe: "border-border bg-card",
-  warning: "border-amber-300 bg-amber-50 text-amber-950",
-  danger: "border-red-300 bg-red-50 text-red-950",
-};
-
-const deadlineBadgeStyles: Record<DeadlineTone, string> = {
-  safe: "bg-primary/8 text-primary",
-  warning: "bg-amber-200 text-amber-950",
-  danger: "bg-red-200 text-red-950",
-};
+function requiredDocCount(destination: string, visaType: string): number {
+  const checklist = getChecklist(destination, visaType as VisaType);
+  return checklist ? checklist.items.filter((i) => i.required).length : 0;
+}
 
 function SectionHeader({
   eyebrow,
@@ -331,90 +133,26 @@ function SectionHeader({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  detail,
-  Icon,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  Icon: LucideIcon;
-}) {
+function KpiCard({ label, value, detail, Icon }: { label: string; value: string | number; detail: string; Icon: LucideIcon }) {
   return (
     <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/8 text-primary">
           <Icon className="h-4 w-4" />
         </div>
-        <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent-foreground">
-          Preview
-        </span>
       </div>
-      <div className="text-3xl font-semibold tracking-normal text-primary">
-        {value}
-      </div>
+      <div className="text-3xl font-semibold tracking-normal text-primary">{value}</div>
       <p className="mt-1 text-sm font-medium text-foreground">{label}</p>
       <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
     </article>
   );
 }
 
-function PipelineClientCard({ client }: { client: PipelineClient }) {
-  return (
-    <article
-      className={cn(
-        "rounded-lg border p-3 shadow-sm transition-colors",
-        deadlineStyles[client.tone],
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-foreground">
-            {client.name}
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {client.destination}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold",
-            deadlineBadgeStyles[client.tone],
-          )}
-        >
-          {client.deadlineDays === 0 ? "Closed" : `${client.deadlineDays}d`}
-        </span>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-        <span className="font-medium text-foreground">{client.visaType}</span>
-        <span className="text-muted-foreground">Deadline</span>
-      </div>
-    </article>
-  );
-}
-
-type IntakeStatus = "awaiting_documents" | "documents_received" | "in_review" | "complete";
-
-const intakeStatusLabels: Record<IntakeStatus, string> = {
-  awaiting_documents: "Awaiting documents",
-  documents_received: "Documents received",
-  in_review: "In review",
-  complete: "Complete",
-};
-
-const intakeStatusStyles: Record<IntakeStatus, string> = {
-  awaiting_documents: "bg-secondary text-secondary-foreground",
-  documents_received: "bg-amber-100 text-amber-900",
-  in_review: "bg-primary/10 text-primary",
-  complete: "bg-accent/15 text-accent-foreground",
-};
-
 function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
   const createIntake = useMutation(api.clientIntakes.createIntake);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [destination, setDestination] = useState("");
   const [visaType, setVisaType] = useState<VisaType | "">("");
   const [saving, setSaving] = useState(false);
@@ -431,6 +169,7 @@ function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
       const { token } = await createIntake({
         clientName,
         clientEmail: clientEmail || undefined,
+        clientPhone: clientPhone || undefined,
         destination,
         visaType,
       });
@@ -453,12 +192,18 @@ function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
           className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
         />
         <input
-          value={clientEmail}
-          onChange={(e) => setClientEmail(e.target.value)}
-          placeholder="Client email (optional)"
+          value={clientPhone}
+          onChange={(e) => setClientPhone(e.target.value)}
+          placeholder="Client WhatsApp number (optional)"
           className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
         />
       </div>
+      <input
+        value={clientEmail}
+        onChange={(e) => setClientEmail(e.target.value)}
+        placeholder="Client email (optional)"
+        className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <select
           value={destination}
@@ -481,7 +226,7 @@ function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
         >
           <option value="">Visa type *</option>
           {visaTypes.map((vt) => (
-            <option key={vt} value={vt}>{vt}</option>
+            <option key={vt} value={vt}>{VISA_TYPES.find((v) => v.value === vt)?.label ?? vt}</option>
           ))}
         </select>
       </div>
@@ -492,31 +237,106 @@ function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
   );
 }
 
-function CopyLinkButton({ token }: { token: string }) {
+function SendLinkButtons({ token, clientName, clientPhone }: { token: string; clientName: string; clientPhone?: string }) {
   const [copied, setCopied] = useState(false);
   const link = `${window.location.origin}/client-portal/${token}`;
+  const message = `Hi ${clientName}, please use this secure link to upload your visa documents: ${link}`;
+  const whatsappHref = clientPhone
+    ? `https://wa.me/${toWhatsAppNumber(clientPhone)}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
   return (
-    <button
-      type="button"
-      onClick={() => {
-        navigator.clipboard.writeText(link).then(() => {
-          setCopied(true);
-          toast.success("Link copied to clipboard.");
-          setTimeout(() => setCopied(false), 2000);
-        }).catch(() => toast.error("Failed to copy link."));
-      }}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer shrink-0"
-    >
-      {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? "Copied" : "Copy link"}
-    </button>
+    <div className="flex items-center gap-2 shrink-0">
+      <a
+        href={whatsappHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#25D366]/30 bg-[#25D366]/10 text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors cursor-pointer shrink-0"
+        title={clientPhone ? "Send to client on WhatsApp" : "Share via WhatsApp"}
+      >
+        <MessageCircle className="w-3.5 h-3.5" />
+        WhatsApp
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard.writeText(link).then(() => {
+            setCopied(true);
+            toast.success("Link copied to clipboard.");
+            setTimeout(() => setCopied(false), 2000);
+          }).catch(() => toast.error("Failed to copy link."));
+        }}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer shrink-0"
+      >
+        {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? "Copied" : "Copy link"}
+      </button>
+    </div>
+  );
+}
+
+function IntakeDetailRow({ intake }: { intake: Intake }) {
+  const [expanded, setExpanded] = useState(false);
+  const required = requiredDocCount(intake.destination, intake.visaType);
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full p-3 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-background/60 transition-colors"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-foreground truncate">{intake.clientName}</p>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", intakeStatusStyles[intake.status])}>
+              {intakeStatusLabels[intake.status]}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span>
+              {intake.destination} &middot; {visaTypeLabel(intake.visaType)} &middot; {intake.documents.length}{required > 0 ? `/${required}` : ""} document{intake.documents.length === 1 ? "" : "s"}
+              {intake.claimedByEmail ? ` · uploaded by ${intake.claimedByEmail}` : ""}
+            </span>
+            <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
+          </p>
+        </div>
+        <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
+      </button>
+      {expanded && (
+        <div className="border-t border-border p-3 bg-background/50 space-y-2">
+          {intake.documents.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">No documents uploaded yet.</p>
+          ) : (
+            intake.documents.map((doc) => (
+              <a
+                key={doc._id}
+                href={doc.url ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-2.5 hover:border-primary/30 transition-colors"
+              >
+                <div className="min-w-0 flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span className="text-xs font-medium text-foreground truncate">{doc.label}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </span>
+              </a>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 function YourClientsInner() {
-  const intakes = useQuery(api.clientIntakes.listMyIntakes, {});
+  const intakes = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const [showForm, setShowForm] = useState(false);
   const [justCreatedToken, setJustCreatedToken] = useState<string | null>(null);
+  const justCreatedIntake = (intakes ?? []).find((i) => i.token === justCreatedToken);
 
   return (
     <section className="rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
@@ -547,19 +367,15 @@ function YourClientsInner() {
         </div>
       )}
 
-      {justCreatedToken && (
+      {justCreatedToken && justCreatedIntake && (
         <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-primary">Client link ready</p>
+            <p className="text-xs font-semibold text-primary">Client link ready — send it now</p>
             <p className="text-xs text-muted-foreground truncate">{`${window.location.origin}/client-portal/${justCreatedToken}`}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <CopyLinkButton token={justCreatedToken} />
-            <button
-              type="button"
-              onClick={() => setJustCreatedToken(null)}
-              className="p-1.5 text-muted-foreground hover:text-primary"
-            >
+            <SendLinkButtons token={justCreatedToken} clientName={justCreatedIntake.clientName} clientPhone={justCreatedIntake.clientPhone} />
+            <button type="button" onClick={() => setJustCreatedToken(null)} className="p-1.5 text-muted-foreground hover:text-primary">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -579,27 +395,8 @@ function YourClientsInner() {
       )}
 
       {intakes && intakes.length > 0 && (
-        <div className="space-y-3">
-          {intakes.map((intake) => (
-            <div
-              key={intake._id}
-              className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground truncate">{intake.clientName}</p>
-                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", intakeStatusStyles[intake.status as IntakeStatus])}>
-                    {intakeStatusLabels[intake.status as IntakeStatus]}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {intake.destination} &middot; {intake.visaType} &middot; {intake.documents.length} document{intake.documents.length === 1 ? "" : "s"}
-                  {intake.claimedByEmail ? ` · uploaded by ${intake.claimedByEmail}` : ""}
-                </p>
-              </div>
-              <CopyLinkButton token={intake.token} />
-            </div>
-          ))}
+        <div className="space-y-2">
+          {intakes.map((intake) => <IntakeDetailRow key={intake._id} intake={intake} />)}
         </div>
       )}
     </section>
@@ -633,7 +430,14 @@ function YourClients() {
   );
 }
 
-function PipelineBoard() {
+function PipelineBoard({ intakes }: { intakes: Intake[] }) {
+  const columns: { stage: IntakeStatus; label: string }[] = [
+    { stage: "awaiting_documents", label: "Awaiting Documents" },
+    { stage: "documents_received", label: "Documents Received" },
+    { stage: "in_review", label: "In Review" },
+    { stage: "complete", label: "Complete" },
+  ];
+
   return (
     <section className="rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -643,49 +447,115 @@ function PipelineBoard() {
             Pipeline board
           </div>
           <h2 className="font-serif text-2xl font-semibold text-primary">
-            Every client, every deadline, one view.
+            Every real client, every real stage.
           </h2>
-        </div>
-        <div className="flex w-full rounded-lg border border-border bg-card p-1 sm:w-auto">
-          {["Today", "7 days", "All"].map((label, index) => (
-            <button
-              key={label}
-              className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:flex-none",
-                index === 0
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-primary",
-              )}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-        {pipelineColumns.map((column) => (
-          <div key={column.stage} className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-              <span className="text-xs font-semibold text-primary">
-                {column.stage}
-              </span>
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
-                {column.total}
-              </span>
-            </div>
-            {column.clients.map((client) => (
-              <PipelineClientCard key={client.name} client={client} />
-            ))}
-          </div>
-        ))}
-      </div>
+      {intakes.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Add your first client to see your pipeline build up here.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {columns.map((column) => {
+            const colIntakes = intakes.filter((i) => i.status === column.stage);
+            return (
+              <div key={column.stage} className="space-y-3">
+                <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="text-xs font-semibold text-primary">{column.label}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
+                    {colIntakes.length}
+                  </span>
+                </div>
+                {colIntakes.map((intake) => {
+                  const days = daysSince(intake.createdAt);
+                  const tone = days >= 7 ? "danger" : days >= 3 ? "warning" : "safe";
+                  return (
+                    <article
+                      key={intake._id}
+                      className={cn(
+                        "rounded-lg border p-3 shadow-sm",
+                        tone === "danger" ? "border-red-300 bg-red-50" : tone === "warning" ? "border-amber-300 bg-amber-50" : "border-border bg-card",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-semibold text-foreground">{intake.clientName}</h3>
+                          <p className="mt-1 text-xs text-muted-foreground">{intake.destination}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary">
+                          {days === 0 ? "Today" : `${days}d`}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-foreground">{visaTypeLabel(intake.visaType)}</span>
+                        <span className="text-muted-foreground">{intake.documents.length} docs</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
 
-function TodayActions() {
+type ContactRequest = {
+  _id: Id<"agent_contact_requests">;
+  fromName?: string;
+  fromEmail?: string;
+  message?: string;
+  createdAt: string;
+  read: boolean;
+};
+
+function TodayActions({ intakes, contactRequests }: { intakes: Intake[]; contactRequests: ContactRequest[] }) {
+  const navigate = useNavigate();
+  const markRead = useMutation(api.agents.markContactRequestRead);
+
+  const actions = useMemo(() => {
+    const items: { key: string; title: string; detail: string; priority: string; Icon: LucideIcon; onClick?: () => void }[] = [];
+
+    for (const req of contactRequests.filter((r) => !r.read).slice(0, 5)) {
+      items.push({
+        key: `req-${req._id}`,
+        title: `New enquiry from ${req.fromName || req.fromEmail || "an applicant"}`,
+        detail: req.message || "Sent via the VisaClear marketplace",
+        priority: "New",
+        Icon: Bell,
+        onClick: () => { void markRead({ id: req._id }); },
+      });
+    }
+
+    for (const intake of intakes) {
+      const days = daysSince(intake.createdAt);
+      if (intake.status === "awaiting_documents" && days >= 3) {
+        items.push({
+          key: `chase-${intake._id}`,
+          title: `Chase ${intake.clientName}`,
+          detail: `Still no documents uploaded (${days}d)`,
+          priority: days >= 7 ? "Red" : "Amber",
+          Icon: Bell,
+        });
+      }
+      if (intake.status === "documents_received") {
+        items.push({
+          key: `review-${intake._id}`,
+          title: `Review ${intake.clientName}`,
+          detail: "Documents uploaded, ready for your review",
+          priority: "Ready",
+          Icon: ClipboardCheck,
+        });
+      }
+    }
+
+    return items.slice(0, 8);
+  }, [intakes, contactRequests, markRead]);
+
   return (
     <aside className="rounded-lg border border-border bg-card p-4 shadow-sm md:p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -694,71 +564,68 @@ function TodayActions() {
             <Clock3 className="h-3.5 w-3.5" />
             Today
           </div>
-          <h2 className="font-serif text-2xl font-semibold text-primary">
-            Action list
-          </h2>
+          <h2 className="font-serif text-2xl font-semibold text-primary">Action list</h2>
         </div>
-        <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
-          Auto
-        </span>
       </div>
-      <div className="space-y-3">
-        {actions.map((action) => (
-          <button
-            key={action.title}
-            className="w-full rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
-            type="button"
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-foreground">
-                <action.Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {action.title}
-                  </p>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    {action.priority}
-                  </span>
+      {actions.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">Nothing needs your attention right now.</p>
+      ) : (
+        <div className="space-y-3">
+          {actions.map((action) => (
+            <button
+              key={action.key}
+              onClick={action.onClick ?? (() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" }))}
+              className="w-full rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
+              type="button"
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-foreground">
+                  <action.Icon className="h-4 w-4" />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {action.detail}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{action.title}</p>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{action.priority}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{action.detail}</p>
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
-      </div>
-      <Button className="mt-4 w-full" size="sm">
-        Work today&apos;s list
+            </button>
+          ))}
+        </div>
+      )}
+      <Button className="mt-4 w-full" size="sm" onClick={() => navigate("/agents/dashboard#your-clients")}>
+        Open your clients
       </Button>
     </aside>
   );
 }
 
 function ClientPortalPreview() {
+  const checklist = [
+    { label: "Passport bio page", done: true },
+    { label: "3 months bank statements", done: true },
+    { label: "Employment letter", done: false },
+    { label: "Travel itinerary", done: false },
+  ];
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div>
           <SectionHeader
             eyebrow="Client portal"
-            title="The demo feature that sells itself."
-            description="Agents send one branded link. Clients upload documents, follow their checklist, track status, and message the agency from their phone."
+            title="The feature that sells itself."
+            description="Send one branded link. Clients upload real documents, follow their real checklist, and track real status from their phone — this is live today, not a mockup."
             Icon={UploadCloud}
           />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
               "Personal visa checklist",
               "Labeled document uploads",
-              "Progress and status tracker",
-              "Direct message thread",
+              "Real progress tracker",
+              "WhatsApp delivery",
             ].map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground"
-              >
+              <div key={item} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-accent" />
                 {item}
               </div>
@@ -770,8 +637,7 @@ function ClientPortalPreview() {
               Agency tier white-label
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              The portal can use the agency logo, colors, and domain so clients
-              experience the agency brand from start to finish.
+              The portal can use the agency logo, colors, and domain so clients experience the agency brand from start to finish.
             </p>
           </div>
         </div>
@@ -780,12 +646,8 @@ function ClientPortalPreview() {
           <div className="rounded-[1.5rem] bg-card p-4">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-                  Northstar Visas
-                </p>
-                <h3 className="font-serif text-xl font-semibold text-primary">
-                  UK Visit Visa
-                </h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Sample preview</p>
+                <h3 className="font-serif text-xl font-semibold text-primary">UK Visit Visa</h3>
               </div>
               <Shield className="h-5 w-5 text-accent" />
             </div>
@@ -800,34 +662,11 @@ function ClientPortalPreview() {
             </div>
             <div className="space-y-2">
               {checklist.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2"
-                >
-                  <span className="text-xs font-medium text-foreground">
-                    {item.label}
-                  </span>
-                  {item.done ? (
-                    <CheckCircle2 className="h-4 w-4 text-accent" />
-                  ) : (
-                    <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  )}
+                <div key={item.label} className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="text-xs font-medium text-foreground">{item.label}</span>
+                  {item.done ? <CheckCircle2 className="h-4 w-4 text-accent" /> : <UploadCloud className="h-4 w-4 text-muted-foreground" />}
                 </div>
               ))}
-            </div>
-            <div className="mt-4 rounded-lg border border-dashed border-accent/50 bg-accent/10 p-4 text-center">
-              <UploadCloud className="mx-auto mb-2 h-5 w-5 text-accent-foreground" />
-              <p className="text-xs font-semibold text-primary">
-                Upload employment letter
-              </p>
-            </div>
-            <div className="mt-4 rounded-lg border border-border bg-background p-3">
-              <p className="text-xs font-semibold text-primary">
-                Your agent is reviewing your documents
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Message: Bank statements received. Thank you.
-              </p>
             </div>
           </div>
         </div>
@@ -836,261 +675,290 @@ function ClientPortalPreview() {
   );
 }
 
-function ClientProfileAndVault() {
-  return (
-    <section className="grid gap-5 lg:grid-cols-[1fr_0.95fr]">
-      <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-        <SectionHeader
-          eyebrow="Client profile"
-          title="Everything about one client in one place."
-          description="Returning clients do not start from zero. Their details, history, notes, messages, and previous applications stay ready."
-          Icon={FolderOpen}
-        />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {[
-            ["Name", "Maria Silva"],
-            ["Nationality", "Brazil"],
-            ["Passport", "YA842913"],
-            ["Expiry", "18 Sep 2026"],
-            ["Destination", "Portugal"],
-            ["Visa type", "Schengen"],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-border bg-background p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {label}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {["Application history", "Private notes", "Communication log"].map(
-            (item) => (
-              <div
-                key={item}
-                className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-3 text-sm font-semibold text-primary"
-              >
-                {item}
-              </div>
-            ),
-          )}
-        </div>
-      </article>
+function TemplatesSection({ intakes }: { intakes: Intake[] }) {
+  const [showForm, setShowForm] = useState(false);
 
-      <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-        <SectionHeader
-          eyebrow="Document vault"
-          title="The retention layer."
-          description="Every upload becomes a permanent, tagged record with expiry alerts before critical documents go stale."
-          Icon={FileArchive}
-        />
-        <div className="mt-5 space-y-3">
-          {[
-            ["Passport copy", "Uploaded 12 Jan 2026", "Expires in 88 days"],
-            ["Bank statements", "Uploaded 18 Jun 2026", "Verified"],
-            ["Employment letter", "Requested today", "Missing"],
-          ].map(([name, upload, status]) => (
-            <div
-              key={name}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {name}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{upload}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-secondary-foreground">
-                {status}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-amber-950">
-            <CalendarClock className="h-4 w-4" />
-            90-day passport expiry alert
-          </div>
-          <p className="mt-1 text-xs text-amber-900">
-            Fatima Khan needs a renewal reminder before the next application.
-          </p>
-        </div>
-      </article>
-    </section>
-  );
-}
+  const topCombos = useMemo(() => {
+    const counts = new Map<string, { destination: string; visaType: string; count: number }>();
+    for (const intake of intakes) {
+      const key = `${intake.destination}|${intake.visaType}`;
+      const existing = counts.get(key);
+      if (existing) existing.count += 1;
+      else counts.set(key, { destination: intake.destination, visaType: intake.visaType, count: 1 });
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+  }, [intakes]);
 
-function TemplatesSection() {
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <SectionHeader
-          eyebrow="Application templates"
-          title="Repeat visas become ten-second workflows."
-          description="Common visa types preload the checklist, client instructions, notes, and processing timeline."
+          eyebrow="Your frequent routes"
+          title="Built from your own real client history."
+          description="The destination and visa type combinations you handle most, so the next matching client is one click to start."
           Icon={ListChecks}
         />
-        <Button variant="secondary" className="md:w-auto">
-          <FileText className="h-4 w-4" />
-          New template
-        </Button>
       </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {templates.map((template) => (
-          <article
-            key={template.name}
-            className="rounded-lg border border-border bg-background p-4"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <FileText className="h-5 w-5 text-accent" />
-              <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                Saved
-              </span>
-            </div>
-            <h3 className="text-base font-semibold text-primary">
-              {template.name}
-            </h3>
-            <p className="mt-2 min-h-10 text-sm leading-relaxed text-muted-foreground">
-              {template.detail}
-            </p>
-            <Button className="mt-4 w-full" size="sm" variant="secondary">
-              Apply template
-            </Button>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function GrowthPanels() {
-  return (
-    <section className="grid gap-5 lg:grid-cols-3">
-      {featurePanels.map((panel) => (
-        <article
-          key={panel.eyebrow}
-          className="rounded-lg border border-border bg-card p-5 shadow-sm"
-        >
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <panel.Icon className="h-5 w-5" />
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-            {panel.eyebrow}
-          </p>
-          <h3 className="mt-2 font-serif text-2xl font-semibold leading-tight text-primary">
-            {panel.title}
-          </h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {panel.description}
-          </p>
-          <div className="mt-4 space-y-2">
-            {panel.items.map((item) => (
-              <div key={item} className="flex items-start gap-2 text-sm text-foreground">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <span>{item}</span>
+      {topCombos.length === 0 ? (
+        <p className="mt-5 text-sm text-muted-foreground text-center py-6">
+          Add a few clients and your most common routes will show up here automatically.
+        </p>
+      ) : (
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {topCombos.map((combo) => (
+            <article key={`${combo.destination}-${combo.visaType}`} className="rounded-lg border border-border bg-background p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <FileText className="h-5 w-5 text-accent" />
+                <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  {combo.count} client{combo.count === 1 ? "" : "s"}
+                </span>
               </div>
-            ))}
-          </div>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function OnboardingExperience() {
-  return (
-    <section className="rounded-lg border border-border bg-primary p-5 text-primary-foreground shadow-sm md:p-6">
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-            <UserPlus className="h-3.5 w-3.5" />
-            First 10 minutes
-          </div>
-          <h2 className="font-serif text-3xl font-semibold leading-tight">
-            Onboarding that makes the agent feel the magic immediately.
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
-            One real client, one portal link, one simulated upload notification.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            ["1", "Add your first client", "Name, email, destination in 60 seconds"],
-            ["2", "Send portal link", "One click, branded client experience"],
-            ["3", "Uploaded passport", "Simulated notification lands instantly"],
-            ["4", "Stay decision", "The agent has felt the operating system"],
-          ].map(([step, title, detail]) => (
-            <div
-              key={step}
-              className="rounded-lg border border-white/15 bg-white/10 p-4"
-            >
-              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-foreground">
-                {step}
-              </div>
-              <h3 className="font-semibold">{title}</h3>
-              <p className="mt-1 text-sm text-primary-foreground/70">
-                {detail}
-              </p>
-            </div>
+              <h3 className="text-base font-semibold text-primary">{combo.destination}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{visaTypeLabel(combo.visaType)}</p>
+              <Button className="mt-4 w-full" size="sm" variant="secondary" onClick={() => setShowForm(true)}>
+                Add a client for this route
+              </Button>
+            </article>
           ))}
         </div>
-      </div>
+      )}
+      {showForm && (
+        <div className="mt-4">
+          <NewClientForm onCreated={() => setShowForm(false)} />
+        </div>
+      )}
     </section>
+  );
+}
+
+function ReferralPanel() {
+  const stats = useQuery(api.referralRewards.getMyReferralRewardStatus, {});
+  const redeemReferralReward = useMutation(api.referralRewards.redeemReferralReward);
+  const [copied, setCopied] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
+
+  const handleRedeem = async () => {
+    setRedeeming(true);
+    try {
+      const result = await redeemReferralReward({});
+      toast.success(`${result.monthsGranted} free month${result.monthsGranted === 1 ? "" : "s"} of Pro unlocked!`);
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Could not redeem your reward.");
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  return (
+    <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+      <SectionHeader
+        eyebrow="Referrals"
+        title="Real signups, tracked honestly."
+        description="Every signup that used your code is counted here in real time. Commission payouts will activate once a real billing connection is in place — this shows the true number today, not a placeholder."
+        Icon={CreditCard}
+      />
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signups via your code</p>
+          <p className="mt-1 text-2xl font-semibold text-primary">{stats?.signupCount ?? "—"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your referral code</p>
+          <button
+            type="button"
+            disabled={!stats?.referralCode}
+            onClick={() => {
+              if (!stats?.referralCode) return;
+              navigator.clipboard.writeText(stats.referralCode).then(() => {
+                setCopied(true);
+                toast.success("Referral code copied.");
+                setTimeout(() => setCopied(false), 2000);
+              }).catch(() => toast.error("Failed to copy."));
+            }}
+            className="mt-1 flex items-center gap-2 text-lg font-semibold text-primary cursor-pointer disabled:opacity-50"
+          >
+            {stats?.referralCode ?? "Sign in to see your code"}
+            {stats?.referralCode && (copied ? <CheckCircle2 className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4 text-muted-foreground" />)}
+          </button>
+        </div>
+      </div>
+      {stats && (
+        <div className="mt-3 rounded-lg border border-border bg-background p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Free months earned</p>
+          {stats.monthsRedeemable > 0 ? (
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="text-2xl font-semibold text-accent">{stats.monthsRedeemable}</p>
+              <button
+                disabled={redeeming}
+                onClick={() => void handleRedeem()}
+                className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60"
+              >
+                {redeeming ? "Redeeming…" : "Redeem"}
+              </button>
+            </div>
+          ) : stats.capReached ? (
+            <p className="mt-1 text-xs text-muted-foreground">Maximum lifetime reward reached (12 months).</p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">{stats.signupCount % 3}/3 toward your next free month</p>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+const TIER_LABELS: Record<string, string> = {
+  agent_listing: "Agent Listing",
+  agent_featured: "Agent Featured",
+  agency_white_label: "Agency White-Label",
+};
+
+function LicenseRedemptionPanel() {
+  const myProfile = useQuery(api.agents.getMyProfile, {});
+  const redeemCode = useMutation(api.licenseCodes.redeemLicenseCode);
+  const [code, setCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+
+  const handleRedeem = async () => {
+    if (!code.trim()) {
+      toast.error("Please enter a license code.");
+      return;
+    }
+    setRedeeming(true);
+    try {
+      const result = await redeemCode({ code });
+      toast.success(`License activated: ${TIER_LABELS[result.plan] ?? result.plan}`);
+      setCode("");
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Failed to redeem code.");
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  return (
+    <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+      <SectionHeader
+        eyebrow="License"
+        title="Redeem a license code."
+        description="If you were issued an activation code (e.g. after a white-label application), enter it here to unlock your plan — no payment needed."
+        Icon={BadgeCheck}
+      />
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Plan</p>
+          <p className="mt-1 text-lg font-semibold text-primary">{myProfile?.tier ? TIER_LABELS[myProfile.tier] ?? myProfile.tier : "Free"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">License Code</p>
+          <div className="flex gap-2">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="XXXX-XXXX-XXXX"
+              disabled={redeeming}
+              className="flex-1 h-9 rounded-md border border-border bg-background px-2.5 text-sm font-mono disabled:opacity-60"
+            />
+            <button
+              disabled={redeeming}
+              onClick={() => { void handleRedeem(); }}
+              className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60 whitespace-nowrap"
+            >
+              {redeeming ? "Redeeming…" : "Redeem"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
 export default function AgentDashboardPreviewPage() {
   useSeo({
     title: "Agent Operating System",
-    description:
-      "VisaClear agent dashboard, client portal, document vault, templates, team management, analytics, and referral centre.",
+    description: "VisaClear agent dashboard: real client pipeline, document portal, and follow-up tools for visa agencies.",
   });
 
   const navigate = useNavigate();
+  const goBack = useSmartBack("/agents");
+  const myProfile = useQuery(api.agents.getMyProfile, {});
+  const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
+  const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
+  const contactRequests = (useQuery(api.agents.getMyContactRequests, {}) ?? []) as ContactRequest[];
+  const markDashboardViewed = useMutation(api.agents.markDashboardViewed);
+
+  const lastViewedAt = myProfile?.lastDashboardViewAt;
+  const newUploadsSinceLastVisit = useMemo(() => {
+    if (!lastViewedAt) return 0;
+    let count = 0;
+    for (const intake of intakes) {
+      for (const doc of intake.documents) {
+        if (new Date(doc.uploadedAt) > new Date(lastViewedAt)) count += 1;
+      }
+    }
+    return count;
+  }, [intakes, lastViewedAt]);
+
+  useEffect(() => {
+    if (myProfile) {
+      void markDashboardViewed({}).catch(() => {});
+    }
+    // Only fire once per real profile load, not on every intake re-fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myProfile?._id]);
+
+  const unreadEnquiries = contactRequests.filter((r) => !r.read).length;
+  const kpis: { label: string; value: string | number; detail: string; Icon: LucideIcon }[] = [
+    {
+      label: "Total clients",
+      value: intakes.length,
+      detail: `${intakes.filter((i) => i.status === "complete").length} completed`,
+      Icon: Users,
+    },
+    {
+      label: "Awaiting documents",
+      value: intakes.filter((i) => i.status === "awaiting_documents").length,
+      detail: "Clients who haven't uploaded yet",
+      Icon: ClipboardCheck,
+    },
+    {
+      label: "Ready for your review",
+      value: intakes.filter((i) => i.status === "documents_received").length,
+      detail: "Documents uploaded, awaiting you",
+      Icon: BadgeCheck,
+    },
+    {
+      label: "New enquiries",
+      value: unreadEnquiries,
+      detail: newUploadsSinceLastVisit > 0 ? `${newUploadsSinceLastVisit} new upload${newUploadsSinceLastVisit === 1 ? "" : "s"} since last visit` : "From the marketplace",
+      Icon: CircleDollarSign,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              aria-label="Go back"
-              className="-ml-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
-              onClick={() => navigate(-1)}
-              type="button"
-            >
+            <button aria-label="Go back" className="-ml-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary" onClick={goBack} type="button">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <button
-              className="flex min-w-0 items-center gap-2.5 text-left"
-              onClick={() => navigate("/")}
-              type="button"
-            >
+            <button className="flex min-w-0 items-center gap-2.5 text-left" onClick={() => navigate("/")} type="button">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary">
                 <Globe className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-serif text-lg font-semibold leading-none text-primary">
-                    VisaClear
-                  </span>
-                  <span className="hidden rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-foreground sm:inline">
-                    Agent OS
-                  </span>
+                  <span className="font-serif text-lg font-semibold leading-none text-primary">VisaClear</span>
+                  <span className="hidden rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-foreground sm:inline">Agent OS</span>
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  Operating system for visa agencies
-                </p>
+                <p className="truncate text-[11px] text-muted-foreground">Operating system for visa agencies</p>
               </div>
             </button>
           </div>
-          <Button
-            size="sm"
-            className="shrink-0"
-            onClick={() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" })}
-          >
+          <Button size="sm" className="shrink-0" onClick={() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" })}>
             <UserPlus className="h-4 w-4" />
             Add client
           </Button>
@@ -1098,45 +966,19 @@ export default function AgentDashboardPreviewPage() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:py-8">
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6"
-        >
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
                 <Shield className="h-3.5 w-3.5" />
-                Agent platform blueprint
+                Agent platform
               </div>
               <h1 className="max-w-4xl font-serif text-3xl font-semibold leading-tight text-primary md:text-5xl">
-                The operating system for the entire visa business.
+                Your real business, in one place.
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                From first inquiry to boarding the plane, the agent sees the
-                business, the client sees their portal, and every document,
-                deadline, message, and payout has a home.
+                Every number below comes from your own real clients and documents — nothing here is a demo.
               </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:min-w-[360px]">
-              {[
-                ["Deadline guard", "3-day red alerts"],
-                ["White-label", "Agency tier ready"],
-                ["Retention", "Permanent vault"],
-                ["Growth", "25% referral"],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-border bg-background p-3"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-primary">
-                    {value}
-                  </p>
-                </div>
-              ))}
             </div>
           </div>
         </motion.section>
@@ -1144,83 +986,59 @@ export default function AgentDashboardPreviewPage() {
         <YourClients />
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((kpi) => (
-            <KpiCard key={kpi.label} {...kpi} />
-          ))}
+          {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <PipelineBoard />
-          <TodayActions />
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <PipelineBoard intakes={intakes} />
+          <TodayActions intakes={intakes} contactRequests={contactRequests} />
         </section>
 
         <ClientPortalPreview />
 
-        <ClientProfileAndVault />
+        <TemplatesSection intakes={intakes} />
 
-        <TemplatesSection />
-
-        <GrowthPanels />
-
-        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-5 lg:grid-cols-2">
           <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
             <SectionHeader
-              eyebrow="Revenue"
-              title="Referral and commission centre."
-              description="Agents see the exact commercial result of promoting VisaClear to travelers who upgrade to Pro."
-              Icon={CreditCard}
+              eyebrow="Agent analytics"
+              title="Business intelligence from your real pipeline."
+              description="Computed live from your own clients."
+              Icon={BarChart3}
             />
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {[
-                ["Referrals sent", "312"],
-                ["Conversions", "68"],
-                ["Pending payout", "$1,240"],
-                ["Total earned", "$18,420"],
+                ["Total clients", String(intakes.length)],
+                ["Completion rate", intakes.length > 0 ? `${Math.round((intakes.filter((i) => i.status === "complete").length / intakes.length) * 100)}%` : "—"],
+                ["Top destination", intakes.length > 0 ? (Object.entries(intakes.reduce((acc, i) => { acc[i.destination] = (acc[i.destination] ?? 0) + 1; return acc; }, {} as Record<string, number>)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—") : "—"],
+                ["New enquiries", String(unreadEnquiries)],
               ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-border bg-background p-4"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold text-primary">
-                    {value}
-                  </p>
+                <div key={label} className="rounded-lg border border-border bg-background p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-primary">{value}</p>
                 </div>
               ))}
-            </div>
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm font-semibold text-primary">
-              <Star className="h-4 w-4 text-accent" />
-              25% recurring commission for the life of every subscription.
             </div>
           </article>
 
           <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
             <SectionHeader
-              eyebrow="Security and control"
-              title="Built for confidential client operations."
-              description="The platform keeps private notes private, role access scoped, and sensitive documents organized by client and application."
+              eyebrow="Security and privacy"
+              title="Real, account-scoped privacy."
+              description="What's actually true today — not a roadmap promise."
               Icon={LockKeyhole}
             />
             <div className="mt-5 space-y-3">
               {[
-                ["Role-based access", "Junior consultants see assigned clients only"],
-                ["Document history", "Every file keeps upload date and tag"],
-                ["Communication log", "Messages stay attached to the client profile"],
+                ["Account-scoped access", "Only you can see your clients and their documents — enforced on every request, not just in the UI."],
+                ["Document history", "Every upload keeps its real upload date and label."],
+                ["Secure links", "Each client gets a unique, unguessable upload token instead of a shared inbox."],
               ].map(([title, detail]) => (
-                <div
-                  key={title}
-                  className="flex items-start gap-3 rounded-lg border border-border bg-background p-3"
-                >
+                <div key={title} className="flex items-start gap-3 rounded-lg border border-border bg-background p-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                   <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {title}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {detail}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">{title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
                   </div>
                 </div>
               ))}
@@ -1228,7 +1046,38 @@ export default function AgentDashboardPreviewPage() {
           </article>
         </section>
 
-        <OnboardingExperience />
+        <ReferralPanel />
+
+        <LicenseRedemptionPanel />
+
+        <section className="rounded-lg border border-border bg-primary p-5 text-primary-foreground shadow-sm md:p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
+                <UserPlus className="h-3.5 w-3.5" />
+                First 10 minutes
+              </div>
+              <h2 className="font-serif text-3xl font-semibold leading-tight">Feel the magic with one real client.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
+                One real client, one real portal link, one real upload notification.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ["1", "Add your first client", "Name, WhatsApp number, destination in 60 seconds"],
+                ["2", "Send the link on WhatsApp", "One tap, the client gets it where they already are"],
+                ["3", "They upload a document", "Your dashboard updates live — no refresh needed"],
+                ["4", "You review and move them forward", "The pipeline reflects reality, not a demo"],
+              ].map(([step, title, detail]) => (
+                <div key={step} className="rounded-lg border border-white/15 bg-white/10 p-4">
+                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-foreground">{step}</div>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-1 text-sm text-primary-foreground/70">{detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );

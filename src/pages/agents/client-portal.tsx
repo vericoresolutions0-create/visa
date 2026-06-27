@@ -4,10 +4,13 @@ import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } fr
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { getChecklist, type VisaType } from "@/lib/visa-data.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
+import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
+import { PreSubmissionAuditCard } from "@/components/checklist/pre-submission-audit.tsx";
 import {
   Globe,
   Shield,
@@ -16,15 +19,20 @@ import {
   LogIn,
   FileWarning,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB, matches document-scan use case
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 function PortalHeader() {
+  const goBack = useSmartBack("/");
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
       <div className="max-w-2xl mx-auto px-6 py-4 flex items-center gap-3">
+        <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
           <Globe className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
@@ -134,7 +142,12 @@ function ClientPortalInner({
             />
           </div>
         </div>
+        <div className="mt-4">
+          <WaitTimeStat destination={destination} visaType={visaType} variant="card" />
+        </div>
       </div>
+
+      <PreSubmissionAuditCard destination={destination} visaType={visaType} />
 
       <div className="space-y-3">
         {checklist.items.map((item) => {

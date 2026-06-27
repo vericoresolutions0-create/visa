@@ -1,15 +1,8 @@
 "use node";
 
-import { Hercules } from "@usehercules/sdk";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-
-// Shares the same email dependency as emails/reminder.ts — both need a live
-// HERCULES_API_KEY (or, once migrated, a standalone provider) to actually send.
-const hercules = new Hercules({
-  apiKey: process.env.HERCULES_API_KEY!,
-  apiVersion: "2025-12-09",
-});
+import { sendEmail } from "./sendEmail.ts";
 
 export const sendPolicyUpdateEmail = internalAction({
   args: {
@@ -19,11 +12,8 @@ export const sendPolicyUpdateEmail = internalAction({
     body: v.string(),
   },
   handler: async (_ctx, args) => {
-    await hercules.email.send({
-      from: "hello@vericore.app",
-      to: args.to,
-      subject: `${args.countryName} policy update — VisaClear`,
-      html: `
+    const subject = `${args.countryName} policy update — VisaClear`;
+    const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -66,7 +56,8 @@ export const sendPolicyUpdateEmail = internalAction({
     </td></tr>
   </table>
 </body>
-</html>`,
-    });
+</html>`;
+
+    await sendEmail({ to: args.to, subject, html });
   },
 });

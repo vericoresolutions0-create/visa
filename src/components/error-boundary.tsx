@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertCircle, Home, RotateCw, UserRoundCheck } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { signInDemoUser } from "@/hooks/use-demo-auth.ts";
+import { captureException } from "@/lib/sentry.ts";
 
 type ErrorBoundaryProps = {
   children: ReactNode;
@@ -30,6 +31,7 @@ export class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("App runtime error:", error, info.componentStack);
+    captureException(error, { componentStack: info.componentStack });
   }
 
   render() {

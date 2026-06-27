@@ -47,7 +47,7 @@ export async function downloadChecklistPDF(
   doc.setFontSize(8);
   doc.setTextColor(180, 190, 210);
   doc.setFont("helvetica", "italic");
-  doc.text("\"It's all about Privacy.\"  |  GDPR · NDPA · CISA Certified", pageW - margin, 18, { align: "right" });
+  doc.text("\"It's all about Privacy.\"  |  GDPR & NDPA Principles · CISA Certified", pageW - margin, 18, { align: "right" });
 
   // Visa title
   doc.setFont("helvetica", "bold");
@@ -190,7 +190,7 @@ export async function downloadChecklistPDF(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(160, 175, 200);
-    doc.text("VisaClear by Vericore  |  visaclear.com  |  GDPR & NDPA Compliant  |  Not Legal Advice", margin, pageH - 4);
+    doc.text("VisaClear by Vericore  |  visaclear.com  |  GDPR & NDPA Principles  |  Not Legal Advice", margin, pageH - 4);
     doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 4, { align: "right" });
   }
 

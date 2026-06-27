@@ -3,14 +3,17 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { api } from "@/convex/_generated/api.js";
+import type { Id } from "@/convex/_generated/dataModel.js";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Globe, ArrowLeft, Users, Star, MapPin, ChevronRight,
-  Plus, Check, Shield, LogIn,
+  Plus, Check, Shield, LogIn, MessageCircle,
   Languages, Briefcase, Phone, BadgeCheck, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
@@ -35,8 +38,37 @@ type AgentProfile = {
   phone?: string;
 };
 
+function toWhatsAppNumber(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
 function AgentCard({ agent }: { agent: AgentProfile }) {
   const [contacted, setContacted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const contactAgent = useMutation(api.agents.contactAgent);
+
+  const handleContact = async () => {
+    setSending(true);
+    try {
+      await contactAgent({ agentProfileId: agent._id as Id<"agent_profiles"> });
+      setContacted(true);
+      toast.success(`Your enquiry was sent to ${agent.fullName}.`);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Failed to send enquiry. Please try again.");
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const whatsappHref = agent.phone
+    ? `https://wa.me/${toWhatsAppNumber(agent.phone)}?text=${encodeURIComponent(
+        `Hi ${agent.fullName}, I found your profile on VisaClear and I'd like to ask about your visa services.`,
+      )}`
+    : null;
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors">
@@ -87,11 +119,8 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
       </div>
       <div className="mt-4 flex gap-2">
         <button
-          onClick={() => {
-            setContacted(true);
-            toast.success(`Contact request sent to ${agent.fullName}`);
-          }}
-          disabled={contacted}
+          onClick={() => { void handleContact(); }}
+          disabled={contacted || sending}
           className={cn(
             "flex-1 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer",
             contacted
@@ -99,12 +128,24 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
               : "bg-primary text-primary-foreground hover:bg-primary/90"
           )}
         >
-          {contacted ? <><Check className="w-3.5 h-3.5 inline mr-1" /> Request Sent</> : "Contact Agent"}
+          {contacted ? <><Check className="w-3.5 h-3.5 inline mr-1" /> Enquiry Sent</> : sending ? "Sending…" : "Contact Agent"}
         </button>
+        {whatsappHref && (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#25D366]/30 bg-[#25D366]/10 text-xs font-medium text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors cursor-pointer"
+            title="Message on WhatsApp"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+          </a>
+        )}
         {agent.phone && (
           <a
             href={`tel:${agent.phone}`}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+            title="Call"
           >
             <Phone className="w-3.5 h-3.5" />
           </a>
@@ -261,6 +302,7 @@ function AgentsInner() {
     {},
     { initialNumItems: 20 },
   );
+  const featuredAgents = useQuery(api.agents.getFeaturedAgents, {});
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const [showRegister, setShowRegister] = useState(false);
   const [filterSpec, setFilterSpec] = useState("");
@@ -269,9 +311,11 @@ function AgentsInner() {
     return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}</div>;
   }
 
-  const filtered = filterSpec
-    ? agents.filter(a => a.specialisations.includes(filterSpec))
-    : agents;
+  const featuredIds = new Set((featuredAgents ?? []).map((a) => a._id));
+  const filtered = (filterSpec
+    ? agents.filter((a) => a.specialisations.includes(filterSpec))
+    : agents
+  ).filter((a) => !featuredIds.has(a._id));
 
   return (
     <div className="space-y-6">
@@ -284,6 +328,19 @@ function AgentsInner() {
             <p className="text-xs text-muted-foreground">
               {myProfile.verified ? "Applicants can now find and contact you." : "Our team will review your profile within 2–3 business days."}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Featured agents (real paid-tier ranking) */}
+      {featuredAgents && featuredAgents.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="w-4 h-4 text-accent fill-accent" />
+            <span className="font-semibold text-sm text-primary uppercase tracking-widest">Featured Agents</span>
+          </div>
+          <div className="space-y-3">
+            {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} />)}
           </div>
         </div>
       )}
@@ -347,7 +404,7 @@ function AgentsInner() {
             <span className="font-semibold text-sm text-primary">Are you a visa agent?</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Register your profile to connect with thousands of applicants on VisaClear. Get verified to display a trust badge.
+            Register your profile to connect with applicants searching VisaClear for visa help. Get verified to display a trust badge.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button size="sm" className="cursor-pointer" onClick={() => setShowRegister(true)}>
@@ -372,13 +429,14 @@ function AgentsInner() {
 export default function AgentsPage() {
   useSeo({ title: "Agents Marketplace", description: "Find trusted visa agents and immigration consultants on VisaClear. Connect with verified experts who know your destination country inside out." });
   const navigate = useNavigate();
+  const goBack = useSmartBack("/");
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
@@ -407,7 +465,7 @@ export default function AgentsPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
             <Shield className="w-3.5 h-3.5" /> Agent Partner Hub
           </div>
-          <div className="grid md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
             <div className="text-left md:text-left">
               <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">
                 Premium visibility for visa professionals.

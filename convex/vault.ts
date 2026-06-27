@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { MutationCtx } from "./_generated/server";
+import { validateUploadedFile } from "./fileValidation";
+import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
 
 const VAULT_CATEGORIES = [
   "identity",
@@ -11,17 +12,6 @@ const VAULT_CATEGORIES = [
   "photo",
 ] as const;
 
-async function getUserOrThrow(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-    .unique();
-  if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-  return user;
-}
-
 function requirePlan(plan: string | undefined) {
   if (plan !== "pro" && plan !== "expert") {
     throw new ConvexError({
@@ -29,6 +19,20 @@ function requirePlan(plan: string | undefined) {
       message: "The Document Vault is a Pro feature. Upgrade at /pricing.",
     });
   }
+}
+
+const EXPIRY_REMINDER_LEAD_DAYS = 60;
+
+// Reminders use date-only strings (YYYY-MM-DD), matching reminderProcessor.ts's
+// "today" comparison format. Clamped to today so an expiry that's already
+// closer than the lead time still gets a reminder tomorrow, not one dated
+// in the past that the dispatch cron would (correctly) treat as overdue but
+// the user never got advance warning for.
+function computeExpiryReminderDueDate(expiryDate: string, leadDays: number = EXPIRY_REMINDER_LEAD_DAYS): string {
+  const dueMs = new Date(expiryDate).getTime() - leadDays * 24 * 60 * 60 * 1000;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const dueStr = new Date(dueMs).toISOString().split("T")[0];
+  return dueStr < todayStr ? todayStr : dueStr;
 }
 
 // ─── Get a URL to upload a vault document to ─────────────────────────────────
@@ -55,7 +59,8 @@ export const addDocument = mutation({
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
     requirePlan(user.plan);
-    return await ctx.db.insert("vault_documents", {
+    await validateUploadedFile(ctx, args.storageId);
+    const docId = await ctx.db.insert("vault_documents", {
       userId: user._id,
       category: args.category,
       label: args.label,
@@ -66,6 +71,100 @@ export const addDocument = mutation({
       expiryDate: args.expiryDate,
       uploadedAt: new Date().toISOString(),
     });
+
+    // Auto-create the reminder so a user who sets an expiry date at upload
+    // time never has to remember to come back and set one manually.
+    if (args.expiryDate && user.email) {
+      await ctx.db.insert("reminders", {
+        userId: user._id,
+        vaultDocumentId: docId,
+        title: `${args.label} expires soon`,
+        note: `This document in your Vault expires on ${args.expiryDate}.`,
+        dueDate: computeExpiryReminderDueDate(args.expiryDate),
+        email: user.email,
+        sent: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    return docId;
+  },
+});
+
+// ─── Update a document's expiry date after upload ────────────────────────────
+export const updateDocumentExpiry = mutation({
+  args: { id: v.id("vault_documents"), expiryDate: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await getUserOrThrow(ctx);
+    const doc = await ctx.db.get(args.id);
+    if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Document not found" });
+    if (doc.userId !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this document" });
+    }
+    await ctx.db.patch(args.id, { expiryDate: args.expiryDate });
+
+    // Keep any existing unsent reminder in sync with the corrected date,
+    // rather than leaving it pointing at a now-wrong expiry. If the expiry
+    // was cleared, leave an existing reminder alone — the user may still
+    // want to be reminded even without a tracked date.
+    if (args.expiryDate) {
+      const existingReminder = (
+        await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect()
+      ).find((r) => r.vaultDocumentId === args.id && !r.sent);
+
+      const dueDate = computeExpiryReminderDueDate(args.expiryDate);
+      if (existingReminder) {
+        await ctx.db.patch(existingReminder._id, { dueDate });
+      } else if (user.email) {
+        await ctx.db.insert("reminders", {
+          userId: user._id,
+          vaultDocumentId: args.id,
+          title: `${doc.label} expires soon`,
+          note: `This document in your Vault expires on ${args.expiryDate}.`,
+          dueDate,
+          email: user.email,
+          sent: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  },
+});
+
+// ─── Manual backfill: set a reminder for a document that predates auto-creation ──
+export const createExpiryReminder = mutation({
+  args: { id: v.id("vault_documents"), leadDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await getUserOrThrow(ctx);
+    const doc = await ctx.db.get(args.id);
+    if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Document not found" });
+    if (doc.userId !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this document" });
+    }
+    if (!doc.expiryDate) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Add an expiry date to this document first." });
+    }
+    if (!user.email) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Your account needs an email address to receive reminders." });
+    }
+
+    const existingReminder = (
+      await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect()
+    ).find((r) => r.vaultDocumentId === args.id && !r.sent);
+    if (existingReminder) {
+      throw new ConvexError({ code: "ALREADY_EXISTS", message: "A reminder is already set for this document." });
+    }
+
+    return await ctx.db.insert("reminders", {
+      userId: user._id,
+      vaultDocumentId: args.id,
+      title: `${doc.label} expires soon`,
+      note: `This document in your Vault expires on ${doc.expiryDate}.`,
+      dueDate: computeExpiryReminderDueDate(doc.expiryDate, args.leadDays ?? EXPIRY_REMINDER_LEAD_DAYS),
+      email: user.email,
+      sent: false,
+      createdAt: new Date().toISOString(),
+    });
   },
 });
 
@@ -73,12 +172,7 @@ export const addDocument = mutation({
 export const listMyDocuments = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
     const docs = await ctx.db
       .query("vault_documents")

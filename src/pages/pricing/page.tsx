@@ -16,10 +16,10 @@ import {
   Bell,
   Users,
   MessageSquare,
-  Star,
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
+import { StarRating } from "@/components/star-rating.tsx";
 
 // ─── Plan data ───────────────────────────────────────────────────────────────
 type BillingCycle = "monthly" | "yearly";
@@ -37,7 +37,7 @@ const PLANS = [
     highlight: false,
     features: [
       { text: "3 checklists per month", included: true },
-      { text: "9 destination countries", included: true },
+      { text: "All 24 destination countries", included: true },
       { text: "Document guidance & tips", included: true },
       { text: "Official embassy links", included: true },
       { text: "Mobile friendly", included: true },
@@ -60,7 +60,7 @@ const PLANS = [
     highlight: true,
     features: [
       { text: "Unlimited checklists", included: true },
-      { text: "All 24+ destination countries", included: true },
+      { text: "All 24 destination countries", included: true },
       { text: "Document guidance & tips", included: true },
       { text: "Official embassy links", included: true },
       { text: "Mobile friendly", included: true },
@@ -83,7 +83,7 @@ const PLANS = [
     highlight: false,
     features: [
       { text: "Everything in Pro", included: true },
-      { text: "All 24+ destination countries", included: true },
+      { text: "All 24 destination countries", included: true },
       { text: "Document guidance & tips", included: true },
       { text: "Official embassy links", included: true },
       { text: "Mobile friendly", included: true },
@@ -475,7 +475,7 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-20 rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm"
         >
-          <div className="grid gap-6 md:grid-cols-[1fr_0.85fr] md:items-center">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_0.85fr] md:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
                 <Briefcase className="w-3.5 h-3.5" /> For agents and agencies
@@ -517,9 +517,15 @@ export default function PricingPage() {
         {/* Testimonials */}
         <div className="mb-20">
           <div className="text-center mb-10">
+            <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
+              Illustrative Examples
+            </p>
             <h2 className="font-serif text-3xl font-semibold text-primary mb-3">
-              Real applicants. Real approvals.
+              What an applicant's experience can look like
             </h2>
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+              Sample scenarios based on common applicant situations — not verified customer quotes.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {TESTIMONIALS.map((t, i) => (
@@ -530,14 +536,8 @@ export default function PricingPage() {
                 transition={{ delay: i * 0.1 }}
                 className="bg-card border border-border rounded-xl p-6"
               >
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, s) => (
-                    <Star
-                      key={s}
-                      className="w-4 h-4 text-accent fill-current"
-                      style={{ color: "oklch(0.72 0.13 80)" }}
-                    />
-                  ))}
+                <div className="mb-4">
+                  <StarRating count={t.stars} className="w-4 h-4 text-accent fill-current" />
                 </div>
                 <p className="text-sm text-foreground leading-relaxed mb-5 italic">{`"${t.text}"`}</p>
                 <div>
@@ -621,9 +621,9 @@ export default function PricingPage() {
           {[
             {
               icon: <Shield className="w-3.5 h-3.5" />,
-              label: "GDPR Compliant",
+              label: "GDPR-Aligned",
             },
-            { icon: <Lock className="w-3.5 h-3.5" />, label: "NDPA Compliant" },
+            { icon: <Lock className="w-3.5 h-3.5" />, label: "NDPA-Aligned" },
             {
               icon: <Award className="w-3.5 h-3.5" />,
               label: "CISA Certified",

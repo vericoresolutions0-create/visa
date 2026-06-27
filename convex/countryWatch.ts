@@ -2,32 +2,16 @@ import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { MutationCtx } from "./_generated/server";
 import { requireAdmin } from "./admin.ts";
+import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
 
 const WATCH_LIMITS: Record<string, number> = { free: 0, pro: 5, expert: 10 };
-
-async function getUserOrThrow(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-    .unique();
-  if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
-  return user;
-}
 
 // ─── My watched countries ─────────────────────────────────────────────────────
 export const getMyWatches = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
     return await ctx.db
       .query("country_watches")
@@ -85,12 +69,7 @@ export const removeWatch = mutation({
 export const getMyFeed = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
     const watches = await ctx.db
       .query("country_watches")

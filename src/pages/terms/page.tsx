@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Globe, ArrowLeft, Shield } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 export default function TermsPage() {
   const navigate = useNavigate();
+  const goBack = useSmartBack("/");
   useSeo({ title: "Terms of Service", description: "Read VisaClear's terms of service. Understand your rights and responsibilities when using our visa preparation platform." });
   const year = new Date().getFullYear();
 
@@ -12,7 +14,7 @@ export default function TermsPage() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("/")}>
@@ -86,28 +88,35 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-serif text-xl font-semibold text-primary mb-3">7. Subscription and Payments</h2>
+            <h2 className="font-serif text-xl font-semibold text-primary mb-3">7. User-Generated Content</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Features such as the Wall of Fame let you submit your own real visa story. You retain ownership of what you submit, but grant us a licence to display it publicly, always without your name or identifying details. We review submissions before they go live and may decline or remove any submission, including ones containing personal identifiers, defamatory content, or anything that violates these Terms. Community-sourced data such as reported processing times reflects individual applicants' real experiences, not an official or guaranteed figure.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-serif text-xl font-semibold text-primary mb-3">8. Subscription and Payments</h2>
             <p className="text-muted-foreground leading-relaxed">
               VisaClear offers free and paid subscription plans. Paid plans are billed monthly or annually. All payments are processed securely. You may cancel your subscription at any time. Refunds are handled in accordance with applicable consumer protection laws. We reserve the right to modify pricing with reasonable notice.
             </p>
           </section>
 
           <section>
-            <h2 className="font-serif text-xl font-semibold text-primary mb-3">8. Intellectual Property</h2>
+            <h2 className="font-serif text-xl font-semibold text-primary mb-3">9. Intellectual Property</h2>
             <p className="text-muted-foreground leading-relaxed">
               All content, design, branding, and functionality of VisaClear is the property of Vericore Ltd and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works without our express written consent.
             </p>
           </section>
 
           <section>
-            <h2 className="font-serif text-xl font-semibold text-primary mb-3">9. Limitation of Liability</h2>
+            <h2 className="font-serif text-xl font-semibold text-primary mb-3">10. Limitation of Liability</h2>
             <p className="text-muted-foreground leading-relaxed">
               To the fullest extent permitted by law, Vericore Ltd shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service, including visa refusals, financial losses, or missed deadlines. Our total liability to you shall not exceed the amount you paid for the Service in the twelve months preceding the claim.
             </p>
           </section>
 
           <section>
-            <h2 className="font-serif text-xl font-semibold text-primary mb-3">10. Governing Law</h2>
+            <h2 className="font-serif text-xl font-semibold text-primary mb-3">11. Governing Law</h2>
             <p className="text-muted-foreground leading-relaxed">
               These Terms shall be governed by and construed in accordance with the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.
             </p>

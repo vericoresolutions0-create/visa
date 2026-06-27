@@ -1,13 +1,8 @@
 "use node";
 
-import { Hercules } from "@usehercules/sdk";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-
-const hercules = new Hercules({
-  apiKey: process.env.HERCULES_API_KEY!,
-  apiVersion: "2025-12-09",
-});
+import { sendEmail } from "./sendEmail.ts";
 
 export const sendReminderEmail = internalAction({
   args: {
@@ -24,11 +19,8 @@ export const sendReminderEmail = internalAction({
       year: "numeric",
     });
 
-    await hercules.email.send({
-      from: "hello@vericore.app",
-      to: args.to,
-      subject: `Reminder: ${args.title} — VisaClear`,
-      html: `
+    const subject = `Reminder: ${args.title} — VisaClear`;
+    const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -59,7 +51,7 @@ export const sendReminderEmail = internalAction({
               </a>
             </div>
             <p style="font-size:12px;color:#999;line-height:1.6;text-align:center;font-style:italic;margin:0;">
-              &ldquo;It&rsquo;s all about Privacy.&rdquo; &nbsp;&middot;&nbsp; GDPR &amp; NDPA Compliant
+              &ldquo;It&rsquo;s all about Privacy.&rdquo; &nbsp;&middot;&nbsp; GDPR &amp; NDPA Principles
             </p>
           </td>
         </tr>
@@ -75,7 +67,8 @@ export const sendReminderEmail = internalAction({
     </td></tr>
   </table>
 </body>
-</html>`,
-    });
+</html>`;
+
+    await sendEmail({ to: args.to, subject, html });
   },
 });

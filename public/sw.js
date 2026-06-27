@@ -13,12 +13,20 @@ self.addEventListener("install", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  let url;
   try {
-    const url = new URL(event.request.url);
-    if (url.pathname.startsWith("/auth")) return;
+    url = new URL(event.request.url);
   } catch {
-    // URL parsing failed, fall through
+    return;
   }
+  if (url.pathname.startsWith("/auth")) return;
+
+  // Only intercept same-origin requests. Cross-origin resources (Google
+  // Fonts, Convex) must hit the network normally — without this check, a
+  // transient failure on any cross-origin request (e.g. a font stylesheet)
+  // fell through to the icon-192.png fallback below, which the browser then
+  // correctly refused to apply as a stylesheet (wrong MIME type).
+  if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(

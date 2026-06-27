@@ -40,7 +40,7 @@ const STEPS = [
       {
         icon: "2",
         label: "Get your checklist",
-        desc: "Every document named precisely , what it is, where to get it, and what embassies actually look for.",
+        desc: "Every document named precisely — what it is, where to get it, and what embassies actually look for.",
       },
       {
         icon: "3",
@@ -59,8 +59,8 @@ const STEPS = [
     heading: "It's all about Privacy.",
     body: "Your data is never sold. Never shared with third parties. Built to GDPR and NDPA standards by a CISA-certified compliance professional. Your refusal letter text and personal documents are processed securely and stay yours.",
     badges: [
-      "GDPR Compliant",
-      "NDPA Compliant",
+      "GDPR-Aligned",
+      "NDPA-Aligned",
       "CISA Certified",
       "End-to-end encrypted",
     ],

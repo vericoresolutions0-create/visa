@@ -1,4 +1,5 @@
 import { query } from "./_generated/server";
+import { getCurrentUser } from "./authHelpers.ts";
 
 type UrgentAction = { label: string; tone: "red" | "amber" };
 
@@ -13,12 +14,7 @@ function daysUntil(dateStr: string): number {
 export const getTravelHealth = query({
   args: {},
   handler: async (ctx): Promise<{ score: number; actions: UrgentAction[] } | "locked" | null> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = await getCurrentUser(ctx);
     if (!user) return null;
     if (user.plan !== "pro" && user.plan !== "expert") return "locked";
 

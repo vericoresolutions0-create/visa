@@ -424,7 +424,7 @@ export default function PassportPhotoPage() {
         {/* Trust row */}
         <div className="flex flex-wrap items-center justify-center gap-4 py-2">
           {[
-            { icon: <Shield className="w-3 h-3" />, label: "GDPR Compliant" },
+            { icon: <Shield className="w-3 h-3" />, label: "GDPR-Aligned" },
             { icon: <Lock className="w-3 h-3" />, label: "Photo not stored" },
             { icon: <Award className="w-3 h-3" />, label: "CISA Certified" },
           ].map((t) => (

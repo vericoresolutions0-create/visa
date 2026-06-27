@@ -7,8 +7,11 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
+import { ConvexError } from "convex/values";
 import {
   ArrowLeft,
+  CheckCircle2,
+  Copy,
   CreditCard,
   Globe,
   Landmark,
@@ -30,6 +33,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
+import { ALL_COUNTRIES } from "@/lib/countries.ts";
 
 type PayoutMethod = "bank" | "mobile_money" | "paypal";
 
@@ -45,10 +49,34 @@ function ProfileSettingsInner() {
     api.users.getCurrentUser,
     isDemoAuthenticated ? "skip" : {},
   );
+  const referralStats = useQuery(
+    api.referralRewards.getMyReferralRewardStatus,
+    isDemoAuthenticated ? "skip" : {},
+  );
+  const redeemReferralReward = useMutation(api.referralRewards.redeemReferralReward);
+  const [redeemingReward, setRedeemingReward] = useState(false);
+  const [demoReferralStats, setDemoReferralStats] = useState({
+    signupCount: 7,
+    monthsEarned: 2,
+    monthsGranted: 1,
+    monthsRedeemable: 1,
+    nextRewardAtSignups: 9,
+    capReached: false,
+  });
   const updateProfile = useMutation(api.users.updateProfile);
   const updatePayoutSetup = useMutation(api.users.updatePayoutSetup);
   const deleteCurrentAccount = useMutation(api.users.deleteCurrentAccount);
-  const { removeUser } = useAuth();
+  const { signOut: signOutReal } = useAuth();
+
+  const pendingEmailChange = useQuery(
+    api.emailChange.getMyPendingEmailChange,
+    isDemoAuthenticated ? "skip" : {},
+  );
+  const requestEmailChange = useMutation(api.emailChange.requestEmailChange);
+  const cancelEmailChange = useMutation(api.emailChange.cancelEmailChange);
+  const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [requestingEmailChange, setRequestingEmailChange] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -68,6 +96,7 @@ function ProfileSettingsInner() {
 
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   useEffect(() => {
     const user = demoUser ?? userQuery;
@@ -100,9 +129,31 @@ function ProfileSettingsInner() {
     return null;
   }
 
+  const handleRedeemReward = async () => {
+    if (isDemoAuthenticated) {
+      setDemoReferralStats((prev) => ({
+        ...prev,
+        monthsGranted: prev.monthsGranted + prev.monthsRedeemable,
+        monthsRedeemable: 0,
+      }));
+      toast.success("1 free month of Pro unlocked! (demo only)");
+      return;
+    }
+    setRedeemingReward(true);
+    try {
+      const result = await redeemReferralReward({});
+      toast.success(`${result.monthsGranted} free month${result.monthsGranted === 1 ? "" : "s"} of Pro unlocked!`);
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Could not redeem your reward.");
+    } finally {
+      setRedeemingReward(false);
+    }
+  };
+
   const saveProfile = async () => {
-    if (!name.trim() || !email.includes("@")) {
-      toast.error("Enter your name and a valid email.");
+    if (!name.trim()) {
+      toast.error("Enter your name.");
       return;
     }
 
@@ -121,7 +172,6 @@ function ProfileSettingsInner() {
 
       await updateProfile({
         name,
-        email,
         phone: phone || undefined,
         country: country || undefined,
       });
@@ -130,6 +180,30 @@ function ProfileSettingsInner() {
       toast.error("Could not update your profile.");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleRequestEmailChange = async () => {
+    setRequestingEmailChange(true);
+    try {
+      await requestEmailChange({ newEmail: newEmailInput.trim() });
+      toast.success("Confirmation link sent — check the new inbox.");
+      setNewEmailInput("");
+      setShowEmailChangeForm(false);
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Could not start the email change.");
+    } finally {
+      setRequestingEmailChange(false);
+    }
+  };
+
+  const handleCancelEmailChange = async () => {
+    try {
+      await cancelEmailChange({});
+      toast.success("Pending email change cancelled.");
+    } catch {
+      toast.error("Could not cancel the pending change.");
     }
   };
 
@@ -195,7 +269,7 @@ function ProfileSettingsInner() {
       }
 
       await deleteCurrentAccount({ confirmEmail: deleteEmail });
-      await removeUser();
+      if (!isDemoAuthenticated) await signOutReal();
       localStorage.removeItem("vc_onboarded");
       toast.success("Your account has been deleted.");
       navigate("/", { replace: true });
@@ -232,12 +306,63 @@ function ProfileSettingsInner() {
             <label className="block text-xs font-semibold text-foreground mb-1.5">
               Email
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            {isDemoAuthenticated ? (
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            ) : (
+              <>
+                <input
+                  type="email"
+                  value={email}
+                  readOnly
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-muted/40 text-muted-foreground cursor-not-allowed"
+                />
+                {pendingEmailChange ? (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2">
+                    <p className="text-[11px] text-foreground">
+                      Confirmation link sent to <span className="font-semibold">{pendingEmailChange.newEmail}</span>.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void handleCancelEmailChange()}
+                      className="text-[11px] font-semibold text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : showEmailChangeForm ? (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="New email address"
+                      value={newEmailInput}
+                      onChange={(event) => setNewEmailInput(event.target.value)}
+                      className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <Button
+                      type="button"
+                      disabled={requestingEmailChange || !newEmailInput.includes("@")}
+                      onClick={() => void handleRequestEmailChange()}
+                      className="cursor-pointer shrink-0 disabled:opacity-60"
+                    >
+                      {requestingEmailChange ? "Sending…" : "Send link"}
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailChangeForm(true)}
+                    className="mt-1.5 text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    Change email
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
@@ -253,11 +378,19 @@ function ProfileSettingsInner() {
             <label className="block text-xs font-semibold text-foreground mb-1.5">
               Country
             </label>
-            <input
+            <select
               value={country}
               onChange={(event) => setCountry(event.target.value)}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            >
+              <option value="">Select a country</option>
+              {country && !ALL_COUNTRIES.includes(country) && (
+                <option value={country}>{country}</option>
+              )}
+              {ALL_COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="flex justify-end mt-5">
@@ -279,12 +412,58 @@ function ProfileSettingsInner() {
             <GiftCodeIcon />
             <h2 className="font-semibold text-primary">Referral code</h2>
           </div>
-          <div className="font-mono text-lg font-semibold text-foreground tracking-wide">
+          <button
+            type="button"
+            disabled={!user.referralCode}
+            onClick={() => {
+              if (!user.referralCode) return;
+              navigator.clipboard.writeText(user.referralCode).then(() => {
+                setReferralCopied(true);
+                toast.success("Referral code copied.");
+                setTimeout(() => setReferralCopied(false), 2000);
+              }).catch(() => toast.error("Failed to copy."));
+            }}
+            className="flex items-center gap-2 font-mono text-lg font-semibold text-foreground tracking-wide cursor-pointer disabled:opacity-50"
+          >
             {user.referralCode ?? "Generating..."}
-          </div>
+            {user.referralCode && (referralCopied ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted-foreground" />)}
+          </button>
           <p className="text-xs text-muted-foreground mt-2">
             Share this code with applicants. They get a discount at checkout.
           </p>
+          {(isDemoAuthenticated ? demoReferralStats : referralStats) && (() => {
+            const stats = isDemoAuthenticated ? demoReferralStats : referralStats!;
+            return (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-semibold text-primary">
+                  {stats.signupCount} signup{stats.signupCount === 1 ? "" : "s"} via your code
+                </p>
+                {stats.monthsRedeemable > 0 ? (
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                    <p className="text-xs font-semibold text-foreground mb-2">
+                      You've earned {stats.monthsRedeemable} free month{stats.monthsRedeemable === 1 ? "" : "s"} of Pro!
+                    </p>
+                    <button
+                      disabled={redeemingReward}
+                      onClick={() => void handleRedeemReward()}
+                      className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60"
+                    >
+                      {redeemingReward ? "Redeeming…" : "Redeem now"}
+                    </button>
+                  </div>
+                ) : stats.capReached ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    You've reached the maximum lifetime referral reward (12 months).
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Refer {(stats.nextRewardAtSignups ?? 3) - stats.signupCount} more for a free month of Pro
+                    ({stats.signupCount % 3}/3)
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6">
@@ -365,11 +544,19 @@ function ProfileSettingsInner() {
             <label className="block text-xs font-semibold text-foreground mb-1.5">
               Country
             </label>
-            <input
+            <select
               value={payoutCountry}
               onChange={(event) => setPayoutCountry(event.target.value)}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            >
+              <option value="">Select a country</option>
+              {payoutCountry && !ALL_COUNTRIES.includes(payoutCountry) && (
+                <option value={payoutCountry}>{payoutCountry}</option>
+              )}
+              {ALL_COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
 
           {method === "bank" && (

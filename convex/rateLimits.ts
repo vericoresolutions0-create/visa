@@ -29,3 +29,115 @@ export const checkAndIncrementPhotoCheckUsage = internalMutation({
     }
   },
 });
+
+// Same backstop, sized for a small business's real contact volume — high
+// enough that no genuine visitor ever hits it, low enough to stop a script
+// from spamming the inbox.
+const CONTACT_FORM_GLOBAL_DAILY_LIMIT = 100;
+
+export const checkAndIncrementContactUsage = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const dateKey = new Date().toISOString().split("T")[0];
+    const existing = await ctx.db
+      .query("contact_daily_usage")
+      .withIndex("by_date", (q) => q.eq("dateKey", dateKey))
+      .unique();
+
+    if (existing && existing.count >= CONTACT_FORM_GLOBAL_DAILY_LIMIT) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "We've hit our message limit for today. Please try again tomorrow or email us directly.",
+      });
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("contact_daily_usage", { dateKey, count: 1 });
+    }
+  },
+});
+
+// Same backstop pattern, for the public (no-sign-in) Risk Score quiz. No
+// AI cost behind this one (pure rubric), but it still writes a real row per
+// submission, so a script hammering it could still bloat the table.
+const RISK_SCORE_GLOBAL_DAILY_LIMIT = 5000;
+
+export const checkAndIncrementRiskScoreUsage = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const dateKey = new Date().toISOString().split("T")[0];
+    const existing = await ctx.db
+      .query("risk_score_daily_usage")
+      .withIndex("by_date", (q) => q.eq("dateKey", dateKey))
+      .unique();
+
+    if (existing && existing.count >= RISK_SCORE_GLOBAL_DAILY_LIMIT) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "The Risk Score tool is at capacity right now. Please try again later.",
+      });
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("risk_score_daily_usage", { dateKey, count: 1 });
+    }
+  },
+});
+
+// Same backstop, for the public white-label "Apply for a Licence" form.
+const WHITELABEL_GLOBAL_DAILY_LIMIT = 100;
+
+export const checkAndIncrementWhitelabelUsage = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const dateKey = new Date().toISOString().split("T")[0];
+    const existing = await ctx.db
+      .query("whitelabel_daily_usage")
+      .withIndex("by_date", (q) => q.eq("dateKey", dateKey))
+      .unique();
+
+    if (existing && existing.count >= WHITELABEL_GLOBAL_DAILY_LIMIT) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "We've hit our application limit for today. Please try again tomorrow or email us directly.",
+      });
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("whitelabel_daily_usage", { dateKey, count: 1 });
+    }
+  },
+});
+
+// Same backstop, for the public blog newsletter subscribe form.
+const NEWSLETTER_GLOBAL_DAILY_LIMIT = 500;
+
+export const checkAndIncrementNewsletterUsage = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const dateKey = new Date().toISOString().split("T")[0];
+    const existing = await ctx.db
+      .query("newsletter_daily_usage")
+      .withIndex("by_date", (q) => q.eq("dateKey", dateKey))
+      .unique();
+
+    if (existing && existing.count >= NEWSLETTER_GLOBAL_DAILY_LIMIT) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "We've hit our subscription limit for today. Please try again tomorrow.",
+      });
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("newsletter_daily_usage", { dateKey, count: 1 });
+    }
+  },
+});

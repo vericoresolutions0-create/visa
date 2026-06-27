@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { ConvexError } from "convex/values";
 import {
   ArrowLeft,
   BadgePercent,
@@ -11,6 +12,7 @@ import {
   Globe,
   Lock,
   Shield,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
@@ -226,6 +228,38 @@ export default function PaymentPage() {
   const { isDemoAuthenticated, user: demoUser, updateUser } = useDemoAuth();
   const completeCheckout = useMutation(api.users.completeCheckout);
   const completeAgentCheckout = useMutation(api.users.completeAgentCheckout);
+  const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
+  const createLocalMethodCheckoutSession = useAction(api.stripe.createLocalMethodCheckoutSession);
+  const initializePaystackTransaction = useAction(api.paystack.initializeTransaction);
+  const isStripeConfigured = useQuery(api.billing.isStripeConfigured);
+  const isPaystackConfigured = useQuery(api.paystack.isPaystackConfigured);
+  const useRealStripe = !isDemoAuthenticated && Boolean(isStripeConfigured);
+  const [localMethodLoading, setLocalMethodLoading] = useState<string | null>(null);
+
+  const startLocalMethodCheckout = async (method: "pix" | "boleto" | "oxxo" | "paystack") => {
+    setLocalMethodLoading(method);
+    try {
+      const { url } =
+        method === "paystack"
+          ? await initializePaystackTransaction({
+              plan: selectedPlan.id as ApplicantPlanId,
+              billingCycle: billing,
+            })
+          : await createLocalMethodCheckoutSession({
+              plan: selectedPlan.id as ApplicantPlanId,
+              billingCycle: billing,
+              method,
+            });
+      window.location.href = url;
+    } catch (error) {
+      const message =
+        error instanceof ConvexError
+          ? (error.data as { message: string }).message
+          : "Could not start checkout. Please try again.";
+      toast.error(message);
+      setLocalMethodLoading(null);
+    }
+  };
   const currentUser = useQuery(
     api.users.getCurrentUser,
     isDemoAuthenticated ? "skip" : {},
@@ -263,6 +297,9 @@ export default function PaymentPage() {
 
   const cardDigits = cardNumber.replace(/\D/g, "");
   const canSubmit = useMemo(() => {
+    // Real Stripe Checkout collects card details on Stripe's own hosted
+    // page — nothing to validate locally beyond being ready to redirect.
+    if (useRealStripe) return true;
     return (
       nameOnCard.trim().length > 1 &&
       cardDigits.length >= 12 &&
@@ -279,6 +316,7 @@ export default function PaymentPage() {
     expiryMonth,
     expiryYear,
     nameOnCard,
+    useRealStripe,
   ]);
 
   const handleCheckout = async () => {
@@ -327,6 +365,17 @@ export default function PaymentPage() {
         return;
       }
 
+      if (useRealStripe) {
+        const { url } = await createCheckoutSession({
+          product: selectedPlan.product,
+          plan: selectedPlan.id,
+          billingCycle: billing,
+          referralCode: appliedReferral || undefined,
+        });
+        window.location.href = url;
+        return;
+      }
+
       const paymentMethod = {
         cardNumber,
         nameOnCard,
@@ -356,9 +405,11 @@ export default function PaymentPage() {
       navigate(selectedPlan.successPath, { replace: true });
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Payment failed. Please try again.";
+        error instanceof ConvexError
+          ? (error.data as { message: string }).message
+          : error instanceof Error
+            ? error.message
+            : "Payment failed. Please try again.";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -403,7 +454,7 @@ export default function PaymentPage() {
       <main className="max-w-5xl mx-auto px-4 py-10">
         {!isDemoAuthenticated && (
           <AuthLoading>
-            <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
               <Skeleton className="h-96 rounded-xl" />
               <Skeleton className="h-80 rounded-xl" />
             </div>
@@ -432,7 +483,7 @@ export default function PaymentPage() {
         )}
 
         <CheckoutAccess demo={isDemoAuthenticated}>
-          <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
             <section className="space-y-6">
               <div>
                 <p className="text-xs tracking-widest uppercase text-accent font-semibold mb-2">
@@ -446,84 +497,165 @@ export default function PaymentPage() {
                 </p>
               </div>
 
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-2 mb-5">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  <h2 className="font-semibold text-primary">Card details</h2>
+              {useRealStripe ? (
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lock className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-primary">Secure payment via Stripe</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    You'll enter your card details on Stripe's secure checkout page — VisaClear
+                    never sees or stores your card number. Every payment is automatically screened
+                    for fraud and stolen-card risk before it's charged.
+                  </p>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Name on card
-                    </label>
-                    <input
-                      value={nameOnCard}
-                      onChange={(event) => setNameOnCard(event.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+              ) : (
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-5">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-primary">Card details</h2>
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Card number
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={cardNumber}
-                      onChange={(event) => setCardNumber(event.target.value)}
-                      placeholder="4242 4242 4242 4242"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Expiry month
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={expiryMonth}
-                      onChange={(event) => setExpiryMonth(event.target.value)}
-                      placeholder="MM"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Expiry year
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={expiryYear}
-                      onChange={(event) => setExpiryYear(event.target.value)}
-                      placeholder="YY"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Security code
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={cvv}
-                      onChange={(event) => setCvv(event.target.value)}
-                      placeholder="123"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Billing email
-                    </label>
-                    <input
-                      type="email"
-                      value={billingEmail}
-                      onChange={(event) => setBillingEmail(event.target.value)}
-                      placeholder={accountUser?.email ?? "billing@example.com"}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Name on card
+                      </label>
+                      <input
+                        value={nameOnCard}
+                        onChange={(event) => setNameOnCard(event.target.value)}
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Card number
+                      </label>
+                      <input
+                        inputMode="numeric"
+                        value={cardNumber}
+                        onChange={(event) => setCardNumber(event.target.value)}
+                        placeholder="4242 4242 4242 4242"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Expiry month
+                      </label>
+                      <input
+                        inputMode="numeric"
+                        value={expiryMonth}
+                        onChange={(event) => setExpiryMonth(event.target.value)}
+                        placeholder="MM"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Expiry year
+                      </label>
+                      <input
+                        inputMode="numeric"
+                        value={expiryYear}
+                        onChange={(event) => setExpiryYear(event.target.value)}
+                        placeholder="YY"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Security code
+                      </label>
+                      <input
+                        inputMode="numeric"
+                        value={cvv}
+                        onChange={(event) => setCvv(event.target.value)}
+                        placeholder="123"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Billing email
+                      </label>
+                      <input
+                        type="email"
+                        value={billingEmail}
+                        onChange={(event) => setBillingEmail(event.target.value)}
+                        placeholder={accountUser?.email ?? "billing@example.com"}
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {!isDemoAuthenticated &&
+                selectedPlan.product === "applicant" &&
+                (isStripeConfigured || isPaystackConfigured) && (
+                  <div className="bg-card border border-border rounded-xl p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Smartphone className="w-5 h-5 text-primary" />
+                      <h2 className="font-semibold text-primary">More ways to pay</h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      No international card? Pay once with a local method instead. These don't
+                      renew automatically — we'll remind you before it's time to pay again.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {isPaystackConfigured && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="cursor-pointer justify-start"
+                          disabled={localMethodLoading !== null}
+                          onClick={() => {
+                            void startLocalMethodCheckout("paystack");
+                          }}
+                        >
+                          {localMethodLoading === "paystack" ? "Redirecting…" : "Mobile Money / Bank Transfer (Africa)"}
+                        </Button>
+                      )}
+                      {isStripeConfigured && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="cursor-pointer justify-start"
+                            disabled={localMethodLoading !== null}
+                            onClick={() => {
+                              void startLocalMethodCheckout("pix");
+                            }}
+                          >
+                            {localMethodLoading === "pix" ? "Redirecting…" : "Pix (Brazil)"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="cursor-pointer justify-start"
+                            disabled={localMethodLoading !== null}
+                            onClick={() => {
+                              void startLocalMethodCheckout("boleto");
+                            }}
+                          >
+                            {localMethodLoading === "boleto" ? "Redirecting…" : "Boleto (Brazil)"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="cursor-pointer justify-start"
+                            disabled={localMethodLoading !== null}
+                            onClick={() => {
+                              void startLocalMethodCheckout("oxxo");
+                            }}
+                          >
+                            {localMethodLoading === "oxxo" ? "Redirecting…" : "OXXO (Mexico)"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-5">
@@ -581,17 +713,21 @@ export default function PaymentPage() {
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-primary">
-                    {formatMoney(baseAmount)}
+                    {formatMoney(
+                      billing === "yearly" ? Math.round(baseAmount / 12) : baseAmount,
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    /{billing === "monthly" ? "mo" : "yr"}
+                    /mo{billing === "yearly" ? " billed annually" : ""}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3 border-y border-border py-4 mb-5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">
+                    Subtotal{billing === "yearly" ? " (annual)" : ""}
+                  </span>
                   <span className="font-medium">{formatMoney(baseAmount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -630,7 +766,11 @@ export default function PaymentPage() {
                   void handleCheckout();
                 }}
               >
-                {saving ? "Processing..." : `Pay ${formatMoney(totalAmount)}`}
+                {saving
+                  ? "Processing..."
+                  : useRealStripe
+                    ? `Continue to Stripe — ${formatMoney(totalAmount)}`
+                    : `Pay ${formatMoney(totalAmount)}`}
               </Button>
             </aside>
           </div>

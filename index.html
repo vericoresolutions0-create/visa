@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Defense-in-depth CSP for any static host that doesn't apply the
+         vercel.json headers. frame-ancestors/X-Frame-Options can't be set
+         via meta tag per spec, so clickjacking protection relies on the
+         real HTTP header (vercel.json / vite.config.ts) instead. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self' https:; upgrade-insecure-requests"
+    />
 
     <title>VisaClear by Vericore — Precise Visa Document Checklists</title>
     <meta
