@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
@@ -34,6 +35,7 @@ import {
   ListChecks,
   LockKeyhole,
   LogIn,
+  LogOut,
   MessageCircle,
   Send,
   Shield,
@@ -880,6 +882,11 @@ export default function AgentDashboardPreviewPage() {
 
   const navigate = useNavigate();
   const goBack = useSmartBack("/agents");
+  const { signOut } = useAuth();
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
@@ -955,10 +962,21 @@ export default function AgentDashboardPreviewPage() {
               </div>
             </button>
           </div>
-          <Button size="sm" className="shrink-0" onClick={() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" })}>
-            <UserPlus className="h-4 w-4" />
-            Add client
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" onClick={() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" })}>
+              <UserPlus className="h-4 w-4" />
+              Add client
+            </Button>
+            <button
+              onClick={() => void handleSignOut()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
+              title="Sign out"
+              type="button"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
         </div>
       </header>
 

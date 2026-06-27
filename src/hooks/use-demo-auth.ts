@@ -46,7 +46,6 @@ const defaultDemoUser: DemoUser = {
   name: "Demo User",
   email: "demo@visaclear.local",
   phone: "+1 555 0100",
-  country: "United States",
   plan: "expert",
   role: "user",
   referralCode: "DEMO20",
