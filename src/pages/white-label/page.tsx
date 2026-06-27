@@ -56,7 +56,7 @@ const PLANS = [
     features: [
       "Up to 50 clients/month",
       "Custom logo and colours",
-      "Subdomain (agency.visaclear.com)",
+      "Subdomain (agency.visaclear.vercel.app)",
       "Basic agent dashboard",
       "Email support",
     ],

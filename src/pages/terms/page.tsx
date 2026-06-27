@@ -132,7 +132,7 @@ export default function TermsPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">12. Contact</h2>
             <p className="text-muted-foreground leading-relaxed">
-              If you have any questions about these Terms, please contact us at <a href="mailto:legal@vericore.app" className="text-primary underline">legal@vericore.app</a>.
+              If you have any questions about these Terms, please contact us at <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>.
             </p>
           </section>
 

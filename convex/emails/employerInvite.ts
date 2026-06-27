@@ -11,7 +11,8 @@ export const sendEmployerInviteEmail = internalAction({
     const { to, orgName, token } = args;
     const safeOrgName = escapeHtml(orgName);
     const subject = `${orgName} has invited you to VisaClear`;
-    const inviteUrl = `https://visaclear.vericore.app/business/invite/${token}`;
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const inviteUrl = `${siteUrl}/business/invite/${token}`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -49,8 +50,8 @@ export const sendEmployerInviteEmail = internalAction({
           <td style="background:#f8f5ef;padding:20px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/terms" style="color:#aaa;">Terms</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
+              <a href="${siteUrl}/terms" style="color:#aaa;">Terms</a>
             </p>
           </td>
         </tr>

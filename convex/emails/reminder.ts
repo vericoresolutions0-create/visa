@@ -20,6 +20,7 @@ export const sendReminderEmail = internalAction({
     });
 
     const subject = `Reminder: ${args.title} — VisaClear`;
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
     const html = `
 <!DOCTYPE html>
 <html>
@@ -46,7 +47,7 @@ export const sendReminderEmail = internalAction({
               This is your scheduled visa application reminder from VisaClear. Please check your application progress and complete any outstanding items before your deadline.
             </p>
             <div style="text-align:center;margin-bottom:28px;">
-              <a href="https://visaclear.vericore.app/dashboard" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
+              <a href="${siteUrl}/dashboard" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
                 View My Dashboard &rarr;
               </a>
             </div>
@@ -59,7 +60,7 @@ export const sendReminderEmail = internalAction({
           <td style="background:#f8f5ef;padding:18px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;&middot;&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a>
             </p>
           </td>
         </tr>

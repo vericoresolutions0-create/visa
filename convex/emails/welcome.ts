@@ -11,6 +11,7 @@ export const sendWelcomeEmail = internalAction({
     const { to, name } = args;
     const displayName = name ?? "there";
     const subject = "Welcome to VisaClear — Your visa checklist is ready";
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
     const html = `
 <!DOCTYPE html>
 <html>
@@ -52,7 +53,7 @@ export const sendWelcomeEmail = internalAction({
               </tr>`).join("")}
             </table>
             <div style="text-align:center;margin-bottom:28px;">
-              <a href="https://visaclear.vericore.app/checklist" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
+              <a href="${siteUrl}/checklist" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
                 Get My Free Checklist &rarr;
               </a>
             </div>
@@ -66,8 +67,8 @@ export const sendWelcomeEmail = internalAction({
           <td style="background:#f8f5ef;padding:20px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/terms" style="color:#aaa;">Terms</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
+              <a href="${siteUrl}/terms" style="color:#aaa;">Terms</a>
             </p>
           </td>
         </tr>

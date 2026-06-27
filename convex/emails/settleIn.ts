@@ -11,7 +11,8 @@ export const sendSettleInReadyEmail = internalAction({
     const { to, destination, tripId } = args;
     const safeDestination = escapeHtml(destination);
     const subject = `Your ${destination} visa is approved — here's what's next`;
-    const tripUrl = `https://visaclear.vericore.app/dashboard/trips/${tripId}`;
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const tripUrl = `${siteUrl}/dashboard/trips/${tripId}`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -46,8 +47,8 @@ export const sendSettleInReadyEmail = internalAction({
           <td style="background:#f8f5ef;padding:20px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/terms" style="color:#aaa;">Terms</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
+              <a href="${siteUrl}/terms" style="color:#aaa;">Terms</a>
             </p>
           </td>
         </tr>

@@ -81,17 +81,17 @@ export default function ContactPage() {
                   {
                     icon: Mail,
                     label: "Email Support",
-                    value: "support@vericore.app",
+                    value: "vericoresolutions0@gmail.com",
                     hint: "For detailed questions, documents, or account issues.",
-                    action: "mailto:support@vericore.app",
+                    action: "mailto:vericoresolutions0@gmail.com",
                     actionLabel: "Send Email",
                   },
                   {
                     icon: Phone,
                     label: "Agent Enquiries",
-                    value: "agency@vericore.app",
+                    value: "vericoresolutions0@gmail.com",
                     hint: "For white-label licences, partnerships, and B2B pricing.",
-                    action: "mailto:agency@vericore.app",
+                    action: "mailto:vericoresolutions0@gmail.com",
                     actionLabel: "Email Agency Team",
                   },
                 ].map((c) => (

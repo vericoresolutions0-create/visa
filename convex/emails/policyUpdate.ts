@@ -13,6 +13,7 @@ export const sendPolicyUpdateEmail = internalAction({
   },
   handler: async (_ctx, args) => {
     const subject = `${args.countryName} policy update — VisaClear`;
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
     const html = `
 <!DOCTYPE html>
 <html>
@@ -35,7 +36,7 @@ export const sendPolicyUpdateEmail = internalAction({
             <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 12px;font-weight:600;">${args.title}</h2>
             <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 24px;white-space:pre-line;">${args.body}</p>
             <div style="text-align:center;margin-bottom:28px;">
-              <a href="https://visaclear.vericore.app/dashboard" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
+              <a href="${siteUrl}/dashboard" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:10px;">
                 View My Dashboard &rarr;
               </a>
             </div>
@@ -48,7 +49,7 @@ export const sendPolicyUpdateEmail = internalAction({
           <td style="background:#f8f5ef;padding:18px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;&middot;&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a>
             </p>
           </td>
         </tr>

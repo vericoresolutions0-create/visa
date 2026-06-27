@@ -11,7 +11,8 @@ export const sendEmailChangeConfirmationEmail = internalAction({
     const { to, token, name } = args;
     const safeName = escapeHtml(name);
     const subject = "Confirm your new VisaClear email";
-    const confirmUrl = `https://visaclear.vericore.app/settings/confirm-email/${token}`;
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const confirmUrl = `${siteUrl}/settings/confirm-email/${token}`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -46,8 +47,8 @@ export const sendEmailChangeConfirmationEmail = internalAction({
           <td style="background:#f8f5ef;padding:20px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/terms" style="color:#aaa;">Terms</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
+              <a href="${siteUrl}/terms" style="color:#aaa;">Terms</a>
             </p>
           </td>
         </tr>
@@ -68,6 +69,7 @@ export const sendEmailChangeNoticeEmail = internalAction({
     const safeName = escapeHtml(name);
     const safeNewEmail = escapeHtml(newEmail);
     const subject = "Your VisaClear email is changing";
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
     const html = `
 <!DOCTYPE html>
 <html>
@@ -89,7 +91,7 @@ export const sendEmailChangeNoticeEmail = internalAction({
               We received a request to change the email address on your VisaClear account to <strong>${safeNewEmail}</strong>. The change won't take effect until that address is confirmed.
             </p>
             <p style="font-size:14px;color:#666;line-height:1.7;margin:0;">
-              <strong>If you didn't request this</strong>, sign in to your account and cancel the pending change from Settings, or contact us at <a href="mailto:hello@vericore.app" style="color:#0f2040;">hello@vericore.app</a>.
+              <strong>If you didn't request this</strong>, sign in to your account and cancel the pending change from Settings, or contact us at <a href="mailto:vericoresolutions0@gmail.com" style="color:#0f2040;">vericoresolutions0@gmail.com</a>.
             </p>
           </td>
         </tr>
@@ -97,8 +99,8 @@ export const sendEmailChangeNoticeEmail = internalAction({
           <td style="background:#f8f5ef;padding:20px 40px;text-align:center;border-top:1px solid #ede8df;">
             <p style="font-size:11px;color:#aaa;margin:0;">
               &copy; ${new Date().getFullYear()} Vericore Ltd &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
-              <a href="https://visaclear.vericore.app/terms" style="color:#aaa;">Terms</a>
+              <a href="${siteUrl}/privacy" style="color:#aaa;">Privacy Policy</a> &nbsp;·&nbsp;
+              <a href="${siteUrl}/terms" style="color:#aaa;">Terms</a>
             </p>
           </td>
         </tr>

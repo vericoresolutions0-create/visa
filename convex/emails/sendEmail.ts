@@ -15,7 +15,7 @@ export async function sendEmail(args: { to: string; subject: string; html: strin
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL || "VisaClear <hello@vericore.app>",
+    from: process.env.RESEND_FROM_EMAIL || "VisaClear <vericoresolutions0@gmail.com>",
     to: args.to,
     subject: args.subject,
     html: args.html,
