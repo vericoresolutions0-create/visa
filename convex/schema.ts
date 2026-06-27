@@ -626,4 +626,23 @@ export default defineSchema({
     proUsers: v.optional(v.number()),
     expertUsers: v.optional(v.number()),
   }),
+
+  // One row per qualifying payment from a client an agent referred — 15% of
+  // a Pro payment, 20% of an Expert payment, logged as an immutable ledger
+  // entry (not a mutable running counter) so the commission total is always
+  // recomputable and auditable. See convex/agentReferralCommissions.ts for
+  // where these are created and convex/agents.ts's getMyProfile-adjacent
+  // dashboard query for how they're summarized for the agent.
+  agent_referral_commissions: defineTable({
+    agentUserId: v.id("users"),
+    payingUserId: v.id("users"),
+    plan: v.union(v.literal("pro"), v.literal("expert")),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    paymentAmountCents: v.number(),
+    commissionRatePercent: v.number(),
+    commissionCents: v.number(),
+    createdAt: v.string(),
+  })
+    .index("by_agent", ["agentUserId"])
+    .index("by_paying_user", ["payingUserId"]),
 });

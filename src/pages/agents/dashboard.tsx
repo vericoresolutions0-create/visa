@@ -731,37 +731,27 @@ function TemplatesSection({ intakes }: { intakes: Intake[] }) {
   );
 }
 
-function ReferralPanel() {
-  const stats = useQuery(api.referralRewards.getMyReferralRewardStatus, {});
-  const redeemReferralReward = useMutation(api.referralRewards.redeemReferralReward);
-  const [copied, setCopied] = useState(false);
-  const [redeeming, setRedeeming] = useState(false);
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
-  const handleRedeem = async () => {
-    setRedeeming(true);
-    try {
-      const result = await redeemReferralReward({});
-      toast.success(`${result.monthsGranted} free month${result.monthsGranted === 1 ? "" : "s"} of Pro unlocked!`);
-    } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Could not redeem your reward.");
-    } finally {
-      setRedeeming(false);
-    }
-  };
+function ReferralPanel() {
+  const stats = useQuery(api.agentReferralCommissions.getMyReferralCommissionStatus, {});
+  const ledger = useQuery(api.agentReferralCommissions.getMyReferralCommissionLedger, {});
+  const [copied, setCopied] = useState(false);
 
   return (
     <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
       <SectionHeader
         eyebrow="Referrals"
         title="Real signups, tracked honestly."
-        description="Every signup that used your code is counted here in real time. Commission payouts will activate once a real billing connection is in place — this shows the true number today, not a placeholder."
+        description="Every signup via your code is counted here. When a referred client pays for Pro, you earn 15% of that payment — 20% if they pay for Expert. Commission payouts will activate once a real billing connection is in place; this shows the true number today, not a placeholder."
         Icon={CreditCard}
       />
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-background p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signups via your code</p>
-          <p className="mt-1 text-2xl font-semibold text-primary">{stats?.signupCount ?? "—"}</p>
+          <p className="mt-1 text-2xl font-semibold text-primary">{stats?.referredSignupCount ?? "—"}</p>
         </div>
         <div className="rounded-lg border border-border bg-background p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your referral code</p>
@@ -784,24 +774,31 @@ function ReferralPanel() {
         </div>
       </div>
       {stats && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Paying clients referred</p>
+            <p className="mt-1 text-2xl font-semibold text-primary">{stats.payingClientCount}</p>
+          </div>
+          <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Commission earned</p>
+            <p className="mt-1 text-2xl font-semibold text-accent">{formatCents(stats.totalCommissionCents)}</p>
+          </div>
+        </div>
+      )}
+      {ledger && ledger.length > 0 && (
         <div className="mt-3 rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Free months earned</p>
-          {stats.monthsRedeemable > 0 ? (
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="text-2xl font-semibold text-accent">{stats.monthsRedeemable}</p>
-              <button
-                disabled={redeeming}
-                onClick={() => void handleRedeem()}
-                className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60"
-              >
-                {redeeming ? "Redeeming…" : "Redeem"}
-              </button>
-            </div>
-          ) : stats.capReached ? (
-            <p className="mt-1 text-xs text-muted-foreground">Maximum lifetime reward reached (12 months).</p>
-          ) : (
-            <p className="mt-1 text-xs text-muted-foreground">{stats.signupCount % 3}/3 toward your next free month</p>
-          )}
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Recent commissions</p>
+          <div className="space-y-1.5">
+            {ledger.slice(0, 5).map((c) => (
+              <div key={c._id} className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-muted-foreground">
+                  {c.plan === "expert" ? "Expert" : "Pro"} referral &middot; {c.commissionRatePercent}% &middot;{" "}
+                  {new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </span>
+                <span className="font-semibold text-foreground">{formatCents(c.commissionCents)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </article>

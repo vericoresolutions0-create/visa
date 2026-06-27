@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { bumpStat, bumpPlanCounters } from "./platformStats.ts";
 import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
 
 // Exported so the real Stripe checkout action (convex/stripe.ts) prices
 // sessions from the exact same numbers as the simulated fallback path —
@@ -361,6 +362,14 @@ export const completeCheckout = mutation({
         updatedAt: now,
       },
     });
+
+    await creditAgentReferralCommission(
+      ctx,
+      { ...user, referredByCode: normalizedCode ?? user.referredByCode },
+      args.plan,
+      args.billingCycle,
+      finalAmountCents,
+    );
 
     return {
       plan: args.plan,

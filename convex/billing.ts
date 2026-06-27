@@ -3,6 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { bumpPlanCounters } from "./platformStats.ts";
+import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
 
 // Lets the frontend know whether to redirect to real Stripe Checkout or
 // fall back to the existing simulated flow — same "not configured yet"
@@ -60,6 +61,14 @@ export const applyCheckoutCompleted = internalMutation({
       if (staleExpiration) {
         await ctx.db.delete(staleExpiration._id);
       }
+
+      await creditAgentReferralCommission(
+        ctx,
+        user,
+        args.plan as "pro" | "expert",
+        args.billingCycle,
+        args.amountCents,
+      );
     } else {
       await ctx.db.patch(user._id, {
         agentPlan: args.plan as
@@ -151,6 +160,11 @@ export const applyOneTimePlanPayment = internalMutation({
       sent: false,
       createdAt: nowIso,
     });
+
+    // This path re-fires on every renewal (one-time payment methods can't
+    // auto-charge), so a referring agent earns commission again each time
+    // their referred client actually pays again — not just on day one.
+    await creditAgentReferralCommission(ctx, user, args.plan, args.billingCycle, args.amountCents);
   },
 });
 

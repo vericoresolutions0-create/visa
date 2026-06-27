@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as adminOrgs from "../adminOrgs.js";
+import type * as agentReferralCommissions from "../agentReferralCommissions.js";
 import type * as agents from "../agents.js";
 import type * as ai_assistant from "../ai/assistant.js";
 import type * as ai_photoChecker from "../ai/photoChecker.js";
@@ -74,6 +75,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminOrgs: typeof adminOrgs;
+  agentReferralCommissions: typeof agentReferralCommissions;
   agents: typeof agents;
   "ai/assistant": typeof ai_assistant;
   "ai/photoChecker": typeof ai_photoChecker;
