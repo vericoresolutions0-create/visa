@@ -1,0 +1,8 @@
+{
+  "eyebrow": "Google login",
+  "title": "Not set up yet",
+  "description": "Google sign-in isn't connected on this deployment yet. Use email and password to sign in or create an account instead.",
+  "continue_email": "Continue with email/password",
+  "auto_note": "Google sign-in will appear automatically once it's configured.",
+  "go_back": "Go back"
+}

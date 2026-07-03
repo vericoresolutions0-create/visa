@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDemoGate } from "@/components/DemoGateModal.tsx";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, Shield, Upload, Trash2, FileText,
-  AlertTriangle, AlertCircle, LayoutDashboard, Settings, LogOut, LogIn, Bell, BellRing,
+  AlertTriangle, AlertCircle, LayoutDashboard, Settings, LogOut, LogIn, Bell, BellRing, Download, Eye,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -63,31 +65,45 @@ const DEMO_VAULT_REMINDERS: Doc<"reminders">[] = [
   },
 ];
 
-const CATEGORIES = [
-  { value: "identity", label: "Identity", hint: "Passport copies, national ID, birth certificate" },
-  { value: "financial", label: "Financial", hint: "Bank statements, payslips, tax returns" },
-  { value: "employment", label: "Employment", hint: "Offer letters, employer letters, business registration" },
-  { value: "travel", label: "Travel", hint: "Previous visas, travel insurance, bookings" },
-  { value: "education", label: "Education", hint: "Degree certificates, enrollment letters, transcripts" },
-  { value: "photo", label: "Photographs", hint: "Passport photos, ready to download" },
-] as const;
+type CategoryValue = "identity" | "financial" | "employment" | "travel" | "education" | "photo" | "legal" | "medical" | "other";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-
-function expiryStatus(expiryDate?: string): { label: string; tone: "ok" | "amber" | "red" } | null {
-  if (!expiryDate) return null;
-  const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (days < 0) return { label: "Expired", tone: "red" };
-  if (days <= 30) return { label: `Expires in ${days}d`, tone: "red" };
-  if (days <= 90) return { label: `Expires in ${days}d`, tone: "amber" };
-  return { label: `Expires ${expiryDate}`, tone: "ok" };
-}
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",   // non-standard but reported by some Windows/older systems
+  "image/png",
+  "image/webp",
+  "image/heic",  // iPhone camera photos
+  "image/heif",
+  "application/pdf",
+];
 
 export default function DocumentVaultPage() {
+  const { t } = useTranslation("vault");
   useSeo({ title: "Document Vault — VisaClear Pro", description: "Your permanent, organized store for every visa document." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
+
+  const CATEGORIES = [
+    { value: "identity" as CategoryValue, label: t("cat.identity"), hint: t("cat.identity_hint") },
+    { value: "financial" as CategoryValue, label: t("cat.financial"), hint: t("cat.financial_hint") },
+    { value: "employment" as CategoryValue, label: t("cat.employment"), hint: t("cat.employment_hint") },
+    { value: "travel" as CategoryValue, label: t("cat.travel"), hint: t("cat.travel_hint") },
+    { value: "education" as CategoryValue, label: t("cat.education"), hint: t("cat.education_hint") },
+    { value: "photo" as CategoryValue, label: t("cat.photo"), hint: t("cat.photo_hint") },
+    { value: "legal" as CategoryValue, label: t("cat.legal"), hint: t("cat.legal_hint") },
+    { value: "medical" as CategoryValue, label: t("cat.medical"), hint: t("cat.medical_hint") },
+    { value: "other" as CategoryValue, label: t("cat.other"), hint: t("cat.other_hint") },
+  ];
+
+  const expiryStatus = (expiryDate?: string): { label: string; tone: "ok" | "amber" | "red" } | null => {
+    if (!expiryDate) return null;
+    const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (days < 0) return { label: t("expiry.expired"), tone: "red" };
+    if (days <= 30) return { label: t("expiry.soon", { days }), tone: "red" };
+    if (days <= 90) return { label: t("expiry.soon", { days }), tone: "amber" };
+    return { label: t("expiry.ok", { date: expiryDate }), tone: "ok" };
+  };
   const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
   const { isAuthenticated, signOut: signOutReal } = useAuth();
   const canAccess = isDemoAuthenticated || isAuthenticated;
@@ -100,6 +116,8 @@ export default function DocumentVaultPage() {
   const deleteDocument = useMutation(api.vault.deleteDocument);
   const createExpiryReminder = useMutation(api.vault.createExpiryReminder);
 
+  const { gate, GateModal } = useDemoGate();
+
   const [demoDocuments, setDemoDocuments] = useState<DemoVaultDocument[]>(DEMO_VAULT_DOCUMENTS);
   const [demoReminders, setDemoReminders] = useState<Doc<"reminders">[]>(DEMO_VAULT_REMINDERS);
   const visibleDocuments = isDemoAuthenticated ? demoDocuments : (documents ?? []);
@@ -108,7 +126,7 @@ export default function DocumentVaultPage() {
   const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (user?.plan ?? "free");
   const canUseVault = canUseDocumentVault(plan);
 
-  const [category, setCategory] = useState<typeof CATEGORIES[number]["value"]>("identity");
+  const [category, setCategory] = useState<CategoryValue>("identity");
   const [label, setLabel] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -126,130 +144,152 @@ export default function DocumentVaultPage() {
     navigate("/");
   };
 
-  const handleFileSelected = async (file: File) => {
-    if (!label.trim()) {
-      toast.error("Give this document a label first (e.g. \"UK Passport\").");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File must be under 10MB.");
-      return;
-    }
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      toast.error("Please upload a JPG, PNG, WEBP, or PDF file.");
-      return;
-    }
+  const deriveLabel = (file: File) =>
+    label.trim() || file.name.replace(/\.[^.]+$/, "");
 
-    if (isDemoAuthenticated) {
-      const newDoc: DemoVaultDocument = {
-        _id: `demo_doc_${Date.now()}` as Id<"vault_documents">,
-        _creationTime: Date.now(),
-        userId: "demo_user" as Id<"users">,
-        category,
-        label: label.trim(),
-        storageId: "demo_storage" as Id<"_storage">,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        expiryDate: expiryDate || undefined,
-        uploadedAt: new Date().toISOString(),
-        url: "#",
-      };
-      setDemoDocuments((prev) => [newDoc, ...prev]);
-      toast.success(`${label.trim()} added to your vault. (demo only)`);
-      setLabel("");
-      setExpiryDate("");
-      return;
-    }
+  const handleFilesSelected = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    let added = 0;
 
     setUploading(true);
     try {
-      const uploadUrl = await generateUploadUrl({});
-      const response = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!response.ok) throw new Error("Upload failed");
-      const { storageId } = await response.json();
-      await addDocument({
-        storageId,
-        category,
-        label: label.trim(),
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        expiryDate: expiryDate || undefined,
-      });
-      toast.success(`${label.trim()} added to your vault.`);
-      setLabel("");
-      setExpiryDate("");
-    } catch {
-      toast.error("Failed to upload. Please try again.");
+      for (const file of fileArray) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name}: ${t("toast.too_large")}`);
+          continue;
+        }
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+          toast.error(`${file.name}: ${t("toast.bad_type")}`);
+          continue;
+        }
+
+        const fileLabel = deriveLabel(file);
+
+        if (isDemoAuthenticated) {
+          gate();
+          break;
+        }
+
+        try {
+          const uploadUrl = await generateUploadUrl({});
+          const response = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+          if (!response.ok) throw new Error("Upload failed");
+          const { storageId } = await response.json();
+          await addDocument({
+            storageId,
+            category,
+            label: fileLabel,
+            fileName: file.name,
+            fileSize: file.size,
+            mimeType: file.type,
+            expiryDate: expiryDate || undefined,
+          });
+          added++;
+        } catch {
+          toast.error(`${file.name}: ${t("toast.upload_error")}`);
+        }
+      }
     } finally {
       setUploading(false);
     }
+
+    if (added === 0) return;
+    if (added === 1) {
+      toast.success(t("toast.doc_added", { label: deriveLabel(fileArray[0]) }));
+    } else {
+      toast.success(`${added} files added to vault.`);
+    }
+    setLabel("");
+    setExpiryDate("");
   };
 
   const handleDelete = async (id: string) => {
     if (isDemoAuthenticated) {
       setDemoDocuments((prev) => prev.filter((d) => d._id !== id));
       setDemoReminders((prev) => prev.filter((r) => r.vaultDocumentId !== id));
-      toast.success("Document removed. (demo only)");
+      toast.success(t("toast.doc_removed"));
       return;
     }
     try {
       await deleteDocument({ id: id as Parameters<typeof deleteDocument>[0]["id"] });
-      toast.success("Document removed.");
+      toast.success(t("toast.doc_removed"));
     } catch {
-      toast.error("Failed to remove document.");
+      toast.error(t("toast.remove_error"));
     }
   };
 
   const handleRemindMe = async (id: string) => {
-    if (isDemoAuthenticated) {
-      const doc = demoDocuments.find((d) => d._id === id);
-      if (!doc) return;
-      const dueDate = doc.expiryDate;
-      if (!dueDate) return;
-      setDemoReminders((prev) => [
-        ...prev,
-        {
-          _id: `demo_reminder_${Date.now()}` as Id<"reminders">,
-          _creationTime: Date.now(),
-          userId: "demo_user" as Id<"users">,
-          vaultDocumentId: id as Id<"vault_documents">,
-          title: `${doc.label} expires soon`,
-          dueDate,
-          email: "demo@visaclear.local",
-          sent: false,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-      toast.success("Reminder set — we'll email you before it expires. (demo only)");
-      return;
-    }
+    if (gate()) return;
     try {
       await createExpiryReminder({ id: id as Parameters<typeof createExpiryReminder>[0]["id"] });
-      toast.success("Reminder set — we'll email you before it expires.");
+      toast.success(t("toast.reminder_set"));
     } catch {
-      toast.error("Could not set a reminder for this document.");
+      toast.error(t("toast.reminder_error"));
     }
   };
 
   const handleSaveExpiry = async (id: string) => {
-    if (isDemoAuthenticated) {
-      setDemoDocuments((prev) => prev.map((d) => (d._id === id ? { ...d, expiryDate: editingExpiryValue || undefined } : d)));
-      toast.success("Expiry date updated. (demo only)");
+    if (gate()) { setEditingExpiryId(null); return; }
+    try {
+      await updateDocumentExpiry({ id: id as Parameters<typeof updateDocumentExpiry>[0]["id"], expiryDate: editingExpiryValue || undefined });
+      toast.success(t("toast.expiry_updated"));
       setEditingExpiryId(null);
+    } catch {
+      toast.error(t("toast.expiry_error"));
+    }
+  };
+
+  const isRealUrl = (url: string | null): url is string =>
+    Boolean(url) && url !== "#";
+
+  const handlePreview = (url: string | null) => {
+    if (!isRealUrl(url)) {
+      toast.info("This is a sample demo document — upload your own files to preview them.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownload = async (url: string | null, fileName: string) => {
+    if (!isRealUrl(url)) {
+      toast.info("This is a sample demo document — upload your own files to download them.");
+      return;
+    }
+    // Blob URLs (user-uploaded files in demo mode) can be downloaded directly
+    // without fetching — they're already in memory.
+    if (url.startsWith("blob:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    // iOS Safari doesn't support programmatic blob downloads for remote URLs —
+    // open directly so the native PDF/image viewer handles it.
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
     try {
-      await updateDocumentExpiry({ id: id as Parameters<typeof updateDocumentExpiry>[0]["id"], expiryDate: editingExpiryValue || undefined });
-      toast.success("Expiry date updated.");
-      setEditingExpiryId(null);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("fetch failed");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
     } catch {
-      toast.error("Could not update the expiry date.");
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -273,21 +313,21 @@ export default function DocumentVaultPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <Shield className="w-3.5 h-3.5 text-accent" /> Document Vault
+              <Shield className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
             </div>
             {canAccess && (
               <>
-                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="My Dashboard">
+                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.dashboard")}>
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">My Dashboard</span>
+                  <span className="hidden md:inline">{t("nav.dashboard")}</span>
                 </button>
-                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="Settings">
+                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.settings")}>
                   <Settings className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Settings</span>
+                  <span className="hidden md:inline">{t("nav.settings")}</span>
                 </button>
-                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title="Sign out">
+                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title={t("nav.sign_out")}>
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Sign Out</span>
+                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </>
             )}
@@ -301,9 +341,9 @@ export default function DocumentVaultPage() {
             <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
               <LogIn className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">Sign In to Continue</h2>
+            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
             <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto leading-relaxed">
-              Upload once, keep forever. Your Document Vault lives here.
+              {t("signin.body")}
             </p>
             <div className="max-w-sm mx-auto">
               <AuthAccessPanel returnPath="/dashboard/vault" />
@@ -312,22 +352,21 @@ export default function DocumentVaultPage() {
         ) : !canUseVault ? (
           <div className="text-center py-16 border border-dashed border-border rounded-2xl">
             <Shield className="w-10 h-10 text-muted-foreground/40 mx-auto mb-4" />
-            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Upload once. Keep forever.</h2>
+            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">{t("upgrade.title")}</h2>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6 leading-relaxed">
-              The Document Vault is a Pro feature: a permanent, organized store for every passport, bank
-              statement, and certificate you'll ever need for a visa application.
+              {t("upgrade.body")}
             </p>
             <Button className="cursor-pointer font-semibold" onClick={() => navigate("/pricing")}>
-              Upgrade to Pro
+              {t("upgrade.cta")}
             </Button>
           </div>
         ) : (
           <div className="space-y-8">
             <div className="bg-card border border-border rounded-2xl p-5">
-              <h2 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">Add a document</h2>
+              <h2 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">{t("add.title")}</h2>
               <div className="grid sm:grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5">Category</label>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5">{t("add.category")}</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as typeof category)}
@@ -339,7 +378,7 @@ export default function DocumentVaultPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1.5">Expiry date (optional)</label>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5">{t("add.expiry")}</label>
                   <input
                     type="date"
                     value={expiryDate}
@@ -349,29 +388,36 @@ export default function DocumentVaultPage() {
                 </div>
               </div>
               <div className="mb-3">
-                <label className="block text-xs font-semibold text-foreground mb-1.5">Label</label>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">{t("add.label")}</label>
                 <input
                   type="text"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  placeholder='e.g. "UK Passport" or "March Bank Statement"'
+                  placeholder={t("add.label_placeholder") + " (optional when uploading multiple)"}
                   className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <label className={cn(
-                "flex items-center justify-center gap-2 border border-dashed border-border rounded-xl py-6 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors text-sm font-semibold text-primary",
+                "flex flex-col items-center justify-center gap-1.5 border border-dashed border-border rounded-xl py-6 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors text-sm font-semibold text-primary",
                 uploading && "opacity-60 pointer-events-none",
               )}>
-                <Upload className="w-4 h-4" />
-                {uploading ? "Uploading…" : "Choose a file (JPG, PNG, or PDF, up to 10MB)"}
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  {uploading ? t("add.uploading") : t("add.upload_cta")}
+                </div>
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  JPG, PNG, PDF, WEBP, HEIC · up to 50 MB · select multiple at once
+                </span>
                 <input
                   type="file"
-                  accept={ALLOWED_MIME_TYPES.join(",")}
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,application/pdf"
                   className="hidden"
                   disabled={uploading}
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handleFileSelected(file);
+                    if (e.target.files && e.target.files.length > 0) {
+                      void handleFilesSelected(e.target.files);
+                    }
                     e.target.value = "";
                   }}
                 />
@@ -382,12 +428,12 @@ export default function DocumentVaultPage() {
               const docsInCategory = visibleDocuments.filter((d) => d.category === cat.value);
               return (
                 <div key={cat.value}>
-                  <div className="flex items-baseline justify-between mb-2">
+                  <div className="mb-2">
                     <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{cat.label}</h3>
-                    <span className="text-xs text-muted-foreground">{cat.hint}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{cat.hint}</p>
                   </div>
                   {docsInCategory.length === 0 ? (
-                    <p className="text-xs text-muted-foreground/70 italic mb-2">No documents yet.</p>
+                    <p className="text-xs text-muted-foreground/70 italic mb-2">{t("doc.empty")}</p>
                   ) : (
                     <div className="space-y-2 mb-2">
                       {docsInCategory.map((doc) => {
@@ -397,9 +443,12 @@ export default function DocumentVaultPage() {
                           <div key={doc._id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
                             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <a href={doc.url ?? "#"} target="_blank" rel="noreferrer" className="text-sm font-medium text-foreground truncate hover:text-primary hover:underline">
+                              <button
+                                onClick={() => handlePreview(doc.url)}
+                                className="text-sm font-medium text-foreground truncate hover:text-primary hover:underline cursor-pointer text-left block w-full"
+                              >
                                 {doc.label}
-                              </a>
+                              </button>
                               <div className="text-xs text-muted-foreground truncate">{doc.fileName}</div>
                             </div>
                             {editingExpiryId === doc._id ? (
@@ -411,8 +460,8 @@ export default function DocumentVaultPage() {
                                   className="w-32 px-2 py-1 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                   autoFocus
                                 />
-                                <button onClick={() => void handleSaveExpiry(doc._id)} className="text-[11px] font-semibold text-accent hover:underline cursor-pointer">Save</button>
-                                <button onClick={() => setEditingExpiryId(null)} className="text-[11px] text-muted-foreground hover:underline cursor-pointer">Cancel</button>
+                                <button onClick={() => void handleSaveExpiry(doc._id)} className="text-[11px] font-semibold text-accent hover:underline cursor-pointer">{t("doc.save_expiry")}</button>
+                                <button onClick={() => setEditingExpiryId(null)} className="text-[11px] text-muted-foreground hover:underline cursor-pointer">{t("doc.cancel_expiry")}</button>
                               </div>
                             ) : (
                               <button
@@ -432,7 +481,7 @@ export default function DocumentVaultPage() {
                                   </span>
                                 ) : (
                                   <span className="text-[11px] font-semibold px-2 py-1 rounded-full border border-dashed border-border text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors">
-                                    Add expiry
+                                    {t("doc.add_expiry")}
                                   </span>
                                 )}
                               </button>
@@ -440,7 +489,7 @@ export default function DocumentVaultPage() {
                             {doc.expiryDate && (
                               hasReminder ? (
                                 <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 bg-accent/10 text-accent" title="We'll email you before this expires">
-                                  <BellRing className="w-3 h-3" /> Reminder set
+                                  <BellRing className="w-3 h-3" /> {t("doc.reminder_set")}
                                 </span>
                               ) : (
                                 <button
@@ -448,10 +497,24 @@ export default function DocumentVaultPage() {
                                   className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 border border-border text-muted-foreground hover:text-accent hover:border-accent/40 transition-colors cursor-pointer"
                                   title="Get an email reminder before this expires"
                                 >
-                                  <Bell className="w-3 h-3" /> Remind me
+                                  <Bell className="w-3 h-3" /> {t("doc.remind_me")}
                                 </button>
                               )
                             )}
+                            <button
+                              onClick={() => handlePreview(doc.url)}
+                              className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors cursor-pointer shrink-0"
+                              title="Preview"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => void handleDownload(doc.url, doc.fileName)}
+                              className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors cursor-pointer shrink-0"
+                              title="Download"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => void handleDelete(doc._id)}
                               className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer shrink-0"
@@ -477,6 +540,8 @@ export default function DocumentVaultPage() {
           &copy; {new Date().getFullYear()} Vericore Ltd. · VisaClear is a guidance tool, not legal advice.
         </p>
       </footer>
+
+      {GateModal}
     </div>
   );
 }

@@ -1,0 +1,8 @@
+{
+  "eyebrow": "Connexion Google",
+  "title": "Pas encore configuré",
+  "description": "La connexion Google n'est pas encore connectée sur ce déploiement. Utilisez plutôt l'email et le mot de passe pour vous connecter ou créer un compte.",
+  "continue_email": "Continuer avec email/mot de passe",
+  "auto_note": "La connexion Google apparaîtra automatiquement une fois configurée.",
+  "go_back": "Retour"
+}

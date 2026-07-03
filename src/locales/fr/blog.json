@@ -1,0 +1,21 @@
+{
+  "header.resources": "Ressources",
+  "header.cta": "Obtenir la liste gratuite",
+  "page.eyebrow": "Ressources et Guides",
+  "page.title": "Centre de ressources VisaClear",
+  "page.subtitle": "Guides pratiques, analyses de destinations et conseils documentaires rédigés spécifiquement pour les candidats africains, asiatiques et latino-américains.",
+  "featured.read": "Lire l'article",
+  "newsletter.title": "Recevez de nouveaux guides dans votre boîte mail",
+  "newsletter.subtitle": "Nous publions des guides pratiques sur les visas chaque semaine. Pas de spam, uniquement des informations utiles.",
+  "newsletter.subscribe": "S'abonner",
+  "newsletter.subscribing": "Abonnement…",
+  "toast.email_required": "Veuillez entrer votre adresse email.",
+  "toast.already_subscribed": "Vous êtes déjà abonné.",
+  "toast.subscribed": "Abonné. Surveillez votre boîte mail.",
+  "toast.subscribe_failed": "Échec de l'abonnement. Veuillez réessayer.",
+  "article.not_found_title": "Article introuvable",
+  "article.back_to_blog": "Retour au blog",
+  "article.cta_title": "Prêt à préparer votre demande ?",
+  "article.cta_subtitle": "Obtenez votre liste de documents exacte en 60 secondes. Gratuit pour commencer.",
+  "article.cta_button": "Obtenir ma liste gratuite"
+}

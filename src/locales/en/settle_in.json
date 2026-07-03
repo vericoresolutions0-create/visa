@@ -1,0 +1,11 @@
+{
+  "title": "Settle-In Toolkit",
+  "coming_soon": "Congratulations on your approval! A Settle-In guide for {{destination}} is coming soon — we don't want to show you generic advice that might not actually be right for this destination.",
+  "complete_pct": "{{progress}}% complete",
+  "intro": "Congratulations on your {{destination}} visa approval. Here's what to sort out once you arrive.",
+  "where": "Where: {{where}}",
+  "save": "Save progress",
+  "saving": "Saving…",
+  "toast.saved": "Settle-in progress saved.",
+  "toast.save_failed": "Could not save your progress."
+}

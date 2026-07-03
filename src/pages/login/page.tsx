@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Globe, Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -17,8 +18,11 @@ export default function LoginPage() {
   const location = useLocation();
   const goBack = useSmartBack("/");
   const { isDemoAuthenticated } = useDemoAuth();
+  const { t } = useTranslation("login");
   const hasAccess = isDemoAuthenticated;
   const isSignup = location.pathname === "/signup";
+
+  const STEPS = [t("steps.s1"), t("steps.s2"), t("steps.s3")];
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,7 +54,7 @@ export default function LoginPage() {
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Shield className="w-3.5 h-3.5 text-accent" />
-            Account Access
+            {t("header.account_access")}
           </div>
         </div>
       </header>
@@ -59,14 +63,10 @@ export default function LoginPage() {
         <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6 items-start">
           <aside className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs tracking-widest uppercase text-accent font-semibold mb-4">
-              Access Flow
+              {t("eyebrow")}
             </p>
-            {[
-              "Choose Google, email/password, or demo access.",
-              "Complete the account step.",
-              "Land directly in your dashboard.",
-            ].map((step, index) => (
-              <div key={step} className="flex gap-3 pb-4 last:pb-0">
+            {STEPS.map((step, index) => (
+              <div key={index} className="flex gap-3 pb-4 last:pb-0">
                 <div className="w-7 h-7 rounded-full bg-primary/8 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                   {index + 1}
                 </div>
@@ -80,15 +80,13 @@ export default function LoginPage() {
           <section>
             <div className="mb-6">
               <p className="text-xs tracking-widest uppercase text-accent font-semibold mb-2">
-                {isSignup ? "Create an account" : "Sign up / Login"}
+                {isSignup ? t("signup.eyebrow") : t("login.eyebrow")}
               </p>
               <h1 className="font-serif text-4xl font-semibold text-primary mb-3">
-                {isSignup ? "Create your VisaClear account" : "Create or access your account"}
+                {isSignup ? t("signup.title") : t("login.title")}
               </h1>
               <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
-                {isSignup
-                  ? "Register with email/password, use Google, or continue with the demo account."
-                  : "Use the demo account for now, or start the real auth flow when the external provider is ready."}
+                {isSignup ? t("signup.subtitle") : t("login.subtitle")}
               </p>
             </div>
 
@@ -96,18 +94,17 @@ export default function LoginPage() {
               <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center gap-2 text-primary font-semibold mb-2">
                   <CheckCircle2 className="w-5 h-5 text-accent" />
-                  Account access is active
+                  {t("active.title")}
                 </div>
                 <p className="text-sm text-muted-foreground mb-5">
-                  Continue to your dashboard to manage checklists, reminders,
-                  profile settings, and checkout.
+                  {t("active.body")}
                 </p>
                 <Button
                   size="lg"
                   className="cursor-pointer font-semibold"
                   onClick={() => navigate("/dashboard")}
                 >
-                  Continue to Dashboard
+                  {t("active.cta")}
                 </Button>
               </div>
             ) : (

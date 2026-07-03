@@ -1,10 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAction } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import {
@@ -14,14 +17,9 @@ import {
 } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { AVAILABLE_DESTINATIONS } from "@/lib/visa-data.ts";
+import { DESTINATION_FLAGS as DEST_FLAGS } from "@/lib/destination-flags.ts";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
-
-const DEST_FLAGS: Record<string, string> = {
-  "United Kingdom": "🇬🇧", "United States": "🇺🇸", "Canada": "🇨🇦",
-  "Germany": "🇩🇪", "Poland": "🇵🇱", "France": "🇫🇷", "Australia": "🇦🇺",
-  "Netherlands": "🇳🇱", "Ireland": "🇮🇪",
-};
 
 // This action is unauthenticated and free for anyone to call, so cap usage
 // per browser to avoid runaway AI-gateway costs from automated abuse.
@@ -68,6 +66,8 @@ export default function PassportPhotoPage() {
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
   const { isDemoAuthenticated, signOut } = useDemoAuth();
+  const translateCountry = useCountryName();
+  const { i18n } = useTranslation();
   const [destination, setDestination] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -106,12 +106,16 @@ export default function PassportPhotoPage() {
     }
     setLoading(true);
     try {
-      const res = await checkPhoto({ imageBase64, destination });
+      const res = await checkPhoto({ imageBase64, destination, language: i18n.language });
       setResult(res);
       incrementDailyPhotoCheckUsage();
       setUsageCount(getDailyPhotoCheckUsage());
-    } catch {
-      toast.error("Photo analysis failed. Please try again.");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Photo analysis failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -122,6 +126,15 @@ export default function PassportPhotoPage() {
     setImageBase64(null);
     setResult(null);
   };
+
+  // Scroll to top when photo check results arrive.
+  useEffect(() => {
+    if (result) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      });
+    }
+  }, [result]);
 
   const verdictColor = result
     ? result.verdict === "Approved" ? "text-green-600" : result.verdict === "Review Required" ? "text-amber-600" : "text-red-600"
@@ -233,7 +246,7 @@ export default function PassportPhotoPage() {
                 <span className={cn(
                   "text-[10px] font-medium leading-tight",
                   destination === d ? "text-primary" : "text-foreground/70"
-                )}>{d}</span>
+                )}>{translateCountry(d)}</span>
               </button>
             ))}
           </div>
@@ -274,7 +287,7 @@ export default function PassportPhotoPage() {
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground mb-1">Photo uploaded</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    {destination ? `Checking against ${destination} embassy standards.` : "Select a destination to analyse."}
+                    {destination ? `Checking against ${translateCountry(destination)} embassy standards.` : "Select a destination to analyse."}
                   </p>
                   <button
                     onClick={reset}
@@ -374,7 +387,7 @@ export default function PassportPhotoPage() {
                 <div>
                   <div className="font-semibold text-sm text-primary mb-1">Photo Requirements Reminder</div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    This AI check is a guidance tool. Always verify your photo against the official photo requirements on the embassy or immigration website for {destination}.
+                    This AI check is a guidance tool. Always verify your photo against the official photo requirements on the embassy or immigration website for {translateCountry(destination)}.
                     When in doubt, use a professional passport photo service.
                   </p>
                 </div>
@@ -387,7 +400,7 @@ export default function PassportPhotoPage() {
               >
                 <div>
                   <div className="font-semibold text-sm text-foreground">Ready to prepare your documents?</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Get your full visa checklist for {destination}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Get your full visa checklist for {translateCountry(destination)}</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-primary shrink-0" />
               </button>

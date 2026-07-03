@@ -1,0 +1,99 @@
+import { ConvexError, v } from "convex/values";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+
+const PAID_PLANS = ["pro", "expert"] as const;
+const isPaid = (plan: string | undefined) =>
+  PAID_PLANS.includes(plan as (typeof PAID_PLANS)[number]);
+
+// ─── Read notifications (paid only) ──────────────────────────────────────────
+export const getMyNotifications = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || !isPaid(user.plan)) return [];
+    return await ctx.db
+      .query("in_app_notifications")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(30);
+  },
+});
+
+// ─── Unread count (paid only) ─────────────────────────────────────────────────
+export const getUnreadCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || !isPaid(user.plan)) return 0;
+    const unread = await ctx.db
+      .query("in_app_notifications")
+      .withIndex("by_user_read", (q) =>
+        q.eq("userId", user._id).eq("read", false),
+      )
+      .collect();
+    return unread.length;
+  },
+});
+
+// ─── Mark all read ────────────────────────────────────────────────────────────
+export const markAllRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    if (!isPaid(user.plan)) return;
+    const unread = await ctx.db
+      .query("in_app_notifications")
+      .withIndex("by_user_read", (q) =>
+        q.eq("userId", user._id).eq("read", false),
+      )
+      .collect();
+    await Promise.all(unread.map((n) => ctx.db.patch(n._id, { read: true })));
+  },
+});
+
+// ─── Mark one read ────────────────────────────────────────────────────────────
+export const markRead = mutation({
+  args: { id: v.id("in_app_notifications") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const notification = await ctx.db.get(args.id);
+    if (!notification) throw new ConvexError({ code: "NOT_FOUND", message: "Notification not found" });
+    if (notification.userId !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your notification" });
+    }
+    await ctx.db.patch(args.id, { read: true });
+  },
+});
+
+// ─── Internal: create a notification for a paid user ─────────────────────────
+// All dispatchers go through this single chokepoint so the paid-plan guard
+// is never accidentally bypassed by a new caller.
+export const createNotification = internalMutation({
+  args: {
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("reminder_due"),
+      v.literal("document_expiry"),
+      v.literal("trip_deadline"),
+    ),
+    title: v.string(),
+    body: v.string(),
+    linkTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    // Silently skip if user no longer exists or is no longer paid — crons run
+    // on a schedule and a user may have downgraded since the row was scanned.
+    if (!user || !isPaid(user.plan)) return;
+    await ctx.db.insert("in_app_notifications", {
+      userId: args.userId,
+      type: args.type,
+      title: args.title,
+      body: args.body,
+      linkTo: args.linkTo,
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+  },
+});

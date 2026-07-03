@@ -1,44 +1,67 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { SignInButton } from "@/components/ui/signin.tsx";
+import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { ALL_COUNTRIES } from "@/lib/countries.ts";
+import { CountrySelect } from "@/components/CountrySelect.tsx";
 import {
   Globe, ArrowLeft, Shield, Users, FileText, BarChart3,
   CheckCircle2, XCircle, Trash2, ChevronDown, ChevronUp,
-  AlertCircle, UserCheck, Settings, Send,
+  AlertCircle, UserCheck, Settings, Send, Clock, Star,
   Building2, Copy, Plus, Eye, UserPlus, ListChecks, MessageCircle,
+  RefreshCw, Award, LogOut, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
-import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
-type Tab = "overview" | "users" | "agents" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "wait-times" | "partners" | "leads" | "employers" | "audit-log";
+type Tab = "overview" | "users" | "agents" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "employers" | "audit-log" | "blog";
+
+const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
+  { id: "overview",       icon: BarChart3,     label: "Overview" },
+  { id: "users",          icon: Users,         label: "Users" },
+  { id: "agents",         icon: UserCheck,     label: "Agents" },
+  { id: "country-watch",  icon: Globe,         label: "Country Watch" },
+  { id: "data-freshness", icon: RefreshCw,     label: "Data Freshness" },
+  { id: "telegram-bot",   icon: MessageCircle, label: "Telegram Bot" },
+  { id: "whatsapp-bot",   icon: MessageCircle, label: "WhatsApp Bot" },
+  { id: "wall-of-fame",   icon: Award,         label: "Wall of Fame" },
+  { id: "community",      icon: Users,         label: "Community" },
+  { id: "wait-times",     icon: Clock,         label: "Wait Times" },
+  { id: "partners",       icon: Building2,     label: "Partners" },
+  { id: "leads",          icon: UserPlus,      label: "Leads" },
+  { id: "employers",      icon: Building2,     label: "Employers" },
+  { id: "audit-log",      icon: ListChecks,    label: "Audit Log" },
+  { id: "blog",           icon: FileText,      label: "Blog" },
+];
 
 function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number | string; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-3 text-primary">
-        {icon}
-        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</span>
+        <div className="w-9 h-9 rounded-xl bg-[#0f2040]/8 flex items-center justify-center text-[#0f2040]">
+          {icon}
+        </div>
       </div>
-      <div className="font-serif text-3xl font-semibold text-primary">{value}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+      <div className="font-serif text-4xl font-semibold text-[#0f2040]">{value}</div>
+      {sub && <div className="text-xs text-gray-400 mt-2">{sub}</div>}
     </div>
   );
 }
 
 function AdminInner() {
+  const { t } = useTranslation("admin");
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const stats = useQuery(api.admin.getStats, {});
   const users = useQuery(api.admin.getUsers, { limit: 100 });
   const agents = useQuery(api.admin.getAgents, {});
@@ -51,266 +74,354 @@ function AdminInner() {
   const handlePlanChange = async (userId: Doc<"users">["_id"], plan: "free" | "pro" | "expert") => {
     try {
       await updatePlan({ userId, plan });
-      toast.success("Plan updated");
+      toast.success(t("toast.plan_updated"));
     } catch {
-      toast.error("Failed to update plan");
+      toast.error(t("toast.plan_update_failed"));
     }
   };
 
   const handleRoleChange = async (userId: Doc<"users">["_id"], role: "admin" | "user") => {
     try {
       await updateRole({ userId, role });
-      toast.success("Role updated");
+      toast.success(t("toast.role_updated"));
     } catch {
-      toast.error("Failed to update role");
+      toast.error(t("toast.role_update_failed"));
     }
   };
 
   const handleDeleteUser = async (userId: Doc<"users">["_id"]) => {
-    if (!window.confirm("Delete this user? This cannot be undone.")) return;
+    if (!window.confirm(t("confirm.delete_user"))) return;
     try {
       await deleteUser({ userId });
-      toast.success("User deleted");
+      toast.success(t("toast.user_deleted"));
     } catch {
-      toast.error("Failed to delete user");
+      toast.error(t("toast.user_delete_failed"));
     }
   };
 
   const handleVerifyAgent = async (agentId: Doc<"agent_profiles">["_id"], verified: boolean) => {
     try {
       await verifyAgent({ agentId, verified });
-      toast.success(verified ? "Agent verified" : "Agent unverified");
+      toast.success(verified ? t("toast.agent_verified") : t("toast.agent_unverified"));
     } catch {
-      toast.error("Failed to update agent");
+      toast.error(t("toast.agent_update_failed"));
     }
   };
 
   const isLoading = stats === undefined;
+  const currentNav = NAV_ITEMS.find((n) => n.id === tab) ?? NAV_ITEMS[0];
+
+  const Sidebar = (
+    <nav className="flex flex-col h-full">
+      <div className="px-4 py-5 border-b border-white/10">
+        <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+            <Globe className="w-4 h-4 text-white" />
+          </div>
+          <div className="text-left">
+            <div className="font-serif text-base font-semibold text-white leading-tight">VisaClear</div>
+            <div className="text-[9px] text-white/40 tracking-widest uppercase">Admin Panel</div>
+          </div>
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto py-3">
+        {NAV_ITEMS.map((item) => {
+          const active = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all cursor-pointer text-left",
+                active
+                  ? "bg-white/10 text-white border-r-2 border-[#b8a06a]"
+                  : "text-white/50 hover:text-white hover:bg-white/5 border-r-2 border-transparent"
+              )}
+            >
+              <item.icon className={cn("w-4 h-4 shrink-0", active ? "text-[#b8a06a]" : "")} />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="px-4 py-4 border-t border-white/10">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to site
+        </button>
+      </div>
+    </nav>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Tabs */}
-      <div className="flex gap-1 bg-muted/40 rounded-xl p-1">
-        {(["overview", "users", "agents", "country-watch", "data-freshness", "telegram-bot", "whatsapp-bot", "wall-of-fame", "wait-times", "partners", "leads", "employers", "audit-log"] as Tab[]).map((t) => (
+    <div className="flex h-full">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-56 bg-[#0f2040] flex-col shrink-0 sticky top-0 h-screen">
+        {Sidebar}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="w-56 bg-[#0f2040] flex flex-col h-full shadow-2xl">
+            {Sidebar}
+          </div>
+          <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4 sticky top-0 z-40">
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "flex-1 py-2 px-4 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer",
-              tab === t ? "bg-card text-primary shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"
-            )}
+            className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer"
+            onClick={() => setSidebarOpen(true)}
           >
-            {t === "country-watch"
-              ? "Country Watch"
-              : t === "data-freshness"
-                ? "Data Freshness"
-                : t === "telegram-bot"
-                  ? "Telegram Bot"
-                  : t === "whatsapp-bot"
-                    ? "WhatsApp Bot"
-                    : t === "wall-of-fame"
-                      ? "Wall of Fame"
-                      : t === "wait-times"
-                        ? "Wait Times"
-                        : t === "partners"
-                          ? "Partners"
-                          : t === "leads"
-                            ? "Leads"
-                            : t === "employers"
-                              ? "Employers"
-                              : t === "audit-log"
-                                ? "Audit Log"
-                                : t}
+            <Menu className="w-5 h-5" />
           </button>
-        ))}
+          <div>
+            <h1 className="font-serif text-xl font-semibold text-[#0f2040]">{currentNav.label}</h1>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#0f2040]/60 bg-[#0f2040]/5 px-3 py-1.5 rounded-full">
+              <Shield className="w-3 h-3" /> Admin
+            </span>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-6 md:p-8">
+
+          {/* Overview */}
+          {tab === "overview" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <StatCard icon={<Users className="w-4 h-4" />} label={t("overview.total_users")} value={stats.totalUsers} />
+                  <StatCard icon={<Shield className="w-4 h-4" />} label={t("overview.pro_expert")} value={stats.proUsers} sub={t("overview.free_count", { count: stats.freeUsers })} />
+                  <StatCard icon={<FileText className="w-4 h-4" />} label={t("overview.checklists_saved")} value={stats.totalChecklists} />
+                  <StatCard icon={<BarChart3 className="w-4 h-4" />} label={t("overview.rejections_analysed")} value={stats.totalRejectionAnalyses} />
+                  <StatCard icon={<UserCheck className="w-4 h-4" />} label={t("overview.agent_profiles")} value={stats.totalAgents} />
+                  <StatCard
+                    icon={<Settings className="w-4 h-4" />}
+                    label={t("overview.free_users")}
+                    value={`${stats.totalUsers > 0 ? Math.round((stats.freeUsers / stats.totalUsers) * 100) : 0}%`}
+                    sub={t("overview.on_free_plan")}
+                  />
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Users */}
+          {tab === "users" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              {users === undefined ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground text-sm">{t("users.empty")}</div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/60">
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">User</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Plan</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Role</th>
+                        <th className="px-5 py-3.5" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {users.map((user) => (
+                        <>
+                          <tr
+                            key={user._id}
+                            className="hover:bg-gray-50/60 cursor-pointer transition-colors"
+                            onClick={() => setExpandedUser(expandedUser === user._id ? null : user._id)}
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-[#0f2040] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                                  {(user.name ?? user.email ?? "?")[0].toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-medium text-[#0f2040] truncate">{user.name ?? t("users.no_name")}</div>
+                                  <div className="text-xs text-gray-400 truncate">{user.email ?? t("users.no_email")}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 hidden md:table-cell">
+                              <span className={cn(
+                                "text-xs font-semibold px-2.5 py-1 rounded-full",
+                                user.plan === "expert" ? "bg-[#b8a06a]/15 text-[#7a6435]" :
+                                user.plan === "pro" ? "bg-blue-50 text-blue-700" :
+                                "bg-gray-100 text-gray-500"
+                              )}>
+                                {user.plan ?? "free"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <span className={cn(
+                                "text-xs font-semibold px-2.5 py-1 rounded-full",
+                                user.role === "admin" ? "bg-[#0f2040]/10 text-[#0f2040]" : "bg-gray-100 text-gray-500"
+                              )}>
+                                {user.role ?? "user"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              {expandedUser === user._id
+                                ? <ChevronUp className="w-4 h-4 text-gray-400 ml-auto" />
+                                : <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />}
+                            </td>
+                          </tr>
+                          {expandedUser === user._id && (
+                            <tr key={`${user._id}-expanded`}>
+                              <td colSpan={4} className="px-5 py-4 bg-gray-50/80">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div>
+                                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{t("users.plan_label")}</label>
+                                    <select
+                                      value={user.plan ?? "free"}
+                                      onChange={(e) => { void handlePlanChange(user._id, e.target.value as "free" | "pro" | "expert"); }}
+                                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2040]/20 cursor-pointer"
+                                    >
+                                      <option value="free">{t("users.plan_free")}</option>
+                                      <option value="pro">{t("users.plan_pro")}</option>
+                                      <option value="expert">{t("users.plan_expert")}</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{t("users.role_label")}</label>
+                                    <select
+                                      value={user.role ?? "user"}
+                                      onChange={(e) => { void handleRoleChange(user._id, e.target.value as "admin" | "user"); }}
+                                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2040]/20 cursor-pointer"
+                                    >
+                                      <option value="user">{t("users.role_user")}</option>
+                                      <option value="admin">{t("users.role_admin")}</option>
+                                    </select>
+                                  </div>
+                                  <button
+                                    onClick={() => { void handleDeleteUser(user._id); }}
+                                    className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> {t("users.delete")}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/40">
+                    <p className="text-xs text-gray-400">{users.length} user{users.length !== 1 ? "s" : ""}</p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Agents */}
+          {tab === "agents" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              {agents === undefined ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+                </div>
+              ) : agents.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground text-sm">{t("agents.empty")}</div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/60">
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Agent</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Specialisations</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                        <th className="px-5 py-3.5" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {agents.map((agent) => (
+                        <tr key={agent._id} className="hover:bg-gray-50/40 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="font-medium text-[#0f2040]">{agent.fullName}</div>
+                            <div className="text-xs text-gray-400">{agent.email} · {agent.country}</div>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell">
+                            <div className="text-xs text-gray-500">{agent.specialisations.slice(0, 3).join(", ")}</div>
+                          </td>
+                          <td className="px-5 py-4">
+                            {agent.verified ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">
+                                <CheckCircle2 className="w-3 h-3" /> {t("agents.verified")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
+                                <AlertCircle className="w-3 h-3" /> {t("agents.pending")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            {!agent.verified ? (
+                              <button
+                                onClick={() => { void handleVerifyAgent(agent._id, true); }}
+                                className="text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                              >
+                                {t("agents.verify")}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => { void handleVerifyAgent(agent._id, false); }}
+                                className="text-xs font-semibold text-gray-400 hover:text-red-500 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                              >
+                                {t("agents.unverify")}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* All other panels — unchanged content, just wrapped */}
+          {tab === "country-watch" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CountryWatchAdminPanel /></div>}
+          {tab === "data-freshness" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><DataFreshnessPanel /></div>}
+          {tab === "telegram-bot" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><TelegramBotPanel /></div>}
+          {tab === "whatsapp-bot" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><WhatsAppBotPanel /></div>}
+          {tab === "wall-of-fame" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><WallOfFameAdminPanel /></div>}
+          {tab === "community" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CommunityAdminPanel /></div>}
+          {tab === "wait-times" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><WaitTimesAdminPanel /></div>}
+          {tab === "partners" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><PartnersAdminPanel /></div>}
+          {tab === "leads" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><LeadsAdminPanel /></div>}
+          {tab === "employers" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><EmployersAdminPanel /></div>}
+          {tab === "audit-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AuditLogPanel /></div>}
+          {tab === "blog" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><BlogAdminPanel /></div>}
+
+        </main>
       </div>
-
-      {/* Overview */}
-      {tab === "overview" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-          {isLoading ? (
-            <div className="grid grid-cols-2 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={<Users className="w-4 h-4" />} label="Total Users" value={stats.totalUsers} />
-              <StatCard icon={<Shield className="w-4 h-4" />} label="Pro/Expert" value={stats.proUsers} sub={`${stats.freeUsers} free`} />
-              <StatCard icon={<FileText className="w-4 h-4" />} label="Checklists Saved" value={stats.totalChecklists} />
-              <StatCard icon={<BarChart3 className="w-4 h-4" />} label="Rejections Analysed" value={stats.totalRejectionAnalyses} />
-              <StatCard icon={<UserCheck className="w-4 h-4" />} label="Agent Profiles" value={stats.totalAgents} />
-              <StatCard
-                icon={<Settings className="w-4 h-4" />}
-                label="Free Users"
-                value={`${stats.totalUsers > 0 ? Math.round((stats.freeUsers / stats.totalUsers) * 100) : 0}%`}
-                sub="on free plan"
-              />
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* Users */}
-      {tab === "users" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-          {users === undefined ? (
-            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)
-          ) : users.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No users yet.</div>
-          ) : (
-            users.map((user) => (
-              <div key={user._id} className="bg-card border border-border rounded-xl overflow-hidden">
-                <div
-                  className="flex items-center gap-3 p-4 cursor-pointer"
-                  onClick={() => setExpandedUser(expandedUser === user._id ? null : user._id)}
-                >
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                    {(user.name ?? user.email ?? "?")[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-foreground truncate">{user.name ?? "No name"}</div>
-                    <div className="text-xs text-muted-foreground truncate">{user.email ?? "No email"}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                      user.plan === "pro" || user.plan === "expert" ? "bg-accent/15 text-accent" : "bg-muted text-muted-foreground"
-                    )}>
-                      {user.plan ?? "free"}
-                    </span>
-                    {user.role === "admin" && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">admin</span>
-                    )}
-                    {expandedUser === user._id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                  </div>
-                </div>
-                {expandedUser === user._id && (
-                  <div className="border-t border-border p-4 bg-muted/20 space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Plan</label>
-                        <select
-                          value={user.plan ?? "free"}
-                          onChange={(e) => { void handlePlanChange(user._id, e.target.value as "free" | "pro" | "expert"); }}
-                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-                        >
-                          <option value="free">Free</option>
-                          <option value="pro">Pro</option>
-                          <option value="expert">Expert</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Role</label>
-                        <select
-                          value={user.role ?? "user"}
-                          onChange={(e) => { void handleRoleChange(user._id, e.target.value as "admin" | "user"); }}
-                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => { void handleDeleteUser(user._id); }}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete User
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </motion.div>
-      )}
-
-      {/* Agents */}
-      {tab === "agents" && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-          {agents === undefined ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          ) : agents.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No agent profiles yet.</div>
-          ) : (
-            agents.map((agent) => (
-              <div key={agent._id} className="bg-card border border-border rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="font-semibold text-sm text-foreground">{agent.fullName}</div>
-                      {agent.verified ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" /> Verified
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                          <AlertCircle className="w-3 h-3" /> Pending
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{agent.email} &nbsp;·&nbsp; {agent.country}</div>
-                    <div className="text-xs text-muted-foreground mt-1">{agent.specialisations.slice(0, 3).join(", ")}</div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    {!agent.verified ? (
-                      <button
-                        onClick={() => { void handleVerifyAgent(agent._id, true); }}
-                        className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Verify
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => { void handleVerifyAgent(agent._id, false); }}
-                        className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-destructive px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Unverify
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </motion.div>
-      )}
-
-      {/* Country Watch */}
-      {tab === "country-watch" && <CountryWatchAdminPanel />}
-
-      {/* Data Freshness */}
-      {tab === "data-freshness" && <DataFreshnessPanel />}
-
-      {/* Telegram Bot */}
-      {tab === "telegram-bot" && <TelegramBotPanel />}
-
-      {tab === "whatsapp-bot" && <WhatsAppBotPanel />}
-
-      {/* Wall of Fame */}
-      {tab === "wall-of-fame" && <WallOfFameAdminPanel />}
-
-      {/* Wait Times */}
-      {tab === "wait-times" && <WaitTimesAdminPanel />}
-
-      {/* Partners */}
-      {tab === "partners" && <PartnersAdminPanel />}
-
-      {/* Leads */}
-      {tab === "leads" && <LeadsAdminPanel />}
-
-      {/* Employers */}
-      {tab === "employers" && <EmployersAdminPanel />}
-
-      {/* Audit Log */}
-      {tab === "audit-log" && <AuditLogPanel />}
     </div>
   );
 }
 
 function WallOfFameAdminPanel() {
+  const { t } = useTranslation("admin");
   const pending = useQuery(api.wallOfFame.listPendingStories, {});
   const moderate = useMutation(api.wallOfFame.moderateStory);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -319,9 +430,9 @@ function WallOfFameAdminPanel() {
     setProcessingId(storyId);
     try {
       await moderate({ storyId: storyId as Id<"wall_of_fame_stories">, decision });
-      toast.success(decision === "approved" ? "Story approved and now public." : "Story rejected.");
+      toast.success(decision === "approved" ? t("wof.toast_approved") : t("wof.toast_rejected"));
     } catch {
-      toast.error("Could not update this story. Please try again.");
+      toast.error(t("wof.toast_error"));
     } finally {
       setProcessingId(null);
     }
@@ -330,17 +441,16 @@ function WallOfFameAdminPanel() {
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-        Pending Stories ({pending?.length ?? 0})
+        {t("wof.pending_stories", { count: pending?.length ?? 0 })}
       </h3>
       <p className="text-xs text-muted-foreground">
-        Nothing here is public until approved. Check for accidental personal identifiers and anything that names a
-        specific embassy officer before approving.
+        {t("wof.description")}
       </p>
       {pending === undefined ? (
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : pending.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          No stories awaiting review.
+          {t("wof.empty")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -354,22 +464,22 @@ function WallOfFameAdminPanel() {
                   {new Date(story.createdAt).toLocaleString("en-GB")}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mb-1"><span className="font-semibold">Went wrong:</span> {story.whatWentWrong}</p>
-              <p className="text-xs text-muted-foreground mb-3"><span className="font-semibold">Fixed it:</span> {story.whatFixedIt}</p>
+              <p className="text-xs text-muted-foreground mb-1"><span className="font-semibold">{t("wof.went_wrong")}</span> {story.whatWentWrong}</p>
+              <p className="text-xs text-muted-foreground mb-3"><span className="font-semibold">{t("wof.fixed_it")}</span> {story.whatFixedIt}</p>
               <div className="flex gap-2">
                 <button
                   disabled={processingId === story._id}
                   onClick={() => { void handleModerate(story._id, "approved"); }}
                   className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {t("wof.approve")}
                 </button>
                 <button
                   disabled={processingId === story._id}
                   onClick={() => { void handleModerate(story._id, "rejected"); }}
                   className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
                 >
-                  <XCircle className="w-3.5 h-3.5" /> Reject
+                  <XCircle className="w-3.5 h-3.5" /> {t("wof.reject")}
                 </button>
               </div>
             </div>
@@ -380,7 +490,143 @@ function WallOfFameAdminPanel() {
   );
 }
 
+function CommunityAdminPanel() {
+  const posts = useQuery(api.community.listPostsForModeration, {});
+  const moderate = useMutation(api.community.moderatePost);
+  const toggleFeatured = useMutation(api.community.toggleFeatured);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const handleModerate = async (postId: string, decision: "approved" | "rejected", featured?: boolean) => {
+    setProcessingId(postId);
+    try {
+      await moderate({
+        postId: postId as Id<"community_posts">,
+        decision,
+        featured: featured ?? false,
+      });
+      toast.success(decision === "approved" ? "Post approved." : "Post rejected.");
+    } catch {
+      toast.error("Failed to moderate post.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleToggleFeatured = async (postId: string) => {
+    setProcessingId(postId);
+    try {
+      await toggleFeatured({ postId: postId as Id<"community_posts"> });
+      toast.success("Featured status updated.");
+    } catch {
+      toast.error("Failed to update featured status.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const pending = posts?.filter((p) => p.status === "pending") ?? [];
+  const hidden = posts?.filter((p) => p.status === "hidden") ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-1">
+          Community Posts — Pending Review ({pending.length})
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Approve to make a post live. Mark as Featured to surface it on the Blog Community tab.
+        </p>
+        {posts === undefined ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : pending.length === 0 ? (
+          <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+            No posts pending review.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pending.map((post) => (
+              <div key={post._id} className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-accent uppercase tracking-wide">{post.category} · {post.country}</span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(post.createdAt).toLocaleString("en-GB")}</span>
+                </div>
+                <p className="text-sm font-semibold text-primary mb-1">{post.title}</p>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{post.body}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    disabled={processingId === post._id}
+                    onClick={() => { void handleModerate(post._id, "approved", false); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button
+                    disabled={processingId === post._id}
+                    onClick={() => { void handleModerate(post._id, "approved", true); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> Approve + Feature
+                  </button>
+                  <button
+                    disabled={processingId === post._id}
+                    onClick={() => { void handleModerate(post._id, "rejected"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {hidden.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-1">
+            Auto-Hidden by Flags ({hidden.length})
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            These posts were hidden automatically after receiving 3 or more flags from users.
+          </p>
+          <div className="space-y-3">
+            {hidden.map((post) => (
+              <div key={post._id} className="bg-card border border-orange-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                    {post.category} · {post.country} · {post.flagCount} flags
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(post.createdAt).toLocaleString("en-GB")}</span>
+                </div>
+                <p className="text-sm font-semibold text-primary mb-1">{post.title}</p>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{post.body}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    disabled={processingId === post._id}
+                    onClick={() => { void handleModerate(post._id, "approved"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Restore
+                  </button>
+                  <button
+                    disabled={processingId === post._id}
+                    onClick={() => { void handleModerate(post._id, "rejected"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PartnersAdminPanel() {
+  const { t } = useTranslation("admin");
   const partners = useQuery(api.partners.listPartners, {});
   const createPartner = useMutation(api.partners.createPartner);
   const toggleActive = useMutation(api.partners.togglePartnerActive);
@@ -395,12 +641,12 @@ function PartnersAdminPanel() {
     setSubmitting(true);
     try {
       const result = await createPartner({ name, slug: slug || name, partnerType });
-      toast.success(`Partner link ready: ?ref=${result.slug}`);
+      toast.success(t("partners.toast_created", { slug: result.slug }));
       setName("");
       setSlug("");
       setShowForm(false);
     } catch (err) {
-      const message = err instanceof ConvexError ? (err.data as { message: string }).message : "Could not create partner. Please try again.";
+      const message = err instanceof ConvexError ? (err.data as { message: string }).message : t("partners.toast_create_error");
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -411,7 +657,7 @@ function PartnersAdminPanel() {
     const link = `${window.location.origin}/?ref=${partnerSlug}`;
     void navigator.clipboard.writeText(link);
     setCopiedSlug(partnerSlug);
-    toast.success("Link copied.");
+    toast.success(t("partners.toast_link_copied"));
     setTimeout(() => setCopiedSlug(null), 2000);
   };
 
@@ -420,14 +666,14 @@ function PartnersAdminPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-            Partners ({partners?.length ?? 0})
+            {t("partners.heading", { count: partners?.length ?? 0 })}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            One generic system for any university, agency, or company — each gets its own tracked link, fully isolated from every other partner.
+            {t("partners.description")}
           </p>
         </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)} className="cursor-pointer">
-          <Plus className="w-3.5 h-3.5" /> {showForm ? "Cancel" : "Add partner"}
+          <Plus className="w-3.5 h-3.5" /> {showForm ? t("partners.cancel") : t("partners.add")}
         </Button>
       </div>
 
@@ -437,13 +683,13 @@ function PartnersAdminPanel() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Partner name (e.g. Vistula University)"
+              placeholder={t("partners.name_placeholder")}
               className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
             />
             <input
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="Link slug (auto from name if left blank)"
+              placeholder={t("partners.slug_placeholder")}
               className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
             />
           </div>
@@ -452,12 +698,12 @@ function PartnersAdminPanel() {
             onChange={(e) => setPartnerType(e.target.value as typeof partnerType)}
             className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
           >
-            <option value="university">University</option>
-            <option value="agency">Agency</option>
-            <option value="other">Other / Company</option>
+            <option value="university">{t("partners.type_university")}</option>
+            <option value="agency">{t("partners.type_agency")}</option>
+            <option value="other">{t("partners.type_other")}</option>
           </select>
           <Button size="sm" className="w-full cursor-pointer" disabled={!name.trim() || submitting} onClick={() => { void handleCreate(); }}>
-            {submitting ? "Creating..." : "Create partner link"}
+            {submitting ? t("partners.creating") : t("partners.create")}
           </Button>
         </div>
       )}
@@ -466,7 +712,7 @@ function PartnersAdminPanel() {
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : partners.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          No partners yet. Add your first one to generate a trackable link.
+          {t("partners.empty")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -487,7 +733,7 @@ function PartnersAdminPanel() {
                     p.active ? "bg-green-50 text-green-700 border border-green-200" : "bg-secondary text-secondary-foreground border border-border"
                   )}
                 >
-                  {p.active ? "Active" : "Inactive"}
+                  {p.active ? t("partners.active") : t("partners.inactive")}
                 </button>
               </div>
 
@@ -499,7 +745,7 @@ function PartnersAdminPanel() {
                   onClick={() => handleCopyLink(p.slug)}
                   className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 cursor-pointer"
                 >
-                  <Copy className="w-3 h-3" /> {copiedSlug === p.slug ? "Copied!" : "Copy"}
+                  <Copy className="w-3 h-3" /> {copiedSlug === p.slug ? t("partners.copied") : t("partners.copy")}
                 </button>
               </div>
 
@@ -507,21 +753,21 @@ function PartnersAdminPanel() {
                 <div className="bg-muted/30 rounded-lg p-2.5 text-center">
                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                     <Eye className="w-3 h-3" />
-                    <span className="text-[10px] uppercase tracking-wide font-semibold">Visits</span>
+                    <span className="text-[10px] uppercase tracking-wide font-semibold">{t("partners.visits")}</span>
                   </div>
                   <p className="text-sm font-bold text-primary">{p.visits}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5 text-center">
                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                     <UserPlus className="w-3 h-3" />
-                    <span className="text-[10px] uppercase tracking-wide font-semibold">Signups</span>
+                    <span className="text-[10px] uppercase tracking-wide font-semibold">{t("partners.signups")}</span>
                   </div>
                   <p className="text-sm font-bold text-primary">{p.signups}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-2.5 text-center">
                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                     <ListChecks className="w-3 h-3" />
-                    <span className="text-[10px] uppercase tracking-wide font-semibold">Checklists</span>
+                    <span className="text-[10px] uppercase tracking-wide font-semibold">{t("partners.checklists")}</span>
                   </div>
                   <p className="text-sm font-bold text-primary">{p.checklistCompletions}</p>
                 </div>
@@ -535,22 +781,22 @@ function PartnersAdminPanel() {
 }
 
 function WaitTimesAdminPanel() {
+  const { t } = useTranslation("admin");
   const overview = useQuery(api.waitTimeTracker.getAdminOverview, {});
 
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-        Wait Time Reports ({overview?.totalReports ?? 0})
+        {t("wait.heading", { count: overview?.totalReports ?? 0 })}
       </h3>
       <p className="text-xs text-muted-foreground">
-        No moderation needed here — reports are structured dates, not free text. Routes need at least 5 reports
-        before a community median is shown publicly.
+        {t("wait.description")}
       </p>
       {overview === undefined ? (
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : overview.routes.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          No reports submitted yet.
+          {t("wait.empty")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -558,12 +804,12 @@ function WaitTimesAdminPanel() {
             <div key={r.route} className="flex items-center justify-between bg-card border border-border rounded-lg px-4 py-2.5">
               <span className="text-sm text-foreground">{r.route}</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{r.count} report{r.count === 1 ? "" : "s"}</span>
+                <span className="text-xs text-muted-foreground">{t(r.count === 1 ? "wait.report_one" : "wait.report_other", { count: r.count })}</span>
                 <span className={cn(
                   "text-[10px] font-bold px-2 py-0.5 rounded-full",
                   r.hasEnoughData ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                 )}>
-                  {r.hasEnoughData ? "Public" : "Gathering data"}
+                  {r.hasEnoughData ? t("wait.public") : t("wait.gathering")}
                 </span>
               </div>
             </div>
@@ -575,6 +821,7 @@ function WaitTimesAdminPanel() {
 }
 
 function TelegramBotPanel() {
+  const { t } = useTranslation("admin");
   const isConfigured = useQuery(api.telegramBot.isTelegramConfigured, {});
   const stats = useQuery(api.telegramBot.getBotStats, {});
   const registerWebhook = useAction(api.telegramBot.registerWebhook);
@@ -585,12 +832,12 @@ function TelegramBotPanel() {
     try {
       const result = await registerWebhook({});
       if (result.ok) {
-        toast.success("Telegram webhook connected.");
+        toast.success(t("tg.toast_connected"));
       } else {
-        toast.error(result.description ?? "Could not connect the webhook.");
+        toast.error(result.description ?? t("tg.toast_connect_failed"));
       }
     } catch {
-      toast.error("Could not connect the webhook. Make sure TELEGRAM_BOT_TOKEN is set.");
+      toast.error(t("tg.toast_connect_error"));
     } finally {
       setConnecting(false);
     }
@@ -600,16 +847,16 @@ function TelegramBotPanel() {
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-semibold text-sm text-primary">Telegram Bot</h3>
+          <h3 className="font-semibold text-sm text-primary">{t("tg.title")}</h3>
           <span className={cn(
             "text-[10px] font-bold px-2 py-0.5 rounded-full",
             isConfigured ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"
           )}>
-            {isConfigured === undefined ? "Checking…" : isConfigured ? "Token set" : "Not configured"}
+            {isConfigured === undefined ? t("tg.checking") : isConfigured ? t("tg.token_set") : t("tg.not_configured")}
           </span>
         </div>
         <p className="text-xs text-muted-foreground mb-4">
-          Answers real visa document questions in Telegram using the same checklist data as the website — no AI, deterministic, always-correct matches.
+          {t("tg.description")}
         </p>
         <Button
           size="sm"
@@ -618,7 +865,7 @@ function TelegramBotPanel() {
           onClick={() => { void handleConnect(); }}
         >
           <Send className="w-3.5 h-3.5" />
-          {connecting ? "Connecting…" : "Connect Webhook"}
+          {connecting ? t("tg.connecting") : t("tg.connect")}
         </Button>
         {!isConfigured && (
           <p className="text-[11px] text-muted-foreground mt-2">
@@ -628,18 +875,18 @@ function TelegramBotPanel() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Recent Activity</h3>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("tg.recent_activity")}</h3>
         {stats === undefined ? (
           <Skeleton className="h-32 w-full rounded-xl" />
         ) : stats.recent.length === 0 ? (
           <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-            No questions asked yet.
+            {t("tg.no_questions")}
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={<Send className="w-4 h-4" />} label="Logged (last 50)" value={stats.totalLogged} />
-              <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Match Rate" value={`${stats.matchRate}%`} sub={`${stats.matchedCount} matched`} />
+              <StatCard icon={<Send className="w-4 h-4" />} label={t("tg.logged")} value={stats.totalLogged} />
+              <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label={t("tg.match_rate")} value={`${stats.matchRate}%`} sub={t("tg.matched_count", { count: stats.matchedCount })} />
             </div>
             <div className="space-y-2">
               {stats.recent.map((entry) => (
@@ -652,7 +899,7 @@ function TelegramBotPanel() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">{entry.questionText}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {entry.matchedDestination ? `Matched: ${entry.matchedDestination} (${entry.matchedVisaType})` : "No match"}
+                      {entry.matchedDestination ? t("tg.matched_detail", { destination: entry.matchedDestination, visaType: entry.matchedVisaType }) : t("tg.no_match")}
                       {" · "}{new Date(entry.createdAt).toLocaleString("en-GB")}
                     </p>
                   </div>
@@ -667,6 +914,7 @@ function TelegramBotPanel() {
 }
 
 function WhatsAppBotPanel() {
+  const { t } = useTranslation("admin");
   const isConfigured = useQuery(api.whatsappBot.isWhatsAppConfigured, {});
   const stats = useQuery(api.whatsappBot.getBotStats, {});
 
@@ -674,26 +922,27 @@ function WhatsAppBotPanel() {
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-semibold text-sm text-primary">WhatsApp Bot</h3>
+          <h3 className="font-semibold text-sm text-primary">{t("wa.title")}</h3>
           <span className={cn(
             "text-[10px] font-bold px-2 py-0.5 rounded-full",
             isConfigured ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"
           )}>
-            {isConfigured === undefined ? "Checking…" : isConfigured ? "Credentials set" : "Not configured"}
+            {isConfigured === undefined ? t("tg.checking") : isConfigured ? t("wa.credentials_set") : t("tg.not_configured")}
           </span>
         </div>
         <p className="text-xs text-muted-foreground mb-4">
-          Answers real visa document questions over WhatsApp using the same checklist data as the website — no AI, deterministic, always-correct matches. Built on Twilio's WhatsApp API.
+          {t("wa.description")}
         </p>
         {!isConfigured ? (
           <div className="text-[11px] text-muted-foreground space-y-1.5">
-            <p>Set <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, and <code>TWILIO_WHATSAPP_NUMBER</code> via <code>npx convex env set</code> first.</p>
+            <p>
+              Set <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, and <code>TWILIO_WHATSAPP_NUMBER</code> via <code>npx convex env set</code> first.
+            </p>
           </div>
         ) : (
           <div className="text-[11px] text-muted-foreground space-y-1.5">
             <p>
-              Unlike Telegram, Twilio has no API to register a webhook automatically — paste this deployment's webhook URL into the
-              Twilio Console yourself, under WhatsApp Sandbox / Senders settings:
+              {t("wa.webhook_hint")}
             </p>
             <code className="block bg-muted rounded-md px-2 py-1.5 text-[11px] break-all">
               {`${import.meta.env.VITE_CONVEX_URL?.replace(".cloud", ".site") ?? "https://your-deployment.convex.site"}/whatsapp/webhook`}
@@ -703,18 +952,18 @@ function WhatsAppBotPanel() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Recent Activity</h3>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("tg.recent_activity")}</h3>
         {stats === undefined ? (
           <Skeleton className="h-32 w-full rounded-xl" />
         ) : stats.recent.length === 0 ? (
           <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-            No questions asked yet.
+            {t("tg.no_questions")}
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={<MessageCircle className="w-4 h-4" />} label="Logged (last 50)" value={stats.totalLogged} />
-              <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Match Rate" value={`${stats.matchRate}%`} sub={`${stats.matchedCount} matched`} />
+              <StatCard icon={<MessageCircle className="w-4 h-4" />} label={t("tg.logged")} value={stats.totalLogged} />
+              <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label={t("tg.match_rate")} value={`${stats.matchRate}%`} sub={t("tg.matched_count", { count: stats.matchedCount })} />
             </div>
             <div className="space-y-2">
               {stats.recent.map((entry) => (
@@ -727,7 +976,7 @@ function WhatsAppBotPanel() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">{entry.questionText}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {entry.matchedDestination ? `Matched: ${entry.matchedDestination} (${entry.matchedVisaType})` : "No match"}
+                      {entry.matchedDestination ? t("tg.matched_detail", { destination: entry.matchedDestination, visaType: entry.matchedVisaType }) : t("tg.no_match")}
                       {" · "}{new Date(entry.createdAt).toLocaleString("en-GB")}
                     </p>
                   </div>
@@ -742,16 +991,16 @@ function WhatsAppBotPanel() {
 }
 
 function DataFreshnessPanel() {
+  const { t } = useTranslation("admin");
   const report = useQuery(api.dataFreshness.getFreshnessReport, {});
 
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-        Visa Checklist Data Freshness
+        {t("freshness.title")}
       </h3>
       <p className="text-xs text-muted-foreground">
-        Every destination's last real-verification date. Anything 90+ days old is flagged —
-        admins also get a weekly email digest when something falls behind.
+        {t("freshness.description")}
       </p>
       {report === undefined ? (
         <Skeleton className="h-40 w-full rounded-xl" />
@@ -771,7 +1020,7 @@ function DataFreshnessPanel() {
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground truncate">{row.destination}</div>
                   <div className="text-xs text-muted-foreground">
-                    {row.visaTypeCount} visa type{row.visaTypeCount === 1 ? "" : "s"}
+                    {t(row.visaTypeCount === 1 ? "freshness.visa_type_one" : "freshness.visa_type_other", { count: row.visaTypeCount })}
                   </div>
                 </div>
               </div>
@@ -782,7 +1031,7 @@ function DataFreshnessPanel() {
                     row.isStale ? "text-amber-700" : "text-muted-foreground",
                   )}
                 >
-                  {row.daysSinceVerified} days ago
+                  {t("freshness.days_ago", { days: row.daysSinceVerified })}
                 </div>
                 <div className="text-[10px] text-muted-foreground">{row.lastVerified}</div>
               </div>
@@ -803,6 +1052,7 @@ function suggestLicensePlan(requestedPlan: string): LicensePlan {
 }
 
 function IssueCodeControl({ applicationId, email, requestedPlan }: { applicationId: Id<"whitelabel_applications">; email: string; requestedPlan: string }) {
+  const { t } = useTranslation("admin");
   const issueCode = useMutation(api.licenseCodes.issueLicenseCode);
   // Shares the same underlying subscription as IssuedCodesList's identical
   // query — Convex dedupes same function+args across the component tree,
@@ -817,10 +1067,10 @@ function IssueCodeControl({ applicationId, email, requestedPlan }: { application
     try {
       const result = await issueCode({ email, plan, whitelabelApplicationId: applicationId });
       setIssuedCode(result.code);
-      toast.success("License code issued.");
+      toast.success(t("license.toast_issued"));
     } catch (err) {
       if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Failed to issue code.");
+      else toast.error(t("license.toast_issue_failed"));
     } finally {
       setIssuing(false);
     }
@@ -838,13 +1088,13 @@ function IssueCodeControl({ applicationId, email, requestedPlan }: { application
       <div className="flex items-center gap-2 mt-2">
         <code className="text-xs font-mono font-semibold bg-accent/10 text-accent px-2.5 py-1 rounded-lg">{displayCode}</code>
         {existingCode?.redeemedAt && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-green-700">Redeemed</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-green-700">{t("license.redeemed")}</span>
         )}
         <button
-          onClick={() => { navigator.clipboard.writeText(displayCode); toast.success("Copied."); }}
+          onClick={() => { navigator.clipboard.writeText(displayCode); toast.success(t("license.toast_copied")); }}
           className="text-xs font-semibold text-accent hover:underline cursor-pointer"
         >
-          Copy
+          {t("license.copy")}
         </button>
       </div>
     );
@@ -857,32 +1107,33 @@ function IssueCodeControl({ applicationId, email, requestedPlan }: { application
         onChange={(e) => setPlan(e.target.value as LicensePlan)}
         className="h-8 rounded-md border border-border bg-background px-2 text-xs"
       >
-        <option value="agent_listing">Agent Listing</option>
-        <option value="agent_featured">Agent Featured</option>
-        <option value="agency_white_label">Agency White-Label</option>
+        <option value="agent_listing">{t("license.agent_listing")}</option>
+        <option value="agent_featured">{t("license.agent_featured")}</option>
+        <option value="agency_white_label">{t("license.agency_white_label")}</option>
       </select>
       <button
         disabled={issuing}
         onClick={() => { void handleIssue(); }}
         className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60"
       >
-        {issuing ? "Issuing…" : "Issue License Code"}
+        {issuing ? t("license.issuing") : t("license.issue")}
       </button>
     </div>
   );
 }
 
 function IssuedCodesList() {
+  const { t } = useTranslation("admin");
   const codes = useQuery(api.licenseCodes.listLicenseCodes, {});
   if (codes === undefined) return <Skeleton className="h-24 w-full rounded-xl" />;
   if (codes.length === 0) {
-    return <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">No license codes issued yet.</div>;
+    return <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">{t("license.empty")}</div>;
   }
   const now = Date.now();
   return (
     <div className="bg-card border border-border rounded-xl divide-y divide-border">
       {codes.map((c) => {
-        const status = c.redeemedAt ? "Redeemed" : new Date(c.expiresAt).getTime() < now ? "Expired" : "Pending";
+        const statusKey = c.redeemedAt ? "redeemed" : new Date(c.expiresAt).getTime() < now ? "expired" : "pending";
         return (
           <div key={c._id} className="flex items-center justify-between px-4 py-2.5 text-xs gap-3">
             <div className="min-w-0">
@@ -891,9 +1142,9 @@ function IssuedCodesList() {
             </div>
             <span className={cn(
               "shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border",
-              status === "Redeemed" ? "bg-green-50 text-green-700 border-green-200" : status === "Expired" ? "bg-muted text-muted-foreground border-border" : "bg-amber-50 text-amber-700 border-amber-200",
+              statusKey === "redeemed" ? "bg-green-50 text-green-700 border-green-200" : statusKey === "expired" ? "bg-muted text-muted-foreground border-border" : "bg-amber-50 text-amber-700 border-amber-200",
             )}>
-              {status}
+              {t(`license.status_${statusKey}`)}
             </span>
           </div>
         );
@@ -903,6 +1154,7 @@ function IssuedCodesList() {
 }
 
 function LeadsAdminPanel() {
+  const { t } = useTranslation("admin");
   const applications = useQuery(api.whitelabel.list, {});
   const subscribers = useQuery(api.newsletter.list, {});
   const markRead = useMutation(api.whitelabel.markRead);
@@ -911,13 +1163,13 @@ function LeadsAdminPanel() {
     <div className="space-y-6">
       <div className="space-y-3">
         <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-          White-Label Applications ({applications?.filter((a) => !a.read).length ?? 0} unread)
+          {t("leads.applications_heading", { count: applications?.filter((a) => !a.read).length ?? 0 })}
         </h3>
         {applications === undefined ? (
           <Skeleton className="h-32 w-full rounded-xl" />
         ) : applications.length === 0 ? (
           <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-            No applications yet.
+            {t("leads.applications_empty")}
           </div>
         ) : (
           <div className="space-y-2">
@@ -928,7 +1180,7 @@ function LeadsAdminPanel() {
                   <span className="text-[10px] text-muted-foreground">{new Date(app.createdAt).toLocaleString("en-GB")}</span>
                 </div>
                 <div className="text-xs text-muted-foreground mb-2">
-                  {app.email}{app.phone ? ` · ${app.phone}` : ""}{app.country ? ` · ${app.country}` : ""} · Plan: <span className="font-semibold text-foreground">{app.plan}</span>
+                  {app.email}{app.phone ? ` · ${app.phone}` : ""}{app.country ? ` · ${app.country}` : ""} · {t("leads.plan_label")} <span className="font-semibold text-foreground">{app.plan}</span>
                 </div>
                 {app.message && <p className="text-xs text-muted-foreground mb-2">{app.message}</p>}
                 {!app.read && (
@@ -936,7 +1188,7 @@ function LeadsAdminPanel() {
                     onClick={() => { void markRead({ id: app._id }); }}
                     className="text-xs font-semibold text-accent hover:underline cursor-pointer"
                   >
-                    Mark as read
+                    {t("leads.mark_read")}
                   </button>
                 )}
                 <IssueCodeControl applicationId={app._id} email={app.email} requestedPlan={app.plan} />
@@ -947,19 +1199,19 @@ function LeadsAdminPanel() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">License Codes</h3>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("leads.license_codes_heading")}</h3>
         <IssuedCodesList />
       </div>
 
       <div className="space-y-3">
         <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-          Newsletter Subscribers ({subscribers?.length ?? 0})
+          {t("leads.subscribers_heading", { count: subscribers?.length ?? 0 })}
         </h3>
         {subscribers === undefined ? (
           <Skeleton className="h-24 w-full rounded-xl" />
         ) : subscribers.length === 0 ? (
           <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-            No subscribers yet.
+            {t("leads.subscribers_empty")}
           </div>
         ) : (
           <div className="bg-card border border-border rounded-xl divide-y divide-border">
@@ -977,21 +1229,22 @@ function LeadsAdminPanel() {
 }
 
 function EmployersAdminPanel() {
+  const { t } = useTranslation("admin");
   const orgs = useQuery(api.adminOrgs.listOrganizations, {});
 
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-        Organisations ({orgs?.length ?? 0} most recent)
+        {t("employers.heading", { count: orgs?.length ?? 0 })}
       </h3>
       <p className="text-xs text-muted-foreground">
-        Read-only oversight of both employer accounts and households — per-member detail stays inside each organisation's own dashboard.
+        {t("employers.description")}
       </p>
       {orgs === undefined ? (
         <Skeleton className="h-32 w-full rounded-xl" />
       ) : orgs.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          No organisations yet.
+          {t("employers.empty")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -1000,15 +1253,15 @@ function EmployersAdminPanel() {
               <div>
                 <span className="text-sm font-semibold text-primary">{org.name}</span>
                 <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  {org.type === "household" ? "Household" : "Employer"}
+                  {org.type === "household" ? t("employers.household") : t("employers.employer")}
                 </span>
-                <div className="text-[10px] text-muted-foreground">{new Date(org.createdAt).toLocaleDateString("en-GB")} · {org.memberCount} {org.memberCount === 1 ? "admin" : "admins"}</div>
+                <div className="text-[10px] text-muted-foreground">{new Date(org.createdAt).toLocaleDateString("en-GB")} · {t(org.memberCount === 1 ? "employers.admin_one" : "employers.admin_other", { count: org.memberCount })}</div>
               </div>
               <div className="flex gap-3 text-xs text-muted-foreground">
-                <span>{org.pendingCount} pending</span>
-                <span>{org.acceptedCount} accepted</span>
-                <span>{org.declinedCount} declined</span>
-                <span>{org.revokedCount} revoked</span>
+                <span>{t("employers.pending", { count: org.pendingCount })}</span>
+                <span>{t("employers.accepted", { count: org.acceptedCount })}</span>
+                <span>{t("employers.declined", { count: org.declinedCount })}</span>
+                <span>{t("employers.revoked", { count: org.revokedCount })}</span>
               </div>
             </div>
           ))}
@@ -1019,21 +1272,22 @@ function EmployersAdminPanel() {
 }
 
 function AuditLogPanel() {
+  const { t } = useTranslation("admin");
   const entries = useQuery(api.admin.getAuditLog, {});
 
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
-        Admin Action Audit Log
+        {t("audit.title")}
       </h3>
       <p className="text-xs text-muted-foreground">
-        Every plan change, role change, deletion, and agent verification, with who did it and when.
+        {t("audit.description")}
       </p>
       {entries === undefined ? (
         <Skeleton className="h-40 w-full rounded-xl" />
       ) : entries.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
-          No admin actions recorded yet.
+          {t("audit.empty")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -1045,7 +1299,7 @@ function AuditLogPanel() {
                   {entry.action} {entry.details ? `— ${entry.details}` : ""}
                 </div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  by {entry.adminEmail ?? "unknown admin"} · {new Date(entry.createdAt).toLocaleString("en-GB")}
+                  {t("audit.by", { email: entry.adminEmail ?? t("audit.unknown_admin") })} · {new Date(entry.createdAt).toLocaleString("en-GB")}
                 </div>
               </div>
             </div>
@@ -1057,6 +1311,7 @@ function AuditLogPanel() {
 }
 
 function CountryWatchAdminPanel() {
+  const { t } = useTranslation("admin");
   const updates = useQuery(api.countryWatch.listUpdates, {});
   const publishUpdate = useMutation(api.countryWatch.publishUpdate);
   const [countryName, setCountryName] = useState("");
@@ -1066,17 +1321,17 @@ function CountryWatchAdminPanel() {
 
   const handlePublish = async () => {
     if (!countryName || !title.trim() || !body.trim()) {
-      toast.error("Country, title, and body are all required.");
+      toast.error(t("watch.toast_required"));
       return;
     }
     setPublishing(true);
     try {
       await publishUpdate({ countryName, title: title.trim(), body: body.trim() });
-      toast.success(`Published. Notifying everyone watching ${countryName}.`);
+      toast.success(t("watch.toast_published", { country: countryName }));
       setTitle("");
       setBody("");
     } catch {
-      toast.error("Failed to publish update.");
+      toast.error(t("watch.toast_publish_failed"));
     } finally {
       setPublishing(false);
     }
@@ -1085,55 +1340,50 @@ function CountryWatchAdminPanel() {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">Publish a policy update</h3>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">{t("watch.publish_heading")}</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          This emails every user watching this country in real time. Only publish real, verified policy changes.
+          {t("watch.publish_description")}
         </p>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Country</label>
-            <select
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("watch.country_label")}</label>
+            <CountrySelect
               value={countryName}
-              onChange={(e) => setCountryName(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Select a country…</option>
-              {ALL_COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={setCountryName}
+              placeholder={t("watch.select_country")}
+            />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Title</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("watch.title_label")}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder='e.g. "UK Visitor Visa Update — Financial evidence requirement has changed"'
+              placeholder={t("watch.title_placeholder")}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Details</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("watch.details_label")}</label>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Explain exactly what changed and what affected applicants should do."
+              placeholder={t("watch.details_placeholder")}
               className="min-h-[120px]"
             />
           </div>
           <Button disabled={publishing} className="cursor-pointer font-semibold" onClick={() => void handlePublish()}>
-            {publishing ? "Publishing…" : "Publish & notify watchers"}
+            {publishing ? t("watch.publishing") : t("watch.publish")}
           </Button>
         </div>
       </div>
 
       <div>
-        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">Published updates</h3>
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">{t("watch.published_heading")}</h3>
         {updates === undefined ? (
           <Skeleton className="h-20 rounded-xl" />
         ) : updates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No updates published yet.</p>
+          <p className="text-sm text-muted-foreground">{t("watch.published_empty")}</p>
         ) : (
           <div className="space-y-2">
             {updates.map((u) => (
@@ -1150,64 +1400,330 @@ function CountryWatchAdminPanel() {
   );
 }
 
+function BlogAdminPanel() {
+  const articles = useQuery(api.blog.adminList);
+  const upsert = useMutation(api.blog.adminUpsert);
+  const togglePublished = useMutation(api.blog.adminTogglePublished);
+  const deleteArticle = useMutation(api.blog.adminDelete);
+  const seedArticles = useMutation(api.blog.adminSeedArticles);
+
+  const [editing, setEditing] = useState<string | null>(null); // _id or "new"
+  const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    slug: "", title: "", excerpt: "", body: "", category: "", readTime: "", featured: false, published: true, publishedAt: "",
+  });
+
+  const openNew = () => {
+    setForm({ slug: "", title: "", excerpt: "", body: "", category: "", readTime: "5 min read", featured: false, published: true, publishedAt: new Date().toISOString().slice(0, 10) });
+    setEditing("new");
+  };
+
+  const openEdit = (a: NonNullable<typeof articles>[number]) => {
+    setForm({
+      slug: a.slug, title: a.title, excerpt: a.excerpt, body: a.body,
+      category: a.category, readTime: a.readTime, featured: a.featured,
+      published: a.published, publishedAt: a.publishedAt ? a.publishedAt.slice(0, 10) : "",
+    });
+    setEditing(a._id);
+  };
+
+  const handleSave = async () => {
+    if (!form.slug.trim() || !form.title.trim() || !form.body.trim()) {
+      toast.error("Slug, title, and body are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await upsert({
+        _id: editing !== "new" ? editing as Parameters<typeof upsert>[0]["_id"] : undefined,
+        slug: form.slug.trim(),
+        title: form.title.trim(),
+        excerpt: form.excerpt.trim(),
+        body: form.body,
+        category: form.category.trim() || "Guides",
+        readTime: form.readTime.trim() || "5 min read",
+        featured: form.featured,
+        published: form.published,
+        publishedAt: form.publishedAt ? new Date(form.publishedAt).toISOString() : undefined,
+      });
+      toast.success(editing === "new" ? "Article created." : "Article saved.");
+      setEditing(null);
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (id: Parameters<typeof togglePublished>[0]["_id"]) => {
+    try {
+      await togglePublished({ _id: id });
+    } catch {
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handleDelete = async (id: Parameters<typeof deleteArticle>[0]["_id"]) => {
+    try {
+      await deleteArticle({ _id: id });
+      toast.success("Article deleted.");
+      setConfirmDelete(null);
+    } catch {
+      toast.error("Failed to delete.");
+    }
+  };
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      const count = await seedArticles({});
+      toast.success(`${count} articles loaded successfully.`);
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Seed failed.");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const f = (key: keyof typeof form, val: string | boolean) =>
+    setForm((prev) => ({ ...prev, [key]: val }));
+
+  const inputCls = "w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring";
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Blog Articles</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Create, edit, publish, and delete blog articles. Changes go live instantly.</p>
+        </div>
+        <Button size="sm" className="cursor-pointer font-semibold" onClick={openNew}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> New Article
+        </Button>
+      </div>
+
+      {/* Seed prompt — only shown when table is empty */}
+      {articles !== undefined && articles.length === 0 && editing === null && (
+        <div className="bg-accent/5 border border-accent/20 rounded-xl p-5 text-center">
+          <p className="text-sm text-muted-foreground mb-3">No articles yet. Load the 10 original VisaClear articles to get started.</p>
+          <Button size="sm" disabled={seeding} className="cursor-pointer font-semibold" onClick={() => void handleSeed()}>
+            {seeding ? "Loading…" : "Load Default Articles"}
+          </Button>
+        </div>
+      )}
+
+      {/* Edit / create form */}
+      {editing !== null && (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <h4 className="font-semibold text-sm text-primary">{editing === "new" ? "New Article" : "Edit Article"}</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Slug (URL)</label>
+              <input type="text" value={form.slug} onChange={(e) => f("slug", e.target.value)} placeholder="my-article-title" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Category</label>
+              <input type="text" value={form.category} onChange={(e) => f("category", e.target.value)} placeholder="Visa Tips" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">Title</label>
+            <input type="text" value={form.title} onChange={(e) => f("title", e.target.value)} placeholder="Article title" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">Excerpt (1–2 sentences shown in the list)</label>
+            <Textarea value={form.excerpt} onChange={(e) => f("excerpt", e.target.value)} placeholder="Short description shown on the blog listing page." className="min-h-[70px]" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">Body (markdown — use ## for headings, **bold**, - lists, 1. ordered lists)</label>
+            <Textarea value={form.body} onChange={(e) => f("body", e.target.value)} placeholder="Full article content..." className="min-h-[280px] font-mono text-xs" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Read Time</label>
+              <input type="text" value={form.readTime} onChange={(e) => f("readTime", e.target.value)} placeholder="5 min read" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Published Date</label>
+              <input type="date" value={form.publishedAt} onChange={(e) => f("publishedAt", e.target.value)} className={inputCls} />
+            </div>
+            <div className="flex flex-col gap-2 pt-5">
+              <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">
+                <input type="checkbox" checked={form.featured} onChange={(e) => f("featured", e.target.checked)} className="cursor-pointer" />
+                Featured (shown at top)
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">
+                <input type="checkbox" checked={form.published} onChange={(e) => f("published", e.target.checked)} className="cursor-pointer" />
+                Published (visible to users)
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button disabled={saving} className="cursor-pointer font-semibold" onClick={() => void handleSave()}>
+              {saving ? "Saving…" : "Save Article"}
+            </Button>
+            <Button variant="outline" className="cursor-pointer" onClick={() => setEditing(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Article list */}
+      {articles === undefined ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {articles.map((a) => (
+            <div key={a._id} className="bg-card border border-border rounded-xl p-4 flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", a.published ? "text-green-700 bg-green-50 border-green-200" : "text-muted-foreground bg-muted border-border")}>
+                    {a.published ? "Published" : "Draft"}
+                  </span>
+                  {a.featured && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">Featured</span>}
+                  <span className="text-[10px] text-muted-foreground">{a.category}</span>
+                </div>
+                <p className="text-sm font-semibold text-foreground truncate">{a.title}</p>
+                <p className="text-xs text-muted-foreground">/blog/{a.slug}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => void handleToggle(a._id)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                  title={a.published ? "Unpublish" : "Publish"}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => openEdit(a)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                  title="Edit"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+                {confirmDelete === a._id ? (
+                  <>
+                    <button onClick={() => void handleDelete(a._id)} className="text-xs font-semibold text-destructive cursor-pointer px-2 py-1 rounded hover:bg-destructive/10">Confirm</button>
+                    <button onClick={() => setConfirmDelete(null)} className="text-xs text-muted-foreground cursor-pointer px-1">Cancel</button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(a._id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function AdminPage() {
+  const { t } = useTranslation("admin");
   const navigate = useNavigate();
-  const goBack = useSmartBack("/");
   const currentUser = useQuery(api.users.getCurrentUser, {});
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
-              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                <Globe className="w-3.5 h-3.5 text-primary-foreground" />
-              </div>
-              <div>
-                <span className="font-serif text-lg font-semibold text-primary">VisaClear</span>
-                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">by Vericore</span>
-              </div>
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Shield className="w-3.5 h-3.5 text-accent" /> Admin Panel
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <AuthLoading>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="space-y-3 w-80">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
           </div>
         </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <AuthLoading>
-          <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}</div>
-        </AuthLoading>
-        <Unauthenticated>
-          <div className="text-center py-20">
-            <Shield className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Admin Access Required</h2>
-            <p className="text-muted-foreground text-sm mb-6">Sign in with an admin account to continue.</p>
-            <SignInButton size="lg" className="cursor-pointer" signInText="Sign In" />
-          </div>
-        </Unauthenticated>
-        <Authenticated>
-          {currentUser !== undefined && currentUser?.role !== "admin" ? (
-            <div className="text-center py-20">
-              <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-4" />
-              <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Access Denied</h2>
-              <p className="text-muted-foreground text-sm mb-6">You do not have admin privileges to view this page.</p>
-              <Button onClick={() => navigate("/")} className="cursor-pointer">Go Home</Button>
+      </AuthLoading>
+      <Unauthenticated>
+        <div className="flex-1 flex flex-col md:flex-row min-h-screen">
+          {/* Left — branding panel */}
+          <div className="hidden md:flex md:w-80 lg:w-96 bg-[#0f2040] flex-col justify-between p-10 shrink-0">
+            <div>
+              <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity mb-16">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <div className="font-serif text-lg font-semibold text-white leading-tight">VisaClear</div>
+                  <div className="text-[9px] text-white/40 tracking-widest uppercase">by Vericore</div>
+                </div>
+              </button>
+              <div className="mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#b8a06a]/20 flex items-center justify-center mb-4">
+                  <Shield className="w-5 h-5 text-[#b8a06a]" />
+                </div>
+                <h1 className="font-serif text-3xl font-semibold text-white mb-3">Admin Portal</h1>
+                <p className="text-white/50 text-sm leading-relaxed">
+                  Restricted access. Sign in with your admin account to manage users, content, and platform settings.
+                </p>
+              </div>
+              <div className="space-y-3 mt-8">
+                {["User & agent management", "Blog & content publishing", "Platform analytics & audit log"].map((item) => (
+                  <div key={item} className="flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#b8a06a]" />
+                    <span className="text-white/40 text-xs">{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : (
-            <AdminInner />
-          )}
-        </Authenticated>
-      </div>
+            <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} Vericore Ltd.</p>
+          </div>
 
-      <footer className="border-t border-border mt-10 py-6 px-6 text-center">
-        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Vericore Ltd. &nbsp;·&nbsp; Admin Panel</p>
-      </footer>
+          {/* Right — login form */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-gray-50">
+            {/* Mobile logo */}
+            <button onClick={() => navigate("/")} className="md:hidden flex items-center gap-2 mb-8 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="w-7 h-7 rounded-lg bg-[#0f2040] flex items-center justify-center">
+                <Globe className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="font-serif text-lg font-semibold text-[#0f2040]">VisaClear</span>
+            </button>
+
+            <div className="w-full max-w-sm">
+              <div className="mb-7">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#b8a06a] bg-[#b8a06a]/10 px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
+                  <Shield className="w-3 h-3" /> Admin Access
+                </div>
+                <h2 className="font-serif text-2xl font-semibold text-[#0f2040]">Sign in to continue</h2>
+                <p className="text-gray-400 text-sm mt-1">Only authorised admin accounts can access this panel.</p>
+              </div>
+              <AuthAccessPanel returnPath="/admin" hideDemoOption={true} />
+              <p className="text-center text-xs text-gray-400 mt-5">
+                Not an admin?{" "}
+                <button onClick={() => navigate("/")} className="text-[#0f2040] font-semibold hover:underline cursor-pointer">
+                  Back to the site
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </Unauthenticated>
+      <Authenticated>
+        {currentUser !== undefined && currentUser?.role !== "admin" ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center max-w-sm px-6">
+              <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-4" />
+              <h2 className="font-serif text-2xl font-semibold text-[#0f2040] mb-2">{t("page.access_denied")}</h2>
+              <p className="text-gray-500 text-sm mb-6">{t("page.access_denied_body")}</p>
+              <Button onClick={() => navigate("/")} className="cursor-pointer">{t("page.go_home")}</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex">
+            <AdminInner />
+          </div>
+        )}
+      </Authenticated>
     </div>
   );
 }

@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { ConvexError } from "convex/values";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { CountrySelect } from "@/components/CountrySelect.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Globe, ArrowLeft, Users, Star, MapPin, ChevronRight,
@@ -43,6 +45,7 @@ function toWhatsAppNumber(phone: string): string {
 }
 
 function AgentCard({ agent }: { agent: AgentProfile }) {
+  const { t } = useTranslation("agents");
   const [contacted, setContacted] = useState(false);
   const [sending, setSending] = useState(false);
   const contactAgent = useMutation(api.agents.contactAgent);
@@ -52,12 +55,12 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
     try {
       await contactAgent({ agentProfileId: agent._id as Id<"agent_profiles"> });
       setContacted(true);
-      toast.success(`Your enquiry was sent to ${agent.fullName}.`);
+      toast.success(t("card.toast_sent", { name: agent.fullName }));
     } catch (err) {
       if (err instanceof ConvexError) {
         toast.error((err.data as { message: string }).message);
       } else {
-        toast.error("Failed to send enquiry. Please try again.");
+        toast.error(t("card.toast_failed"));
       }
     } finally {
       setSending(false);
@@ -82,7 +85,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
             <span className="font-semibold text-foreground">{agent.fullName}</span>
             {agent.verified && (
               <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20">
-                <Check className="w-2.5 h-2.5" /> Verified
+                <Check className="w-2.5 h-2.5" /> {t("card.verified")}
               </span>
             )}
           </div>
@@ -99,7 +102,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
             )}
             <span className="mx-1">·</span>
             <Briefcase className="w-3 h-3" />
-            {agent.yearsExperience}y exp
+            {t("card.exp", { n: agent.yearsExperience })}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{agent.bio}</p>
           {/* Specialisations */}
@@ -128,7 +131,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
               : "bg-primary text-primary-foreground hover:bg-primary/90"
           )}
         >
-          {contacted ? <><Check className="w-3.5 h-3.5 inline mr-1" /> Enquiry Sent</> : sending ? "Sending…" : "Contact Agent"}
+          {contacted ? <><Check className="w-3.5 h-3.5 inline mr-1" /> {t("card.enquiry_sent")}</> : sending ? t("card.sending") : t("card.contact")}
         </button>
         {whatsappHref && (
           <a
@@ -157,6 +160,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
 
 // ─── Register Agent form ──────────────────────────────────────────────────────
 function RegisterAgentForm({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation("agents");
   const upsert = useMutation(api.agents.upsertProfile);
   const [form, setForm] = useState({
     fullName: "", email: "", phone: "", country: "", bio: "",
@@ -169,7 +173,7 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
 
   const handleSave = async () => {
     if (!form.fullName || !form.email || !form.country || !form.bio || form.specialisations.length === 0) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("form.toast_required"));
       return;
     }
     setSaving(true);
@@ -184,10 +188,10 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
         specialisations: form.specialisations,
         languages: form.languages,
       });
-      toast.success("Your agent profile has been submitted for verification!");
+      toast.success(t("form.toast_success"));
       onClose();
     } catch {
-      toast.error("Failed to save profile");
+      toast.error(t("form.toast_error"));
     } finally {
       setSaving(false);
     }
@@ -201,14 +205,13 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, scale: 1 }}
         className="relative z-10 w-full max-w-lg bg-card border border-border rounded-2xl p-6 shadow-2xl my-4"
       >
-        <h3 className="font-serif text-xl font-semibold text-primary mb-1">Register as a Visa Agent</h3>
-        <p className="text-xs text-muted-foreground mb-5">Your profile will be reviewed and verified by the VisaClear team before going live.</p>
+        <h3 className="font-serif text-xl font-semibold text-primary mb-1">{t("form.title")}</h3>
+        <p className="text-xs text-muted-foreground mb-5">{t("form.subtitle")}</p>
         <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
           {[
-            { label: "Full Name *", key: "fullName", type: "text", placeholder: "Your professional name" },
-            { label: "Email *", key: "email", type: "email", placeholder: "your@email.com" },
-            { label: "Phone (optional)", key: "phone", type: "tel", placeholder: "+234 xxx xxx xxxx" },
-            { label: "Country / Base Location *", key: "country", type: "text", placeholder: "e.g. Nigeria" },
+            { label: t("form.name"), key: "fullName", type: "text", placeholder: "Your professional name" },
+            { label: t("form.email"), key: "email", type: "email", placeholder: "your@email.com" },
+            { label: t("form.phone"), key: "phone", type: "tel", placeholder: "+234 xxx xxx xxxx" },
           ].map((f) => (
             <div key={f.key}>
               <label className="block text-xs font-semibold text-foreground mb-1.5">{f.label}</label>
@@ -222,7 +225,15 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
             </div>
           ))}
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Years of Experience</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.country")}</label>
+            <CountrySelect
+              value={form.country}
+              onChange={(v) => setForm((prev) => ({ ...prev, country: v }))}
+              placeholder="Select your country"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.years_exp")}</label>
             <input
               type="number"
               min={1}
@@ -233,17 +244,17 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Bio / Professional Summary *</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.bio")}</label>
             <textarea
               value={form.bio}
               onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))}
               rows={3}
-              placeholder="Tell applicants about your expertise and success rate…"
+              placeholder={t("form.bio_placeholder")}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-2">Visa Specialisations *</label>
+            <label className="block text-xs font-semibold text-foreground mb-2">{t("form.specialisations")}</label>
             <div className="flex flex-wrap gap-2">
               {SPECIALISATIONS.map((s) => (
                 <button
@@ -263,7 +274,7 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-2">Languages Spoken</label>
+            <label className="block text-xs font-semibold text-foreground mb-2">{t("form.languages")}</label>
             <div className="flex flex-wrap gap-2">
               {LANGUAGES_LIST.map((l) => (
                 <button
@@ -284,9 +295,9 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="flex gap-3 mt-5">
-          <Button variant="secondary" className="flex-1 cursor-pointer" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" className="flex-1 cursor-pointer" onClick={onClose}>{t("form.cancel")}</Button>
           <Button className="flex-1 cursor-pointer" disabled={saving} onClick={() => { void handleSave(); }}>
-            {saving ? "Saving…" : "Submit Profile"}
+            {saving ? t("form.saving") : t("form.submit")}
           </Button>
         </div>
       </motion.div>
@@ -296,6 +307,7 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
 
 // ─── Agents Inner ─────────────────────────────────────────────────────────────
 function AgentsInner() {
+  const { t } = useTranslation("agents");
   const navigate = useNavigate();
   const { results: agents, status, loadMore } = usePaginatedQuery(
     api.agents.listAgents,
@@ -324,9 +336,9 @@ function AgentsInner() {
         <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 flex items-center gap-3">
           <Check className="w-5 h-5 text-accent shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-foreground">Your agent profile is {myProfile.verified ? "live" : "pending verification"}</p>
+            <p className="text-sm font-semibold text-foreground">Your agent profile is {myProfile.verified ? t("profile.live") : t("profile.pending")}</p>
             <p className="text-xs text-muted-foreground">
-              {myProfile.verified ? "Applicants can now find and contact you." : "Our team will review your profile within 2–3 business days."}
+              {myProfile.verified ? t("profile.live_body") : t("profile.pending_body")}
             </p>
           </div>
         </div>
@@ -337,7 +349,7 @@ function AgentsInner() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Star className="w-4 h-4 text-accent fill-accent" />
-            <span className="font-semibold text-sm text-primary uppercase tracking-widest">Featured Agents</span>
+            <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
           </div>
           <div className="space-y-3">
             {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} />)}
@@ -354,7 +366,7 @@ function AgentsInner() {
               filterSpec === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
             )}
           >
-            All Agents
+            {t("inner.all")}
           </button>
           {SPECIALISATIONS.map((s) => (
             <button
@@ -378,8 +390,8 @@ function AgentsInner() {
       ) : (
         <div className="border border-dashed border-border rounded-xl p-10 text-center">
           <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="font-semibold text-foreground mb-1">No verified agents yet</p>
-          <p className="text-sm text-muted-foreground mb-4">Be the first to register as a verified VisaClear agent.</p>
+          <p className="font-semibold text-foreground mb-1">{t("inner.empty_title")}</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("inner.empty_body")}</p>
         </div>
       )}
 
@@ -391,7 +403,7 @@ function AgentsInner() {
             onClick={() => loadMore(20)}
             className="cursor-pointer"
           >
-            {status === "LoadingMore" ? "Loading…" : "Load more agents"}
+            {status === "LoadingMore" ? t("inner.loading") : t("inner.load_more")}
           </Button>
         </div>
       )}
@@ -401,20 +413,20 @@ function AgentsInner() {
         <div className="bg-gradient-to-br from-primary/8 to-accent/8 border border-primary/20 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-sm text-primary">Are you a visa agent?</span>
+            <span className="font-semibold text-sm text-primary">{t("inner.agent_cta.title")}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Register your profile to connect with applicants searching VisaClear for visa help. Get verified to display a trust badge.
+            {t("inner.agent_cta.body")}
           </p>
           <div className="flex flex-wrap gap-3">
             <Button size="sm" className="cursor-pointer" onClick={() => setShowRegister(true)}>
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> Register as Agent
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("inner.agent_cta.register")}
             </Button>
             <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => navigate("/agents/dashboard")}>
-              <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" /> View agent OS
+              <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" /> {t("inner.agent_cta.dashboard")}
             </Button>
             <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => navigate("/agents/register")}>
-              Preview onboarding
+              {t("inner.agent_cta.preview")}
             </Button>
           </div>
         </div>
@@ -427,6 +439,7 @@ function AgentsInner() {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 export default function AgentsPage() {
+  const { t } = useTranslation("agents");
   useSeo({ title: "Agents Marketplace", description: "Find trusted visa agents and immigration consultants on VisaClear. Connect with verified experts who know your destination country inside out." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
@@ -450,7 +463,7 @@ export default function AgentsPage() {
             </button>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <BadgeCheck className="w-3.5 h-3.5 text-accent" /> Partner Hub
+            <BadgeCheck className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
           </div>
         </div>
       </header>
@@ -463,39 +476,39 @@ export default function AgentsPage() {
           className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm"
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
-            <Shield className="w-3.5 h-3.5" /> Agent Partner Hub
+            <Shield className="w-3.5 h-3.5" /> {t("hero.eyebrow")}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
             <div className="text-left md:text-left">
               <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">
-                Premium visibility for visa professionals.
+                {t("hero.title")}
               </h1>
               <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-xl">
-                Give applicants a trusted place to discover your expertise, verify your credentials, and book a consultation with confidence.
+                {t("hero.subtitle")}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button className="cursor-pointer" onClick={() => navigate("/agents/dashboard")}>
-                  Open agent dashboard <ChevronRight className="w-4 h-4 ml-1.5" />
+                  {t("hero.open_dashboard")} <ChevronRight className="w-4 h-4 ml-1.5" />
                 </Button>
                 <Button
                   variant="secondary"
                   className="cursor-pointer"
                   onClick={() => navigate("/agents/register")}
                 >
-                  Register as an agent
+                  {t("hero.register")}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 mt-5">
-                {['Pipeline board', 'Client portal', 'Document vault'].map((tag) => (
+                {[t("hero.tags.pipeline"), t("hero.tags.portal"), t("hero.tags.vault")].map((tag) => (
                   <span key={tag} className="rounded-full border border-border bg-card/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm">{tag}</span>
                 ))}
               </div>
             </div>
             <div className="grid gap-3">
               {[
-                { label: 'Verified specialists', value: '24h' },
-                { label: 'Applicant trust signal', value: 'CISA-led' },
-                { label: 'Support model', value: 'Direct contact' },
+                { label: t("hero.stats.specialists"), value: '24h' },
+                { label: t("hero.stats.trust"), value: 'CISA-led' },
+                { label: t("hero.stats.support"), value: 'Direct contact' },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                   <div className="text-[10px] uppercase tracking-[0.26em] text-muted-foreground mb-1">{stat.label}</div>
@@ -555,27 +568,27 @@ export default function AgentsPage() {
           transition={{ delay: 0.08 }}
           className="rounded-3xl border border-border bg-card p-6 shadow-sm"
         >
-          <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">Why agencies choose this</p>
-          <h2 className="mt-2 font-serif text-2xl font-semibold text-primary">Turn trust into revenue — not just visibility.</h2>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">{t("why.eyebrow")}</p>
+          <h2 className="mt-2 font-serif text-2xl font-semibold text-primary">{t("why.title")}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-muted-foreground">
-            <div className="rounded-2xl border border-border bg-background/80 p-4">Verified profiles make your agency look professional before the first enquiry lands.</div>
-            <div className="rounded-2xl border border-border bg-background/80 p-4">Featured placement helps serious applicants find you faster when their route is urgent.</div>
-            <div className="rounded-2xl border border-border bg-background/80 p-4">The platform gives you a serious business workspace instead of a cluttered listing page.</div>
-            <div className="rounded-2xl border border-border bg-background/80 p-4">White-label options let you grow beyond one agency into a branded service model.</div>
+            <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p1")}</div>
+            <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p2")}</div>
+            <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p3")}</div>
+            <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p4")}</div>
           </div>
         </motion.section>
 
         <section className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">Marketplace</p>
-              <h2 className="mt-2 font-serif text-3xl font-semibold text-primary">Browse verified agents or manage your profile.</h2>
+              <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">{t("marketplace.eyebrow")}</p>
+              <h2 className="mt-2 font-serif text-3xl font-semibold text-primary">{t("marketplace.title")}</h2>
               <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                Applicants can find trusted professionals, while agent partners can maintain their listing and conversion workflow from the same hub.
+                {t("marketplace.subtitle")}
               </p>
             </div>
             <Button variant="secondary" className="cursor-pointer md:w-auto" onClick={() => navigate("/agents/register")}>
-              Partner onboarding
+              {t("marketplace.partner_onboarding")}
             </Button>
           </div>
 
@@ -588,8 +601,8 @@ export default function AgentsPage() {
               <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
                 <LogIn className="w-7 h-7 text-primary" />
               </div>
-              <h2 className="font-serif text-2xl font-semibold text-primary mb-3">Sign In to Browse Agents</h2>
-              <p className="text-muted-foreground text-sm">Sign in with Google or your email to view verified agents, send contact requests, or list your own agency.</p>
+              <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
+              <p className="text-muted-foreground text-sm">{t("signin.subtitle")}</p>
             </div>
             <div className="max-w-sm mx-auto">
               <AuthAccessPanel returnPath="/agents" hideDemoOption />

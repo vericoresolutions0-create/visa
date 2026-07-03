@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // Generous ceiling — sized to absorb real legitimate traffic while still
 // stopping an unattended script from running unbounded OpenAI spend on an
@@ -111,6 +112,39 @@ export const checkAndIncrementWhitelabelUsage = internalMutation({
       await ctx.db.patch(existing._id, { count: existing.count + 1 });
     } else {
       await ctx.db.insert("whitelabel_daily_usage", { dateKey, count: 1 });
+    }
+  },
+});
+
+// Per-user monthly cap for the Rejection Analyser (gpt-4o, Expert-only).
+// 20 analyses/month is far above any legitimate use; this is purely a cost
+// backstop in case an Expert account is compromised or scripts are run.
+const REJECTION_ANALYSER_MONTHLY_LIMIT = 20;
+
+export const checkAndIncrementRejectionAnalyserUsage = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const yearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+    const existing = await ctx.db
+      .query("rejection_analyser_usage")
+      .withIndex("by_user_month", (q) =>
+        q.eq("userId", user._id).eq("yearMonth", yearMonth)
+      )
+      .unique();
+
+    if (existing && existing.count >= REJECTION_ANALYSER_MONTHLY_LIMIT) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: `You've reached the ${REJECTION_ANALYSER_MONTHLY_LIMIT} analyses/month limit. Your allowance resets on the 1st of next month.`,
+      });
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("rejection_analyser_usage", { userId: user._id, yearMonth, count: 1 });
     }
   },
 });

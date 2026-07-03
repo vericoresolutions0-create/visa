@@ -1,7 +1,7 @@
 /**
  * Plan gating rules for VisaClear.
  *
- * Free  : 3 checklist saves / month, 9 destinations, no PDF, no AI, no reminders,
+ * Free  : 3 checklist saves / month, 6 destinations, no PDF, no AI, no reminders,
  *         no vault, no country watch
  * Pro   : unlimited checklists/trips, all destinations, PDF, reminders, document
  *         vault, multi-trip manager, country watch (5 countries), AI assistant
@@ -17,7 +17,7 @@
 
 export type Plan = "free" | "pro" | "expert";
 
-export const FREE_DESTINATION_LIMIT = 9;
+export const FREE_DESTINATION_LIMIT = 6;
 export const FREE_CHECKLIST_MONTHLY_LIMIT = 3;
 export const COUNTRY_WATCH_LIMIT: Record<Plan, number> = { free: 0, pro: 5, expert: 10 };
 export const AI_ASSISTANT_MONTHLY_LIMIT: Record<Plan, number | null> = {

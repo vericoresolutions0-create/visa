@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDemoGate } from "@/components/DemoGateModal.tsx";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
@@ -7,16 +8,20 @@ import {
   Globe, ArrowLeft, Shield, Plus, X, Bell,
   LayoutDashboard, Settings, LogOut, LogIn,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { api } from "@/convex/_generated/api.js";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { canUseCountryWatch, COUNTRY_WATCH_LIMIT } from "@/lib/plan-gates.ts";
 import { ALL_COUNTRIES } from "@/lib/countries.ts";
+import { CountrySelect } from "@/components/CountrySelect.tsx";
 
 const DEMO_WATCHES: Doc<"country_watches">[] = [
   { _id: "demo_watch_uk" as Id<"country_watches">, _creationTime: Date.now(), userId: "demo_user" as Id<"users">, countryName: "United Kingdom", createdAt: new Date().toISOString() },
@@ -45,11 +50,13 @@ const DEMO_FEED: Doc<"country_policy_updates">[] = [
 ];
 
 export default function CountryWatchPage() {
+  const { t } = useTranslation("country-watch");
   useSeo({ title: "Country Watch — VisaClear Pro", description: "Real policy change alerts for the countries you care about." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
   const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
   const { isAuthenticated, signOut: signOutReal } = useAuth();
+  const translateCountry = useCountryName();
   const canAccess = isDemoAuthenticated || isAuthenticated;
 
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
@@ -57,6 +64,8 @@ export default function CountryWatchPage() {
   const realFeed = useQuery(api.countryWatch.getMyFeed, isDemoAuthenticated ? "skip" : {});
   const addWatch = useMutation(api.countryWatch.addWatch);
   const removeWatch = useMutation(api.countryWatch.removeWatch);
+
+  const { gate, GateModal } = useDemoGate();
 
   const [demoWatches, setDemoWatches] = useState<Doc<"country_watches">[]>(DEMO_WATCHES);
   const watches = isDemoAuthenticated ? demoWatches : realWatches;
@@ -80,43 +89,27 @@ export default function CountryWatchPage() {
 
   const handleAdd = async () => {
     if (!selected) return;
-    if (isDemoAuthenticated) {
-      if (demoWatches.length >= limit) {
-        toast.error(`Your ${plan === "expert" ? "Expert" : "Pro"} plan can watch up to ${limit} countries. Remove one to add another.`);
-        return;
-      }
-      setDemoWatches((prev) => [
-        ...prev,
-        { _id: `demo_watch_${Date.now()}` as Id<"country_watches">, _creationTime: Date.now(), userId: "demo_user" as Id<"users">, countryName: selected, createdAt: new Date().toISOString() },
-      ]);
-      toast.success(`Now watching ${selected}.`);
-      setSelected("");
-      return;
-    }
+    if (gate()) return;
     try {
       await addWatch({ countryName: selected });
-      toast.success(`Now watching ${selected}.`);
+      toast.success(t("toast.added", { country: selected }));
       setSelected("");
     } catch (err) {
       if (err instanceof ConvexError) {
         toast.error((err.data as { message: string }).message);
       } else {
-        toast.error("Could not add this country. Please try again.");
+        toast.error(t("toast.add_error"));
       }
     }
   };
 
   const handleRemove = async (id: Parameters<typeof removeWatch>[0]["id"]) => {
-    if (isDemoAuthenticated) {
-      setDemoWatches((prev) => prev.filter((w) => w._id !== id));
-      toast.success("Removed.");
-      return;
-    }
+    if (gate()) return;
     try {
       await removeWatch({ id });
-      toast.success("Removed.");
+      toast.success(t("toast.removed"));
     } catch {
-      toast.error("Could not remove this country.");
+      toast.error(t("toast.remove_error"));
     }
   };
 
@@ -143,21 +136,21 @@ export default function CountryWatchPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <Bell className="w-3.5 h-3.5 text-accent" /> Country Watch
+              <Bell className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
             </div>
             {canAccess && (
               <>
-                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="My Dashboard">
+                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.dashboard")}>
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">My Dashboard</span>
+                  <span className="hidden md:inline">{t("nav.dashboard")}</span>
                 </button>
-                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="Settings">
+                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.settings")}>
                   <Settings className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Settings</span>
+                  <span className="hidden md:inline">{t("nav.settings")}</span>
                 </button>
-                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title="Sign out">
+                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title={t("nav.sign_out")}>
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Sign Out</span>
+                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </>
             )}
@@ -171,9 +164,9 @@ export default function CountryWatchPage() {
             <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
               <LogIn className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">Sign In to Continue</h2>
+            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
             <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto leading-relaxed">
-              Watch the countries you're applying to and get notified the moment a rule changes.
+              {t("signin.body")}
             </p>
             <div className="max-w-sm mx-auto">
               <AuthAccessPanel returnPath="/dashboard/country-watch" />
@@ -182,13 +175,12 @@ export default function CountryWatchPage() {
         ) : !canWatch ? (
           <div className="text-center py-16 border border-dashed border-border rounded-2xl">
             <Bell className="w-10 h-10 text-muted-foreground/40 mx-auto mb-4" />
-            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Never miss a rule change</h2>
+            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">{t("upgrade.title")}</h2>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6 leading-relaxed">
-              Country Watch is a Pro feature. Watch up to 5 countries (10 on Expert) and we'll email you the moment
-              a real policy change is published for them.
+              {t("upgrade.body")}
             </p>
             <Button className="cursor-pointer font-semibold" onClick={() => navigate("/pricing")}>
-              Upgrade to Pro
+              {t("upgrade.cta")}
             </Button>
           </div>
         ) : (
@@ -196,16 +188,16 @@ export default function CountryWatchPage() {
             <div className="bg-card border border-border rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-sm text-primary uppercase tracking-widest">
-                  Watching ({watches?.length ?? 0}/{limit})
+                  {t("watching.title", { count: watches?.length ?? 0, limit })}
                 </h2>
               </div>
               {(watches ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground mb-4">You're not watching any countries yet.</p>
+                <p className="text-xs text-muted-foreground mb-4">{t("watching.empty")}</p>
               ) : (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {(watches ?? []).map((w) => (
                     <span key={w._id} className="flex items-center gap-1.5 text-xs font-medium bg-primary/8 text-primary rounded-full px-3 py-1.5">
-                      {w.countryName}
+                      {DESTINATION_FLAGS[w.countryName] ?? "🌍"} {translateCountry(w.countryName)}
                       <button onClick={() => void handleRemove(w._id)} className="cursor-pointer hover:text-destructive">
                         <X className="w-3 h-3" />
                       </button>
@@ -215,32 +207,29 @@ export default function CountryWatchPage() {
               )}
               {(watches?.length ?? 0) < (limit ?? 0) && (
                 <div className="flex gap-2">
-                  <select
+                  <CountrySelect
                     value={selected}
-                    onChange={(e) => setSelected(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Select a country to watch…</option>
-                    {availableCountries.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                    onChange={setSelected}
+                    countries={availableCountries}
+                    placeholder={t("watching.placeholder")}
+                    className="flex-1"
+                  />
                   <Button size="sm" className="cursor-pointer shrink-0" disabled={!selected} onClick={() => void handleAdd()}>
-                    <Plus className="w-3.5 h-3.5" /> Add
+                    <Plus className="w-3.5 h-3.5" /> {t("watching.add")}
                   </Button>
                 </div>
               )}
             </div>
 
             <div>
-              <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">Recent updates</h3>
+              <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">{t("updates.title")}</h3>
               {(feed ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground">No policy updates for your watched countries yet. We'll email you the moment something changes.</p>
+                <p className="text-xs text-muted-foreground">{t("updates.empty")}</p>
               ) : (
                 <div className="space-y-2">
                   {(feed ?? []).map((u) => (
                     <div key={u._id} className="bg-card border border-border rounded-xl p-4">
-                      <div className="text-xs font-semibold text-accent uppercase tracking-wide mb-1">{u.countryName}</div>
+                      <div className="text-xs font-semibold text-accent uppercase tracking-wide mb-1">{DESTINATION_FLAGS[u.countryName] ?? "🌍"} {translateCountry(u.countryName)}</div>
                       <div className="text-sm font-semibold text-foreground mb-1">{u.title}</div>
                       <div className="text-xs text-muted-foreground whitespace-pre-line">{u.body}</div>
                     </div>
@@ -258,6 +247,8 @@ export default function CountryWatchPage() {
           &copy; {new Date().getFullYear()} Vericore Ltd. · VisaClear is a guidance tool, not legal advice.
         </p>
       </footer>
+
+      {GateModal}
     </div>
   );
 }

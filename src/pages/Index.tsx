@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import LocaleSwitcher from "@/components/ui/locale-switcher.tsx";
 import { PartnerWelcomeBanner } from "@/components/partner-welcome-banner.tsx";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
-import { StarRating } from "@/components/star-rating.tsx";
+import { useCountryName } from "@/hooks/use-country-name.ts";
 import {
   Shield,
   Globe,
@@ -20,58 +20,10 @@ import {
   Users,
   Camera,
   TrendingUp,
+  HelpCircle,
+  Sparkles,
+  LayoutGrid,
 } from "lucide-react";
-
-const STATS = [
-  { value: "50+", label: "Visa Types" },
-  { value: "24+", label: "Destinations" },
-  { value: "CISA", label: "Certified Security" },
-  { value: "GDPR", label: "Aligned" },
-];
-
-const FEATURES = [
-  {
-    icon: <FileText className="w-5 h-5" />,
-    title: "Exact Document Lists",
-    desc: "Every document is named clearly, with no vague guidance. We tell you what it is, where to get it, and what embassies look for."
-  },
-  {
-    icon: <Clock className="w-5 h-5" />,
-    title: "Processing Times & Fees",
-    desc: "Know exactly how long to wait and how much to budget before you step into any embassy.",
-  },
-  {
-    icon: <Shield className="w-5 h-5" />,
-    title: "Insider Approval Tips",
-    desc: "We surface the details embassies rarely explain, from what bank statements must show to what home ties really mean in practice."
-  },
-  {
-    icon: <Lock className="w-5 h-5" />,
-    title: "Built with GDPR & NDPA Principles",
-    desc: "Your data is never sold, never shared. Built to the highest data protection standards by a CISA-certified compliance professional.",
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "Amara O.",
-    route: "Nigeria → United Kingdom",
-    text: "Rejected twice before. This checklist showed me exactly what I was missing. Got my UK visa in 3 weeks.",
-    stars: 5,
-  },
-  {
-    name: "Kwame A.",
-    route: "Ghana → Canada",
-    text: "The tip about showing ties to home country changed everything. My interviewer literally mentioned it as the reason for approval.",
-    stars: 5,
-  },
-  {
-    name: "Priya S.",
-    route: "India → Germany",
-    text: "Nobody told me about the Fintiba blocked account before this. The detail level here is unmatched.",
-    stars: 5,
-  },
-];
 
 const DESTINATIONS = ["United Kingdom", "United States", "Canada", "Germany", "Poland"].map((name) => ({
   name,
@@ -95,6 +47,63 @@ export default function Index() {
   });
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+  const translateCountry = useCountryName();
+
+  const STATS = [
+    { value: t("stats.visa_types_value"), label: t("stats.visa_types_label") },
+    { value: t("stats.destinations_value"), label: t("stats.destinations_label") },
+    { value: t("stats.security_value"), label: t("stats.security_label") },
+    { value: t("stats.gdpr_value"), label: t("stats.gdpr_label") },
+  ];
+
+  const WHY_CARDS = [
+    { icon: <CheckCircle className="w-5 h-5" />, title: t("why.card1.title"), desc: t("why.card1.desc") },
+    { icon: <Shield className="w-5 h-5" />, title: t("why.card2.title"), desc: t("why.card2.desc") },
+    { icon: <Users className="w-5 h-5" />, title: t("why.card3.title"), desc: t("why.card3.desc") },
+  ];
+
+  const HOW_STEPS = [
+    { n: "01", title: t("how.step1.title"), desc: t("how.step1.desc") },
+    { n: "02", title: t("how.step2.title"), desc: t("how.step2.desc") },
+    { n: "03", title: t("how.step3.title"), desc: t("how.step3.desc") },
+  ];
+
+  const FEATURES = [
+    { icon: <FileText className="w-5 h-5" />, title: t("features.f1.title"), desc: t("features.f1.desc") },
+    { icon: <Clock className="w-5 h-5" />, title: t("features.f2.title"), desc: t("features.f2.desc") },
+    { icon: <Shield className="w-5 h-5" />, title: t("features.f3.title"), desc: t("features.f3.desc") },
+    { icon: <Lock className="w-5 h-5" />, title: t("features.f4.title"), desc: t("features.f4.desc") },
+  ];
+
+  const WHY_VISACLEAR = [
+    { icon: FileText, headline: t("testimonials.t1.headline"), text: t("testimonials.t1.text") },
+    { icon: HelpCircle, headline: t("testimonials.t2.headline"), text: t("testimonials.t2.text") },
+    { icon: Sparkles, headline: t("testimonials.t3.headline"), text: t("testimonials.t3.text") },
+  ];
+
+  const TRUST_ITEMS = [
+    { icon: <Shield className="w-5 h-5" />, label: t("trust.gdpr.label"), sub: t("trust.gdpr.sub") },
+    { icon: <Lock className="w-5 h-5" />, label: t("trust.ndpa.label"), sub: t("trust.ndpa.sub") },
+    { icon: <Award className="w-5 h-5" />, label: t("trust.cisa.label"), sub: t("trust.cisa.sub") },
+  ];
+
+  const FOOTER_LINKS = [
+    { label: t("footer.links.checklist"), path: "/checklist", color: "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40" },
+    { label: t("footer.links.dashboard"), path: "/login", color: "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40" },
+    { label: t("footer.links.profile_settings"), path: "/settings/profile", color: "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40" },
+    { label: t("footer.links.rejection_analyser"), path: "/rejection-analyser", color: "bg-amber-950/60 text-amber-300 hover:bg-amber-900/70 border-amber-700/40" },
+    { label: t("footer.links.photo_checker"), path: "/passport-photo", color: "bg-amber-950/60 text-amber-300 hover:bg-amber-900/70 border-amber-700/40" },
+    { label: t("footer.links.agents"), path: "/agents", color: "bg-purple-950/60 text-purple-300 hover:bg-purple-900/70 border-purple-700/40" },
+    { label: t("footer.links.pricing"), path: "/pricing", color: "bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/70 border-emerald-700/40" },
+    { label: t("footer.links.checkout"), path: "/payment?plan=pro&billing=yearly", color: "bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/70 border-emerald-700/40" },
+    { label: t("footer.links.white_label"), path: "/white-label", color: "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40" },
+    { label: t("footer.links.for_employers"), path: "/business", color: "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40" },
+    { label: t("footer.links.blog"), path: "/blog", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
+    { label: t("footer.links.about"), path: "/about", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
+    { label: t("footer.links.contact"), path: "/contact", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
+    { label: t("footer.links.privacy_policy"), path: "/privacy", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
+    { label: t("footer.links.terms"), path: "/terms", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-16 md:pb-0">
@@ -122,6 +131,7 @@ export default function Index() {
                 { label: t("nav.pricing"), path: "/pricing" },
                 { label: t("nav.blog"), path: "/blog" },
                 { label: t("nav.about"), path: "/about" },
+                { label: "Menu", path: "/menu" },
               ].map((l) => (
                 <button
                   key={l.label}
@@ -134,7 +144,7 @@ export default function Index() {
             </nav>
             <LocaleSwitcher />
             <Button
-              onClick={() => navigate("/agents/dashboard")}
+              onClick={() => navigate("/agents")}
               variant="secondary"
               className="cursor-pointer font-semibold hidden md:inline-flex"
               size="sm"
@@ -154,8 +164,8 @@ export default function Index() {
               className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
               size="sm"
             >
-              <span className="hidden sm:inline">Get My Checklist</span>
-              <span className="sm:hidden">Checklist</span>
+              <span className="hidden sm:inline">{t("nav.get_checklist_full")}</span>
+              <span className="sm:hidden">{t("nav.get_checklist_short")}</span>
               <ChevronRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
@@ -166,27 +176,27 @@ export default function Index() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-md flex items-center justify-around px-2 py-2">
         {[
           {
-            label: "Checklist",
+            label: t("mobile_nav.checklist"),
             path: "/checklist",
             icon: <FileText className="w-5 h-5" />,
           },
           {
-            label: "Photo",
+            label: t("mobile_nav.photo"),
             path: "/passport-photo",
             icon: <Camera className="w-5 h-5" />,
           },
           {
-            label: "Agents",
-            path: "/agents/dashboard",
+            label: t("mobile_nav.agents"),
+            path: "/agents",
             icon: <Users className="w-5 h-5" />,
           },
           {
-            label: "Pricing",
-            path: "/pricing",
-            icon: <Star className="w-5 h-5" />,
+            label: "Menu",
+            path: "/menu",
+            icon: <LayoutGrid className="w-5 h-5" />,
           },
           {
-            label: "Dashboard",
+            label: t("mobile_nav.dashboard"),
             path: "/login",
             icon: <Shield className="w-5 h-5" />,
           },
@@ -234,7 +244,7 @@ export default function Index() {
             <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/5 rounded-full px-4 py-1.5 mb-8 shadow-sm">
               <Award className="w-3.5 h-3.5 text-accent" />
               <span className="text-xs font-semibold text-accent tracking-[0.22em] uppercase">
-                Trusted visa guidance, not guesswork
+                {t("hero.trust_badge")}
               </span>
             </div>
           </motion.div>
@@ -246,10 +256,10 @@ export default function Index() {
             initial="hidden"
             animate="show"
           >
-            Know the safest visa path
+            {t("hero.title1")}
             <br />
             <span className="italic" style={{ color: "oklch(0.72 0.13 80)" }}>
-              before you commit time, money, or hope.
+              {t("hero.title2")}
             </span>
           </motion.h1>
 
@@ -260,7 +270,7 @@ export default function Index() {
             initial="hidden"
             animate="show"
           >
-            VisaClear helps you choose the right route, understand the documents that matter, and move forward with confidence instead of guesswork.
+            {t("hero.subtitle")}
           </motion.p>
 
           <motion.p
@@ -271,7 +281,7 @@ export default function Index() {
             animate="show"
           >
             <Lock className="w-3 h-3 inline mr-1 text-accent" />
-            <em>{t("hero.privacy")}</em> Your data stays yours, always.
+            <em>{t("hero.privacy")}</em> {t("hero.privacy_suffix")}
           </motion.p>
 
           <motion.div
@@ -286,7 +296,7 @@ export default function Index() {
               className="cursor-pointer px-10 py-6 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
               onClick={() => navigate("/checklist")}
             >
-              Start with your free checklist
+              {t("hero.cta_primary")}
               <ChevronRight className="w-5 h-5 ml-1.5" />
             </Button>
             <Button
@@ -295,7 +305,7 @@ export default function Index() {
               className="cursor-pointer px-8 py-6 text-base font-semibold border-border hover:border-accent/50 hover:bg-accent/5"
               onClick={() => navigate("/pricing")}
             >
-              See pricing
+              {t("hero.cta_secondary")}
             </Button>
           </motion.div>
 
@@ -310,7 +320,7 @@ export default function Index() {
               className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors cursor-pointer underline-offset-4 hover:underline"
             >
               <TrendingUp className="w-4 h-4" />
-              Not sure where you stand? Get your free approval Risk Score
+              {t("hero.risk_score_cta")}
               <ChevronRight className="w-4 h-4" />
             </button>
           </motion.div>
@@ -322,9 +332,9 @@ export default function Index() {
             initial="hidden"
             animate="show"
           >
-            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">Free to start</span>
-            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">Confidence-led next steps</span>
-            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">Expert help when complexity rises</span>
+            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">{t("hero.pill_free")}</span>
+            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">{t("hero.pill_confidence")}</span>
+            <span className="rounded-full border border-border bg-card/80 px-3 py-1.5">{t("hero.pill_expert")}</span>
           </motion.div>
 
           {/* Destination pills */}
@@ -342,7 +352,7 @@ export default function Index() {
                 className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card hover:border-accent/50 hover:bg-accent/5 transition-all cursor-pointer text-sm font-medium shadow-sm"
               >
                 <span className="text-base">{d.flag}</span>
-                <span className="text-foreground/80">{d.name}</span>
+                <span className="text-foreground/80">{translateCountry(d.name)}</span>
               </button>
             ))}
           </motion.div>
@@ -379,23 +389,7 @@ export default function Index() {
       {/* ── Why it feels different ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16 md:pb-24">
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {[
-            {
-              icon: <CheckCircle className="w-5 h-5" />,
-              title: "Clear first step",
-              desc: "We help you choose the safest route before you spend more money on the wrong path."
-            },
-            {
-              icon: <Shield className="w-5 h-5" />,
-              title: "Documents that actually matter",
-              desc: "Every checklist is precise, document-focused, and easy to act on from day one."
-            },
-            {
-              icon: <Users className="w-5 h-5" />,
-              title: "Expert support when needed",
-              desc: "If your case is complex, you can move into expert support without losing your progress."
-            },
-          ].map((item, i) => (
+          {WHY_CARDS.map((item, i) => (
             <motion.div
               key={item.title}
               className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:border-accent/40 hover:shadow-md transition-all"
@@ -414,9 +408,9 @@ export default function Index() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
+      <section className="max-w-6xl mx-auto px-6 py-12 md:py-24">
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-8 md:mb-16"
           variants={fadeUp}
           custom={0}
           initial="hidden"
@@ -424,31 +418,15 @@ export default function Index() {
           viewport={{ once: true }}
         >
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
-            Simple Process
+            {t("how.label")}
           </p>
           <h2 className="font-serif text-4xl font-semibold text-primary">
-            A smarter path, in three clear moves
+            {t("how.title")}
           </h2>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              n: "01",
-              title: "Select Your Countries",
-              desc: "Tell us where you are from and where you want to go. We cover a growing range of destinations and visa routes.",
-            },
-            {
-              n: "02",
-              title: "Choose Your Visa Type",
-              desc: "Choose the route that fits your trip, from tourist and student to work, family, or transit, and we’ll guide you through the relevant checklist."
-            },
-            {
-              n: "03",
-              title: "Receive Your Checklist",
-              desc: "Every document listed precisely, with where to get it, what it must contain, and insider approval tips.",
-            },
-          ].map((item, i) => (
+          {HOW_STEPS.map((item, i) => (
             <motion.div
               key={item.n}
               className="relative bg-card border border-border rounded-xl p-8 group hover:border-accent/40 hover:shadow-md transition-all"
@@ -474,9 +452,9 @@ export default function Index() {
 
       {/* ── Features ── */}
       <section className="bg-primary">
-        <div className="max-w-6xl mx-auto px-6 py-24">
+        <div className="max-w-6xl mx-auto px-6 py-12 md:py-24">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-8 md:mb-16"
             variants={fadeUp}
             custom={0}
             initial="hidden"
@@ -487,10 +465,10 @@ export default function Index() {
               className="text-xs tracking-widest uppercase font-medium mb-3"
               style={{ color: "oklch(0.72 0.13 80)" }}
             >
-              Why VisaClear
+              {t("features.label")}
             </p>
             <h2 className="font-serif text-4xl font-semibold text-primary-foreground">
-              Built different. Built trusted.
+              {t("features.title")}
             </h2>
           </motion.div>
           <div className="grid md:grid-cols-2 gap-5">
@@ -527,10 +505,10 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
+      {/* ── Why Applicants Choose VisaClear ── */}
+      <section className="max-w-6xl mx-auto px-6 py-12 md:py-24">
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-8 md:mb-16"
           variants={fadeUp}
           custom={0}
           initial="hidden"
@@ -538,19 +516,16 @@ export default function Index() {
           viewport={{ once: true }}
         >
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
-            Illustrative Examples
+            {t("testimonials.label")}
           </p>
           <h2 className="font-serif text-4xl font-semibold text-primary">
-            What an applicant's experience can look like
+            {t("testimonials.title")}
           </h2>
-          <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-3">
-            Sample scenarios based on common applicant situations — not verified customer quotes.
-          </p>
         </motion.div>
         <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
+          {WHY_VISACLEAR.map((w, i) => (
             <motion.div
-              key={t.name}
+              key={w.headline}
               className="bg-card border border-border rounded-xl p-8 flex flex-col"
               variants={fadeUp}
               custom={i}
@@ -558,20 +533,11 @@ export default function Index() {
               whileInView="show"
               viewport={{ once: true }}
             >
-              <div className="mb-5">
-                <StarRating count={t.stars} />
+              <div className="mb-4 w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                <w.icon className="w-5 h-5" />
               </div>
-              <p className="text-foreground/80 text-sm leading-relaxed mb-6 flex-1">
-                &ldquo;{t.text}&rdquo;
-              </p>
-              <div className="border-t border-border pt-4">
-                <div className="font-semibold text-sm text-primary">
-                  {t.name}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t.route}
-                </div>
-              </div>
+              <h3 className="font-semibold text-primary mb-2">{w.headline}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">{w.text}</p>
             </motion.div>
           ))}
         </div>
@@ -581,23 +547,7 @@ export default function Index() {
       <section className="bg-card border-y border-border">
         <div className="max-w-6xl mx-auto px-6 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            {[
-              {
-                icon: <Shield className="w-5 h-5" />,
-                label: "GDPR-Aligned",
-                sub: "EU Data Protection Standard",
-              },
-              {
-                icon: <Lock className="w-5 h-5" />,
-                label: "NDPA-Aligned",
-                sub: "Nigerian Data Protection Act",
-              },
-              {
-                icon: <Award className="w-5 h-5" />,
-                label: "CISA Certified",
-                sub: "Information Security Auditor",
-              },
-            ].map((item) => (
+            {TRUST_ITEMS.map((item) => (
               <div
                 key={item.label}
                 className="flex flex-col items-center gap-2"
@@ -616,7 +566,7 @@ export default function Index() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="max-w-3xl mx-auto px-6 py-24 text-center">
+      <section className="max-w-3xl mx-auto px-6 py-12 md:py-24 text-center">
         <motion.div
           variants={fadeUp}
           custom={0}
@@ -625,21 +575,20 @@ export default function Index() {
           viewport={{ once: true }}
         >
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-4">
-            Ready to Apply
+            {t("cta.label")}
           </p>
           <h2 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-4 text-balance">
-            Your visa approval starts with the right preparation.
+            {t("cta.title")}
           </h2>
           <p className="text-muted-foreground mb-10 text-balance">
-            Get your complete, personalised checklist in 60 seconds. Free to
-            start. No account required.
+            {t("cta.subtitle")}
           </p>
           <Button
             size="lg"
             className="cursor-pointer px-12 py-6 text-base font-semibold bg-primary hover:bg-primary/90 shadow-lg"
             onClick={() => navigate("/checklist")}
           >
-            Get My Free Checklist
+            {t("cta.button")}
             <ChevronRight className="w-5 h-5 ml-1.5" />
           </Button>
         </motion.div>
@@ -667,103 +616,11 @@ export default function Index() {
                 &ldquo;{t("footer.tagline")}&rdquo;
               </p>
               <p className="text-xs text-muted-foreground">
-                &copy; {new Date().getFullYear()} Vericore Ltd. All rights
-                reserved.
+                &copy; {new Date().getFullYear()} Vericore Ltd. {t("footer.rights")}
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
-              {[
-                {
-                  label: "Checklist",
-                  path: "/checklist",
-                  color:
-                    "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40",
-                },
-                {
-                  label: "Dashboard",
-                  path: "/login",
-                  color:
-                    "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40",
-                },
-                {
-                  label: "Profile Settings",
-                  path: "/settings/profile",
-                  color:
-                    "bg-blue-950/60 text-blue-200 hover:bg-blue-900/70 border-blue-800/40",
-                },
-                {
-                  label: "Rejection Analyser",
-                  path: "/rejection-analyser",
-                  color:
-                    "bg-amber-950/60 text-amber-300 hover:bg-amber-900/70 border-amber-700/40",
-                },
-                {
-                  label: "Photo Checker",
-                  path: "/passport-photo",
-                  color:
-                    "bg-amber-950/60 text-amber-300 hover:bg-amber-900/70 border-amber-700/40",
-                },
-                {
-                  label: "Agents",
-                  path: "/agents/dashboard",
-                  color:
-                    "bg-purple-950/60 text-purple-300 hover:bg-purple-900/70 border-purple-700/40",
-                },
-                {
-                  label: "Pricing",
-                  path: "/pricing",
-                  color:
-                    "bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/70 border-emerald-700/40",
-                },
-                {
-                  label: "Checkout",
-                  path: "/payment?plan=pro&billing=yearly",
-                  color:
-                    "bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/70 border-emerald-700/40",
-                },
-                {
-                  label: "White-Label",
-                  path: "/white-label",
-                  color:
-                    "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40",
-                },
-                {
-                  label: "For Employers",
-                  path: "/business",
-                  color:
-                    "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40",
-                },
-                {
-                  label: "Blog",
-                  path: "/blog",
-                  color:
-                    "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40",
-                },
-                {
-                  label: "About",
-                  path: "/about",
-                  color:
-                    "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40",
-                },
-                {
-                  label: "Contact",
-                  path: "/contact",
-                  color:
-                    "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40",
-                },
-                {
-                  label: "Privacy Policy",
-                  path: "/privacy",
-                  color:
-                    "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40",
-                },
-                {
-                  label: "Terms of Service",
-                  path: "/terms",
-                  color:
-                    "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40",
-                },
-              ].map((l) => (
+              {FOOTER_LINKS.map((l) => (
                 <button
                   key={l.label}
                   onClick={() => navigate(l.path)}
@@ -775,9 +632,7 @@ export default function Index() {
             </div>
           </div>
           <p className="text-center text-xs text-muted-foreground/60 mt-6 max-w-2xl mx-auto">
-            This tool is a guide only and does not constitute legal or
-            immigration advice. Always verify requirements directly with the
-            relevant embassy or consulate before submitting any application.
+            {t("footer.disclaimer")}
           </p>
         </div>
       </footer>

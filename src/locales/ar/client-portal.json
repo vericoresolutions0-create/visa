@@ -1,0 +1,23 @@
+{
+  "header.tag": "رفع المستندات",
+  "no_checklist": "لم نتمكن من العثور على قائمة مستندات لنوع التأشيرة هذا. يرجى التواصل مع وكيلك.",
+  "toast.too_large": "يجب أن يكون حجم الملف أقل من 10 ميغابايت.",
+  "toast.bad_type": "يرجى رفع ملف بصيغة JPG أو PNG أو WEBP أو PDF.",
+  "toast.uploaded": "تم رفع {{label}}.",
+  "toast.upload_failed": "فشل رفع {{label}}. يرجى المحاولة مرة أخرى.",
+  "there": "هناك",
+  "greeting": "مرحباً {{name}}",
+  "title": "ارفع مستنداتك",
+  "subtitle": "{{destination}} · {{visaType}}. سيتم إشعار وكيلك فور رفع كل مستند.",
+  "required_docs": "المستندات المطلوبة",
+  "item.required": "مطلوب",
+  "upload.uploading": "جارٍ الرفع...",
+  "upload.replace": "استبدال",
+  "upload.upload": "رفع",
+  "link_not_found.title": "الرابط غير موجود",
+  "link_not_found.body": "رابط الرفع هذا غير صالح أو منتهي الصلاحية. يرجى الطلب من وكيلك إرسال رابط جديد.",
+  "signin.title": "سجّل الدخول للرفع",
+  "signin.body": "لأمانك، سجّل الدخول قبل رفع مستندات تأشيرتك.",
+  "signin.cta": "تسجيل الدخول للمتابعة",
+  "signin.footer": "مستنداتك مرئية لوكيلك فقط."
+}

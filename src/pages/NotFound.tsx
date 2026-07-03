@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Globe, ChevronRight, FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 
 export default function NotFound() {
+  const { t } = useTranslation("not-found");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -51,11 +53,10 @@ export default function NotFound() {
         className="space-y-4 -mt-6"
       >
         <h1 className="font-serif text-3xl md:text-4xl font-semibold text-primary">
-          This page didn&apos;t get its visa approved.
+          {t("title")}
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto text-balance leading-relaxed">
-          The page you&apos;re looking for has either moved, been removed, or never existed.
-          Let&apos;s get you back on track.
+          {t("subtitle")}
         </p>
       </motion.div>
 
@@ -71,7 +72,7 @@ export default function NotFound() {
           className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-8"
           onClick={() => navigate("/")}
         >
-          Back to Homepage
+          {t("back_home")}
           <ChevronRight className="w-4 h-4 ml-1.5" />
         </Button>
         <Button
@@ -81,7 +82,7 @@ export default function NotFound() {
           onClick={() => navigate("/checklist")}
         >
           <FileText className="w-4 h-4 mr-1.5" />
-          Get My Checklist
+          {t("get_checklist")}
         </Button>
       </motion.div>
 

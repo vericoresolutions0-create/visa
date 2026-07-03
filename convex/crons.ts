@@ -20,6 +20,25 @@ crons.daily(
   {},
 );
 
+// Run daily at 7:00 AM UTC — warns paid users when vault documents are
+// expiring in exactly 30 or 7 days. Silently skips free users.
+crons.daily(
+  "document expiry alerts",
+  { hourUTC: 7, minuteUTC: 0 },
+  internal.notificationDispatch.dispatchDocumentExpiryAlerts,
+  {},
+);
+
+// Run daily at 7:30 AM UTC — warns paid users when a saved trip's travel
+// date is 7, 3, or 1 day away. Silently skips free users and trips with
+// no travelDate set.
+crons.daily(
+  "trip deadline alerts",
+  { hourUTC: 7, minuteUTC: 30 },
+  internal.notificationDispatch.dispatchTripDeadlineAlerts,
+  {},
+);
+
 // Run weekly (Monday 8:00 AM UTC) — emails admins when any destination's
 // checklist hasn't been re-verified in 90+ days, so staleness gets noticed
 // and acted on instead of silently sitting there.

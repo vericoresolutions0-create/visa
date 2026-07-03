@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Globe, ArrowLeft, Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 export default function TermsPage() {
+  const { t } = useTranslation("legal");
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
   useSeo({ title: "Terms of Service", description: "Read VisaClear's terms of service. Understand your rights and responsibilities when using our visa preparation platform." });
@@ -26,14 +28,14 @@ export default function TermsPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Shield className="w-3.5 h-3.5 text-accent" /> Terms of Service
+            <Shield className="w-3.5 h-3.5 text-accent" /> {t("terms.badge")}
           </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="font-serif text-4xl font-semibold text-primary mb-3">Terms of Service</h1>
+          <h1 className="font-serif text-4xl font-semibold text-primary mb-3">{t("terms.title")}</h1>
           <p className="text-sm text-muted-foreground">Last updated: 1 May {year} &nbsp;·&nbsp; Effective immediately</p>
         </div>
 

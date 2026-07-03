@@ -15,6 +15,7 @@ export const createIntake = mutation({
     clientPhone: v.optional(v.string()),
     destination: v.string(),
     visaType: v.string(),
+    sourceContactRequestId: v.optional(v.id("agent_contact_requests")),
   },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
@@ -29,6 +30,7 @@ export const createIntake = mutation({
       destination: args.destination,
       visaType: args.visaType,
       status: "awaiting_documents",
+      sourceContactRequestId: args.sourceContactRequestId,
       createdAt: new Date().toISOString(),
     });
     return { token };
@@ -79,6 +81,7 @@ export const listMyIntakes = query({
           status: intake.status,
           createdAt: intake.createdAt,
           claimedByEmail: claimedBy?.email,
+          sourceContactRequestId: intake.sourceContactRequestId,
           documents: documentsWithUrls,
         };
       }),

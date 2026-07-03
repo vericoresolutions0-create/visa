@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { Button } from "@/components/ui/button.tsx";
@@ -8,6 +9,7 @@ import { Globe, Mail, Shield } from "lucide-react";
 // AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET set on the Convex deployment) — an
 // honest "not ready yet" page rather than a simulated Google login.
 export default function GoogleLoginPage() {
+  const { t } = useTranslation("google_login");
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
 
@@ -22,10 +24,10 @@ export default function GoogleLoginPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] font-semibold text-accent">
-              Google login
+              {t("eyebrow")}
             </p>
             <h1 className="text-3xl font-semibold text-primary mt-2">
-              Not set up yet
+              {t("title")}
             </h1>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -34,7 +36,7 @@ export default function GoogleLoginPage() {
         </div>
 
         <p className="text-sm text-muted-foreground mb-6">
-          Google sign-in isn't connected on this deployment yet. Use email and password to sign in or create an account instead.
+          {t("description")}
         </p>
 
         <div className="space-y-4">
@@ -44,14 +46,14 @@ export default function GoogleLoginPage() {
             onClick={() => navigate("/login")}
           >
             <Mail className="w-4 h-4" />
-            Continue with email/password
+            {t("continue_email")}
           </Button>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Shield className="w-3.5 h-3.5" />
-            <span>Google sign-in will appear automatically once it's configured.</span>
+            <span>{t("auto_note")}</span>
           </div>
           <Button variant="ghost" className="w-full" onClick={goBack}>
-            Go back
+            {t("go_back")}
           </Button>
         </div>
       </div>

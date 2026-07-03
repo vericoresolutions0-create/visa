@@ -1,24 +1,17 @@
 import * as Sentry from "@sentry/react";
 
-const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const DSN = "https://125c7bec1bbcc90586d396c0fd499408@o4511659934285824.ingest.de.sentry.io/4511659957747792";
 
-export const isSentryConfigured = Boolean(dsn);
+export const isSentryConfigured = true;
 
-// Real error monitoring once VITE_SENTRY_DSN is set — until then this is a
-// no-op, same "not configured yet" pattern used elsewhere in the app.
-// Captures uncaught errors and unhandled promise rejections automatically;
-// the ErrorBoundary below additionally reports React render errors, which
-// Sentry's own browser SDK can't see on its own.
 export function initSentry() {
-  if (!dsn) return;
   Sentry.init({
-    dsn,
+    dsn: DSN,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.1,
   });
 }
 
 export function captureException(error: unknown, context?: Record<string, unknown>) {
-  if (!dsn) return;
   Sentry.captureException(error, context ? { extra: context } : undefined);
 }

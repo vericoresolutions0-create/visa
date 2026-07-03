@@ -15,6 +15,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -205,6 +206,7 @@ function CheckoutAccess({
 }
 
 export default function PaymentPage() {
+  const { t } = useTranslation("payment");
   const [params] = useSearchParams();
   const product = normalizeProduct(params.get("product"), params.get("plan"));
   const plan =
@@ -255,7 +257,7 @@ export default function PaymentPage() {
       const message =
         error instanceof ConvexError
           ? (error.data as { message: string }).message
-          : "Could not start checkout. Please try again.";
+          : t("toast.checkout_error");
       toast.error(message);
       setLocalMethodLoading(null);
     }
@@ -321,7 +323,7 @@ export default function PaymentPage() {
 
   const handleCheckout = async () => {
     if (!canSubmit) {
-      toast.error("Please complete the payment method details.");
+      toast.error(t("toast.incomplete"));
       return;
     }
 
@@ -409,7 +411,7 @@ export default function PaymentPage() {
           ? (error.data as { message: string }).message
           : error instanceof Error
             ? error.message
-            : "Payment failed. Please try again.";
+            : t("toast.payment_failed");
       toast.error(message);
     } finally {
       setSaving(false);
@@ -446,7 +448,7 @@ export default function PaymentPage() {
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Lock className="w-3.5 h-3.5 text-accent" />
-            {selectedPlan.product === "agent" ? "Partner Checkout" : "Checkout"}
+            {selectedPlan.product === "agent" ? t("header.partner_checkout") : t("header.checkout")}
           </div>
         </div>
       </header>
@@ -469,10 +471,10 @@ export default function PaymentPage() {
                   <Shield className="w-6 h-6 text-primary" />
                 </div>
                 <h1 className="font-serif text-3xl font-semibold text-primary mb-2">
-                  Sign in to continue
+                  {t("signin.title")}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Your checkout will resume automatically after account access.
+                  {t("signin.subtitle")}
                 </p>
               </div>
               <AuthAccessPanel
@@ -487,7 +489,7 @@ export default function PaymentPage() {
             <section className="space-y-6">
               <div>
                 <p className="text-xs tracking-widest uppercase text-accent font-semibold mb-2">
-                  Payment Method
+                  {t("method.eyebrow")}
                 </p>
                 <h1 className="font-serif text-4xl font-semibold text-primary">
                   {selectedPlan.title}
@@ -501,24 +503,22 @@ export default function PaymentPage() {
                 <div className="bg-card border border-border rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-3">
                     <Lock className="w-5 h-5 text-primary" />
-                    <h2 className="font-semibold text-primary">Secure payment via Stripe</h2>
+                    <h2 className="font-semibold text-primary">{t("method.stripe_title")}</h2>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    You'll enter your card details on Stripe's secure checkout page — VisaClear
-                    never sees or stores your card number. Every payment is automatically screened
-                    for fraud and stolen-card risk before it's charged.
+                    {t("method.stripe_desc")}
                   </p>
                 </div>
               ) : (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-5">
                     <CreditCard className="w-5 h-5 text-primary" />
-                    <h2 className="font-semibold text-primary">Card details</h2>
+                    <h2 className="font-semibold text-primary">{t("method.card_title")}</h2>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Name on card
+                        {t("method.name_on_card")}
                       </label>
                       <input
                         value={nameOnCard}
@@ -528,7 +528,7 @@ export default function PaymentPage() {
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Card number
+                        {t("method.card_number")}
                       </label>
                       <input
                         inputMode="numeric"
@@ -540,7 +540,7 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Expiry month
+                        {t("method.expiry_month")}
                       </label>
                       <input
                         inputMode="numeric"
@@ -552,7 +552,7 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Expiry year
+                        {t("method.expiry_year")}
                       </label>
                       <input
                         inputMode="numeric"
@@ -564,7 +564,7 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Security code
+                        {t("method.security_code")}
                       </label>
                       <input
                         inputMode="numeric"
@@ -576,7 +576,7 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Billing email
+                        {t("method.billing_email")}
                       </label>
                       <input
                         type="email"
@@ -596,11 +596,10 @@ export default function PaymentPage() {
                   <div className="bg-card border border-border rounded-xl p-6">
                     <div className="flex items-center gap-2 mb-3">
                       <Smartphone className="w-5 h-5 text-primary" />
-                      <h2 className="font-semibold text-primary">More ways to pay</h2>
+                      <h2 className="font-semibold text-primary">{t("method.local_title")}</h2>
                     </div>
                     <p className="text-xs text-muted-foreground mb-4">
-                      No international card? Pay once with a local method instead. These don't
-                      renew automatically — we'll remind you before it's time to pay again.
+                      {t("method.local_desc")}
                     </p>
                     <div className="grid sm:grid-cols-2 gap-2">
                       {isPaystackConfigured && (
@@ -613,7 +612,7 @@ export default function PaymentPage() {
                             void startLocalMethodCheckout("paystack");
                           }}
                         >
-                          {localMethodLoading === "paystack" ? "Redirecting…" : "Mobile Money / Bank Transfer (Africa)"}
+                          {localMethodLoading === "paystack" ? t("method.redirecting") : t("method.paystack")}
                         </Button>
                       )}
                       {isStripeConfigured && (
@@ -627,7 +626,7 @@ export default function PaymentPage() {
                               void startLocalMethodCheckout("pix");
                             }}
                           >
-                            {localMethodLoading === "pix" ? "Redirecting…" : "Pix (Brazil)"}
+                            {localMethodLoading === "pix" ? t("method.redirecting") : t("method.pix")}
                           </Button>
                           <Button
                             type="button"
@@ -638,7 +637,7 @@ export default function PaymentPage() {
                               void startLocalMethodCheckout("boleto");
                             }}
                           >
-                            {localMethodLoading === "boleto" ? "Redirecting…" : "Boleto (Brazil)"}
+                            {localMethodLoading === "boleto" ? t("method.redirecting") : t("method.boleto")}
                           </Button>
                           <Button
                             type="button"
@@ -649,7 +648,7 @@ export default function PaymentPage() {
                               void startLocalMethodCheckout("oxxo");
                             }}
                           >
-                            {localMethodLoading === "oxxo" ? "Redirecting…" : "OXXO (Mexico)"}
+                            {localMethodLoading === "oxxo" ? t("method.redirecting") : t("method.oxxo")}
                           </Button>
                         </>
                       )}
@@ -660,7 +659,7 @@ export default function PaymentPage() {
               <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <Gift className="w-5 h-5 text-primary" />
-                  <h2 className="font-semibold text-primary">Referral code</h2>
+                  <h2 className="font-semibold text-primary">{t("referral.title")}</h2>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -677,7 +676,7 @@ export default function PaymentPage() {
                     className="cursor-pointer"
                     onClick={() => setAppliedReferral(referralInput.trim())}
                   >
-                    Apply
+                    {t("referral.apply")}
                   </Button>
                 </div>
                 {appliedReferral && referralResult && (
@@ -700,7 +699,7 @@ export default function PaymentPage() {
 
             <aside className="bg-card border border-border rounded-xl p-6 lg:sticky lg:top-24">
               <p className="text-xs tracking-widest uppercase text-muted-foreground font-semibold mb-3">
-                Order Summary
+                {t("summary.title")}
               </p>
               <div className="flex items-start justify-between gap-3 mb-6">
                 <div>
@@ -718,7 +717,7 @@ export default function PaymentPage() {
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    /mo{billing === "yearly" ? " billed annually" : ""}
+                    {t("summary.per_month")}{billing === "yearly" ? t("summary.billed_annually") : ""}
                   </div>
                 </div>
               </div>
@@ -726,13 +725,13 @@ export default function PaymentPage() {
               <div className="space-y-3 border-y border-border py-4 mb-5">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Subtotal{billing === "yearly" ? " (annual)" : ""}
+                    {billing === "yearly" ? t("summary.subtotal_annual") : t("summary.subtotal")}
                   </span>
                   <span className="font-medium">{formatMoney(baseAmount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Referral discount
+                    {t("summary.discount")}
                   </span>
                   <span className="font-medium text-accent">
                     -{formatMoney(discountAmount)}
@@ -742,7 +741,7 @@ export default function PaymentPage() {
 
               <div className="flex items-end justify-between gap-3 mb-2">
                 <span className="text-sm font-semibold text-foreground">
-                  Total today
+                  {t("summary.total")}
                 </span>
                 <span className="font-serif text-3xl font-semibold text-primary">
                   {formatMoney(totalAmount)}
@@ -750,8 +749,8 @@ export default function PaymentPage() {
               </div>
               <p className="text-xs text-muted-foreground mb-6">
                 {billing === "yearly"
-                  ? `${formatMoney(monthlyEquivalent)} per month equivalent, billed yearly.`
-                  : "Billed monthly until cancelled."}
+                  ? t("summary.yearly_breakdown", { amount: formatMoney(monthlyEquivalent) })
+                  : t("summary.monthly_breakdown")}
               </p>
 
               <Button
@@ -767,10 +766,10 @@ export default function PaymentPage() {
                 }}
               >
                 {saving
-                  ? "Processing..."
+                  ? t("cta.processing")
                   : useRealStripe
-                    ? `Continue to Stripe — ${formatMoney(totalAmount)}`
-                    : `Pay ${formatMoney(totalAmount)}`}
+                    ? t("cta.stripe", { amount: formatMoney(totalAmount) })
+                    : t("cta.pay", { amount: formatMoney(totalAmount) })}
               </Button>
             </aside>
           </div>

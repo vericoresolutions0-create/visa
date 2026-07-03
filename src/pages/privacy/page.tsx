@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Globe, ArrowLeft, Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 export default function PrivacyPage() {
+  const { t } = useTranslation("legal");
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
   useSeo({ title: "Privacy Policy", description: "VisaClear by Vericore is built around GDPR and NDPA data protection principles. Read how we handle your data with full transparency and zero compromise." });
@@ -26,14 +28,14 @@ export default function PrivacyPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Lock className="w-3.5 h-3.5 text-accent" /> Privacy Policy
+            <Lock className="w-3.5 h-3.5 text-accent" /> {t("privacy.badge")}
           </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="font-serif text-4xl font-semibold text-primary mb-3">Privacy Policy</h1>
+          <h1 className="font-serif text-4xl font-semibold text-primary mb-3">{t("privacy.title")}</h1>
           <p className="text-sm text-muted-foreground">Last updated: 1 May {year} &nbsp;·&nbsp; Effective immediately</p>
           <div className="mt-4 p-4 bg-accent/8 border border-accent/20 rounded-xl">
             <p className="text-sm font-semibold text-primary italic">&ldquo;It&apos;s all about Privacy.&rdquo;</p>

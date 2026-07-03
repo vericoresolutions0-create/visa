@@ -1,0 +1,8 @@
+{
+  "eyebrow": "Login do Google",
+  "title": "Ainda não configurado",
+  "description": "O login do Google ainda não está conectado neste deployment. Use email e senha para entrar ou criar uma conta.",
+  "continue_email": "Continuar com email/senha",
+  "auto_note": "O login do Google aparecerá automaticamente assim que for configurado.",
+  "go_back": "Voltar"
+}

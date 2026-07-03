@@ -1,0 +1,11 @@
+{
+  "title": "Kit d'installation",
+  "coming_soon": "Félicitations pour votre approbation ! Un guide d'installation pour {{destination}} arrive bientôt — nous ne voulons pas vous montrer des conseils génériques qui pourraient ne pas être adaptés à cette destination.",
+  "complete_pct": "{{progress}} % terminé",
+  "intro": "Félicitations pour l'approbation de votre visa pour {{destination}}. Voici ce qu'il faut régler dès votre arrivée.",
+  "where": "Où : {{where}}",
+  "save": "Enregistrer la progression",
+  "saving": "Enregistrement…",
+  "toast.saved": "Progression d'installation enregistrée.",
+  "toast.save_failed": "Impossible d'enregistrer votre progression."
+}

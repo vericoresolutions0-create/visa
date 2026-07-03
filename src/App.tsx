@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useServiceWorker } from "@/hooks/use-service-worker.ts";
 import { useAnalytics } from "@/hooks/use-analytics.ts";
 import { usePartnerReferralCapture } from "@/hooks/use-partner-referral.ts";
+import { useInfluencerReferralCapture } from "@/hooks/use-influencer-referral.ts";
+import { useCreatorReferralCapture } from "@/hooks/use-creator-referral.ts";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top.ts";
 import { NavigationDepthProvider } from "@/hooks/use-navigation-depth.tsx";
 import CookieBanner from "@/components/cookie-banner.tsx";
@@ -71,7 +73,13 @@ const AboutPage = lazy(() => import("./pages/about/page.tsx"));
 const BlogPage = lazy(() => import("./pages/blog/page.tsx"));
 const BlogArticlePage = lazy(() => import("./pages/blog/article.tsx"));
 const GoogleLoginPage = lazy(() => import("./pages/google-login/page.tsx"));
+const MenuPage = lazy(() => import("./pages/menu/page.tsx"));
+const CommunityPage = lazy(() => import("./pages/community/page.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const InfluencerPortalPage = lazy(() => import("./pages/influencer/portal.tsx"));
+const ImmigrationStatusPage = lazy(() => import("./pages/dashboard/immigration-status/page.tsx"));
+const RefPage = lazy(() => import("./pages/ref/page.tsx"));
+const CreatorPortalPage = lazy(() => import("./pages/creator/portal.tsx"));
 
 function PageLoader() {
   return (
@@ -119,6 +127,11 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/risk-score",
       "/wall-of-fame",
       "/wait-times",
+      "/menu",
+      "/community",
+      "/influencer",
+      "/ref",
+      "/creator",
     ];
     if (!onboarded && !skipPaths.some((p) => location.pathname.startsWith(p))) {
       navigate("/onboarding", { replace: true });
@@ -133,6 +146,8 @@ function AppRoutes() {
   useAnalytics();
   useScrollToTop();
   usePartnerReferralCapture();
+  useInfluencerReferralCapture();
+  useCreatorReferralCapture();
 
   return (
     <NavigationDepthProvider>
@@ -195,6 +210,12 @@ function AppRoutes() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:id" element={<BlogArticlePage />} />
+          <Route path="/community" element={<CommunityPage />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/influencer/:token" element={<InfluencerPortalPage />} />
+          <Route path="/dashboard/immigration-status" element={<ImmigrationStatusPage />} />
+          <Route path="/ref/:slug" element={<RefPage />} />
+          <Route path="/creator/portal/:token" element={<CreatorPortalPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

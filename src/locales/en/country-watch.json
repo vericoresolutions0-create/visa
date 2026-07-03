@@ -1,0 +1,22 @@
+{
+  "header.badge": "Country Watch",
+  "nav.dashboard": "My Dashboard",
+  "nav.settings": "Settings",
+  "nav.sign_out": "Sign Out",
+  "signin.title": "Sign In to Continue",
+  "signin.body": "Watch the countries you're applying to and get notified the moment a rule changes.",
+  "upgrade.title": "Never miss a rule change",
+  "upgrade.body": "Country Watch is a Pro feature. Watch up to 5 countries (10 on Expert) and we'll email you the moment a real policy change is published for them.",
+  "upgrade.cta": "Upgrade to Pro",
+  "watching.title": "Watching ({{count}}/{{limit}})",
+  "watching.empty": "You're not watching any countries yet.",
+  "watching.placeholder": "Select a country to watch…",
+  "watching.add": "Add",
+  "updates.title": "Recent updates",
+  "updates.empty": "No policy updates for your watched countries yet. We'll email you the moment something changes.",
+  "toast.added": "Now watching {{country}}.",
+  "toast.limit": "Your {{plan}} plan can watch up to {{limit}} countries. Remove one to add another.",
+  "toast.removed": "Removed.",
+  "toast.add_error": "Could not add this country. Please try again.",
+  "toast.remove_error": "Could not remove this country."
+}

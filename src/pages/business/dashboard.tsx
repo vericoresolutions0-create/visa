@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
@@ -37,13 +38,7 @@ type CohortRow = {
   employerVisibleStatus: "Ready" | "Needs Attention" | "Not Started" | null;
 };
 
-const PIPELINE_COLUMNS: { stage: PipelineStage; label: string }[] = [
-  { stage: "invited", label: "Invited" },
-  { stage: "accepted", label: "Accepted" },
-  { stage: "in_progress", label: "In Progress" },
-  { stage: "ready", label: "Ready" },
-  { stage: "relocated", label: "Relocated" },
-];
+const PIPELINE_STAGES: PipelineStage[] = ["invited", "accepted", "in_progress", "ready", "relocated"];
 
 const STATUS_BADGE: Record<LinkStatus, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
@@ -53,25 +48,26 @@ const STATUS_BADGE: Record<LinkStatus, string> = {
 };
 
 function InviteEmployeeForm() {
+  const { t } = useTranslation("business");
   const inviteEmployee = useMutation(api.employerCohort.inviteEmployee);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleInvite = async () => {
     if (!email.trim()) {
-      toast.error("Please enter the employee's email.");
+      toast.error(t("dashboard.invite_required"));
       return;
     }
     setSubmitting(true);
     try {
       await inviteEmployee({ email });
-      toast.success("Invite sent.");
+      toast.success(t("dashboard.invite_sent"));
       setEmail("");
     } catch (err) {
       if (err instanceof ConvexError) {
         toast.error((err.data as { message: string }).message);
       } else {
-        toast.error("Failed to send invite. Please try again.");
+        toast.error(t("dashboard.invite_failed"));
       }
     } finally {
       setSubmitting(false);
@@ -79,18 +75,18 @@ function InviteEmployeeForm() {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col sm:flex-row gap-2">
       <Input
         type="email"
-        placeholder="employee@company.com"
+        placeholder={t("dashboard.invite_email_placeholder")}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         disabled={submitting}
-        className="max-w-xs"
+        className="flex-1 sm:max-w-xs"
       />
       <Button onClick={() => { void handleInvite(); }} disabled={submitting} className="cursor-pointer font-semibold whitespace-nowrap">
         <UserPlus className="w-4 h-4 mr-1.5" />
-        {submitting ? "Inviting…" : "Invite Employee"}
+        {submitting ? t("dashboard.inviting") : t("dashboard.invite_employee")}
       </Button>
     </div>
   );
@@ -111,14 +107,16 @@ function ReadinessBar({ percent }: { percent: number | null }) {
 }
 
 function StatusBadge({ status }: { status: LinkStatus }) {
+  const { t } = useTranslation("business");
   return (
     <span className={cn("inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border", STATUS_BADGE[status])}>
-      {status}
+      {t(`dashboard.status.${status}`)}
     </span>
   );
 }
 
 function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => void }) {
+  const { t } = useTranslation("business");
   const notes = useQuery(api.employerCohort.listEmployeeNotes, { linkId: row.linkId });
   const updateDetails = useMutation(api.employerCohort.updateEmployeeDetails);
   const addNote = useMutation(api.employerCohort.addEmployeeNote);
@@ -132,9 +130,9 @@ function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => 
     setSaving(true);
     try {
       await updateDetails({ linkId: row.linkId, department: department || undefined, roleTitle: roleTitle || undefined, targetRelocationDate: targetDate || undefined });
-      toast.success("Details saved.");
+      toast.success(t("dashboard.details_saved"));
     } catch {
-      toast.error("Failed to save details.");
+      toast.error(t("dashboard.details_save_failed"));
     } finally {
       setSaving(false);
     }
@@ -146,7 +144,7 @@ function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => 
       await addNote({ linkId: row.linkId, note: noteText });
       setNoteText("");
     } catch {
-      toast.error("Failed to add note.");
+      toast.error(t("dashboard.note_add_failed"));
     }
   };
 
@@ -164,27 +162,27 @@ function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => 
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Business Details</h4>
-          <Input placeholder="Department" value={department} onChange={(e) => setDepartment(e.target.value)} />
-          <Input placeholder="Role / Title" value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} />
-          <Input type="date" placeholder="Target relocation date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.business_details")}</h4>
+          <Input placeholder={t("dashboard.department_placeholder")} value={department} onChange={(e) => setDepartment(e.target.value)} />
+          <Input placeholder={t("dashboard.role_placeholder")} value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} />
+          <Input type="date" placeholder={t("dashboard.target_date_placeholder")} value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
           <Button size="sm" disabled={saving} onClick={() => { void handleSaveDetails(); }} className="cursor-pointer font-semibold">
-            {saving ? "Saving…" : "Save Details"}
+            {saving ? t("dashboard.saving") : t("dashboard.save_details")}
           </Button>
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Private Notes</h4>
-          <p className="text-xs text-muted-foreground">Only visible to your organisation — never shown to the employee.</p>
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.private_notes")}</h4>
+          <p className="text-xs text-muted-foreground">{t("dashboard.private_notes_desc")}</p>
           <div className="space-y-2">
-            <Textarea placeholder="Add a note…" value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3} />
-            <Button size="sm" onClick={() => { void handleAddNote(); }} className="cursor-pointer font-semibold">Add Note</Button>
+            <Textarea placeholder={t("dashboard.note_placeholder")} value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={3} />
+            <Button size="sm" onClick={() => { void handleAddNote(); }} className="cursor-pointer font-semibold">{t("dashboard.add_note")}</Button>
           </div>
           <div className="space-y-2">
             {notes === undefined ? (
               <Skeleton className="h-16 w-full rounded-lg" />
             ) : notes.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No notes yet.</p>
+              <p className="text-xs text-muted-foreground italic">{t("dashboard.no_notes")}</p>
             ) : (
               notes.map((n) => (
                 <div key={n._id} className="bg-muted/30 rounded-lg p-3 text-xs">
@@ -200,42 +198,98 @@ function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => 
   );
 }
 
+function EmployeeCard({
+  row,
+  onView,
+  onResend,
+  onRevoke,
+}: {
+  row: CohortRow;
+  onView: () => void;
+  onResend: (id: Id<"org_employee_links">) => void;
+  onRevoke: (id: Id<"org_employee_links">) => void;
+}) {
+  const { t } = useTranslation("business");
+  return (
+    <article className="bg-card border border-border rounded-xl p-4 space-y-3 cursor-pointer active:bg-muted/30" onClick={onView}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-semibold text-foreground truncate">{row.employeeName ?? row.invitedEmail}</div>
+          {row.employeeName && <div className="text-xs text-muted-foreground truncate">{row.invitedEmail}</div>}
+        </div>
+        <StatusBadge status={row.status} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{t("dashboard.th_department")}</span>
+          <span className="text-foreground">{row.department ?? "—"}</span>
+        </div>
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{t("dashboard.th_notes")}</span>
+          <span className="text-foreground flex items-center gap-1"><ClipboardList className="w-3 h-3" />{row.noteCount}</span>
+        </div>
+      </div>
+      <div>
+        <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{t("dashboard.th_readiness")}</span>
+        <ReadinessBar percent={row.readinessPercent} />
+      </div>
+      {(row.status === "pending" || row.status === "accepted") && (
+        <div className="flex items-center gap-3 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+          {row.status === "pending" && (
+            <button onClick={() => onResend(row.linkId)} className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline cursor-pointer py-1">
+              <Send className="w-3 h-3" /> {t("dashboard.resend")}
+            </button>
+          )}
+          <button onClick={() => onRevoke(row.linkId)} className="flex items-center gap-1 text-xs font-semibold text-destructive hover:underline cursor-pointer py-1 ml-auto">
+            <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
 function PipelineBoard({ cohort, onAdvance }: { cohort: CohortRow[]; onAdvance: (row: CohortRow, stage: PipelineStage) => void }) {
+  const { t } = useTranslation("business");
   const active = cohort.filter((r) => r.status === "pending" || r.status === "accepted");
+  const columns = PIPELINE_STAGES.map((stage) => ({ stage, label: t(`dashboard.column.${stage}`) }));
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {PIPELINE_COLUMNS.map((column, idx) => {
-        const colRows = active.filter((r) => r.pipelineStage === column.stage);
-        const nextStage = PIPELINE_COLUMNS[idx + 1]?.stage;
-        return (
-          <div key={column.stage} className="space-y-2.5">
-            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-              <span className="text-xs font-semibold text-primary">{column.label}</span>
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">{colRows.length}</span>
+    <div className="-mx-4 sm:mx-0 overflow-x-auto">
+      <div className="flex gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-5 min-w-[640px] sm:min-w-0 px-4 sm:px-0 pb-2 sm:pb-0">
+        {columns.map((column, idx) => {
+          const colRows = active.filter((r) => r.pipelineStage === column.stage);
+          const nextStage = columns[idx + 1]?.stage;
+          return (
+            <div key={column.stage} className="space-y-2.5 min-w-[140px] sm:min-w-0">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                <span className="text-xs font-semibold text-primary">{column.label}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">{colRows.length}</span>
+              </div>
+              {colRows.map((row) => (
+                <article key={row.linkId} className="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground truncate">{row.employeeName ?? row.invitedEmail}</h4>
+                  <ReadinessBar percent={row.readinessPercent} />
+                  {nextStage && (
+                    <button
+                      onClick={() => onAdvance(row, nextStage)}
+                      className="text-[11px] font-semibold text-accent hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      {t("dashboard.move_to", { stage: columns[idx + 1].label })} <ChevronRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </article>
+              ))}
             </div>
-            {colRows.map((row) => (
-              <article key={row.linkId} className="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
-                <h4 className="text-sm font-semibold text-foreground truncate">{row.employeeName ?? row.invitedEmail}</h4>
-                <ReadinessBar percent={row.readinessPercent} />
-                {nextStage && (
-                  <button
-                    onClick={() => onAdvance(row, nextStage)}
-                    className="text-[11px] font-semibold text-accent hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    Move to {PIPELINE_COLUMNS[idx + 1].label} <ChevronRight className="w-3 h-3" />
-                  </button>
-                )}
-              </article>
-            ))}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function DashboardInner() {
+  const { t } = useTranslation("business");
   const navigate = useNavigate();
   const myOrg = useQuery(api.organizations.getMyOrganization);
   const cohort = useQuery(api.employerCohort.listMyCohort);
@@ -276,25 +330,25 @@ function DashboardInner() {
     try {
       await setPipelineStage({ linkId: row.linkId, pipelineStage: stage });
     } catch {
-      toast.error("Failed to update pipeline stage.");
+      toast.error(t("dashboard.pipeline_update_failed"));
     }
   };
 
   const handleResend = async (linkId: Id<"org_employee_links">) => {
     try {
       await resendInvite({ linkId });
-      toast.success("Invite resent.");
+      toast.success(t("dashboard.invite_resent"));
     } catch {
-      toast.error("Failed to resend invite.");
+      toast.error(t("dashboard.resend_failed"));
     }
   };
 
   const handleRevoke = async (linkId: Id<"org_employee_links">) => {
     try {
       await revokeInvite({ linkId });
-      toast.success("Access revoked.");
+      toast.success(t("dashboard.access_revoked"));
     } catch {
-      toast.error("Failed to revoke.");
+      toast.error(t("dashboard.revoke_failed"));
     }
   };
 
@@ -302,16 +356,17 @@ function DashboardInner() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-semibold text-primary">{myOrg.name}</h1>
-          <p className="text-sm text-muted-foreground">{cohort.length} {cohort.length === 1 ? "person" : "people"} in your cohort</p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-primary">{myOrg.name}</h1>
+          <p className="text-sm text-muted-foreground">{t(cohort.length === 1 ? "dashboard.cohort_person_one" : "dashboard.cohort_person_other", { count: cohort.length })}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button
             variant="outline"
             onClick={() => downloadComplianceCsv(cohort as CohortRow[], myOrg.name)}
             className="cursor-pointer font-semibold"
           >
-            <Download className="w-4 h-4 mr-1.5" /> Export Compliance Report
+            <Download className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">{t("dashboard.export_compliance")}</span>
           </Button>
         </div>
       </div>
@@ -320,94 +375,113 @@ function DashboardInner() {
         <InviteEmployeeForm />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1 bg-muted/40 rounded-lg p-1">
-          <button
-            onClick={() => setView("table")}
-            className={cn("flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md cursor-pointer", view === "table" ? "bg-card text-primary shadow-sm" : "text-muted-foreground")}
-          >
-            <Table2 className="w-3.5 h-3.5" /> Table
-          </button>
-          <button
-            onClick={() => setView("pipeline")}
-            className={cn("flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md cursor-pointer", view === "pipeline" ? "bg-card text-primary shadow-sm" : "text-muted-foreground")}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" /> Pipeline
-          </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-muted/40 rounded-lg p-1">
+            <button
+              onClick={() => setView("table")}
+              className={cn("flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md cursor-pointer", view === "table" ? "bg-card text-primary shadow-sm" : "text-muted-foreground")}
+            >
+              <Table2 className="w-3.5 h-3.5" /> {t("dashboard.table_view")}
+            </button>
+            <button
+              onClick={() => setView("pipeline")}
+              className={cn("flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md cursor-pointer", view === "pipeline" ? "bg-card text-primary shadow-sm" : "text-muted-foreground")}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" /> {t("dashboard.pipeline_view")}
+            </button>
+          </div>
         </div>
         {view === "table" && (
-          <>
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1 sm:max-w-xs">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input placeholder="Search name, email, department…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 w-64" />
+              <Input placeholder={t("dashboard.search_placeholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 w-full" />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as LinkStatus | "all")}
               className="h-9 rounded-md border border-border bg-background px-2.5 text-xs"
             >
-              <option value="all">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="declined">Declined</option>
-              <option value="revoked">Revoked</option>
+              <option value="all">{t("dashboard.all_statuses")}</option>
+              <option value="pending">{t("dashboard.option_pending")}</option>
+              <option value="accepted">{t("dashboard.option_accepted")}</option>
+              <option value="declined">{t("dashboard.option_declined")}</option>
+              <option value="revoked">{t("dashboard.option_revoked")}</option>
             </select>
-          </>
+          </div>
         )}
       </div>
 
       {cohort.length === 0 ? (
-        <div className="border border-dashed border-border rounded-xl p-12 text-center text-sm text-muted-foreground">
-          Invite your first employee to see your cohort build up here.
+        <div className="border border-dashed border-border rounded-xl p-10 text-center text-sm text-muted-foreground">
+          {t("dashboard.empty_cohort")}
         </div>
       ) : view === "pipeline" ? (
         <PipelineBoard cohort={cohort as CohortRow[]} onAdvance={handleAdvance} />
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
-              <tr>
-                <th className="text-left px-4 py-2.5">Employee</th>
-                <th className="text-left px-4 py-2.5">Department</th>
-                <th className="text-left px-4 py-2.5">Status</th>
-                <th className="text-left px-4 py-2.5">Readiness</th>
-                <th className="text-left px-4 py-2.5">Notes</th>
-                <th className="text-right px-4 py-2.5">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((row) => (
-                <tr key={row.linkId} className="hover:bg-muted/20 cursor-pointer" onClick={() => setSelectedRow(row)}>
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-foreground">{row.employeeName ?? row.invitedEmail}</div>
-                    {row.employeeName && <div className="text-xs text-muted-foreground">{row.invitedEmail}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.department ?? "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
-                  <td className="px-4 py-3"><ReadinessBar percent={row.readinessPercent} /></td>
-                  <td className="px-4 py-3 text-muted-foreground flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" />{row.noteCount}</td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    {row.status === "pending" && (
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => { void handleResend(row.linkId); }} className="text-accent hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
-                          <Send className="w-3 h-3" /> Resend
-                        </button>
-                        <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
-                          <Ban className="w-3 h-3" /> Revoke
-                        </button>
-                      </div>
-                    )}
-                    {row.status === "accepted" && (
-                      <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer ml-auto">
-                        <Ban className="w-3 h-3" /> Revoke
-                      </button>
-                    )}
-                  </td>
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((row) => (
+              <EmployeeCard
+                key={row.linkId}
+                row={row}
+                onView={() => setSelectedRow(row)}
+                onResend={(id) => { void handleResend(id); }}
+                onRevoke={(id) => { void handleRevoke(id); }}
+              />
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
+                <tr>
+                  <th className="text-left px-4 py-2.5">{t("dashboard.th_employee")}</th>
+                  <th className="text-left px-4 py-2.5">{t("dashboard.th_department")}</th>
+                  <th className="text-left px-4 py-2.5">{t("dashboard.th_status")}</th>
+                  <th className="text-left px-4 py-2.5">{t("dashboard.th_readiness")}</th>
+                  <th className="text-left px-4 py-2.5">{t("dashboard.th_notes")}</th>
+                  <th className="text-right px-4 py-2.5">{t("dashboard.th_actions")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((row) => (
+                  <tr key={row.linkId} className="hover:bg-muted/20 cursor-pointer" onClick={() => setSelectedRow(row)}>
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-foreground">{row.employeeName ?? row.invitedEmail}</div>
+                      {row.employeeName && <div className="text-xs text-muted-foreground">{row.invitedEmail}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.department ?? "—"}</td>
+                    <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                    <td className="px-4 py-3"><ReadinessBar percent={row.readinessPercent} /></td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" />{row.noteCount}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      {row.status === "pending" && (
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { void handleResend(row.linkId); }} className="text-accent hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                            <Send className="w-3 h-3" /> {t("dashboard.resend")}
+                          </button>
+                          <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                            <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
+                          </button>
+                        </div>
+                      )}
+                      {row.status === "accepted" && (
+                        <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer ml-auto">
+                          <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {selectedRow && <EmployeeDetailPanel row={selectedRow} onClose={() => setSelectedRow(null)} />}
@@ -416,6 +490,7 @@ function DashboardInner() {
 }
 
 export default function BusinessDashboardPage() {
+  const { t } = useTranslation("business");
   useSeo({ title: "Employer Dashboard", description: "Track your relocating employees' visa readiness in one dashboard." });
   const goBack = useSmartBack("/business");
 
@@ -429,10 +504,10 @@ export default function BusinessDashboardPage() {
           <Globe className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
         <span className="font-serif font-semibold text-primary">VisaClear</span>
-        <span className="text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-1"><Building2 className="w-3 h-3" /> for Employers</span>
+        <span className="text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-1"><Building2 className="w-3 h-3" /> {t("header_tag")}</span>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-10">
         <AuthLoading>
           <Skeleton className="h-64 w-full rounded-2xl" />
         </AuthLoading>
@@ -441,8 +516,8 @@ export default function BusinessDashboardPage() {
             <div className="w-14 h-14 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
               <LogIn className="w-6 h-6 text-primary" />
             </div>
-            <h2 className="font-serif text-2xl font-semibold text-primary mb-3">Sign In to Continue</h2>
-            <SignInButton size="lg" className="cursor-pointer font-semibold" signInText="Sign In to Continue" />
+            <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("dashboard.signin_title")}</h2>
+            <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("dashboard.signin_cta")} />
           </div>
         </Unauthenticated>
         <Authenticated>

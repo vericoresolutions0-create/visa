@@ -1,0 +1,22 @@
+{
+  "header.badge": "Surveillance de pays",
+  "nav.dashboard": "Mon tableau de bord",
+  "nav.settings": "Paramètres",
+  "nav.sign_out": "Se déconnecter",
+  "signin.title": "Connectez-vous pour continuer",
+  "signin.body": "Suivez les pays où vous postulez et soyez notifié dès qu'une règle change.",
+  "upgrade.title": "Ne ratez jamais un changement de règle",
+  "upgrade.body": "La surveillance de pays est une fonctionnalité Pro. Suivez jusqu'à 5 pays (10 en Expert) et nous vous enverrons un email dès qu'un vrai changement de politique est publié.",
+  "upgrade.cta": "Passer à Pro",
+  "watching.title": "Surveillance ({{count}}/{{limit}})",
+  "watching.empty": "Vous ne suivez aucun pays pour l'instant.",
+  "watching.placeholder": "Sélectionner un pays à surveiller…",
+  "watching.add": "Ajouter",
+  "updates.title": "Mises à jour récentes",
+  "updates.empty": "Aucune mise à jour pour vos pays surveillés. Nous vous enverrons un email dès que quelque chose change.",
+  "toast.added": "Vous surveillez maintenant {{country}}.",
+  "toast.limit": "Votre plan {{plan}} peut surveiller jusqu'à {{limit}} pays. Retirez-en un pour en ajouter un autre.",
+  "toast.removed": "Supprimé.",
+  "toast.add_error": "Impossible d'ajouter ce pays. Veuillez réessayer.",
+  "toast.remove_error": "Impossible de supprimer ce pays."
+}

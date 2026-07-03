@@ -1,14 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Globe, ArrowLeft, ArrowRight, TrendingUp, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { AVAILABLE_DESTINATIONS, VISA_TYPES } from "@/lib/visa-data.ts";
 import { RISK_SCORE_QUESTIONS, type RiskScoreAnswers } from "@/lib/risk-score.ts";
 import { trackEvent } from "@/hooks/use-analytics.ts";
@@ -23,6 +26,8 @@ export default function RiskScorePage() {
   });
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
+  const { t } = useTranslation("risk-score");
+  const translateCountry = useCountryName();
   const submitRiskScore = useMutation(api.riskScore.submitRiskScore);
 
   const [step, setStep] = useState(0);
@@ -60,12 +65,19 @@ export default function RiskScorePage() {
       const message =
         err instanceof ConvexError
           ? (err.data as { message: string }).message
-          : "Could not calculate your score. Please try again.";
+          : t("quiz.error");
       toast.error(message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Scroll to top on each quiz step change so the question is always visible.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }, [step]);
 
   const isLastQuestion = step === TOTAL_STEPS - 1;
   const currentQuestion = step > 0 ? RISK_SCORE_QUESTIONS[step - 1] : null;
@@ -83,7 +95,7 @@ export default function RiskScorePage() {
           </button>
         </div>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <TrendingUp className="w-3.5 h-3.5 text-accent" /> Risk Score
+          <TrendingUp className="w-3.5 h-3.5 text-accent" /> {t("header.label")}
         </div>
       </header>
 
@@ -107,35 +119,35 @@ export default function RiskScorePage() {
               transition={{ duration: 0.2 }}
             >
               <h1 className="font-serif text-3xl font-semibold text-primary mb-3">
-                What's your approval likelihood?
+                {t("intro.title")}
               </h1>
               <p className="text-sm text-muted-foreground mb-8">
-                Answer 8 quick questions about your situation. Free, instant, no sign-up required.
+                {t("intro.subtitle")}
               </p>
 
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Destination</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">{t("intro.destination_label")}</label>
                   <select
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     className="w-full px-3.5 py-3 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="">Select a destination…</option>
+                    <option value="">{t("intro.destination_placeholder")}</option>
                     {sortedDestinations.map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{DESTINATION_FLAGS[d] ?? "🌍"} {translateCountry(d)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Visa type</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">{t("intro.visa_label")}</label>
                   <select
                     value={visaType}
                     onChange={(e) => setVisaType(e.target.value)}
                     className="w-full px-3.5 py-3 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="">Select a visa type…</option>
+                    <option value="">{t("intro.visa_placeholder")}</option>
                     {VISA_TYPES.map((v) => (
                       <option key={v.value} value={v.value}>{v.label}</option>
                     ))}
@@ -148,7 +160,7 @@ export default function RiskScorePage() {
                   disabled={!canAdvanceFromIntro}
                   onClick={() => setStep(1)}
                 >
-                  Start <ArrowRight className="w-4 h-4" />
+                  {t("intro.cta")} <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
             </motion.div>
@@ -161,7 +173,7 @@ export default function RiskScorePage() {
               transition={{ duration: 0.2 }}
             >
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Question {step} of {RISK_SCORE_QUESTIONS.length}
+                {t("quiz.step_label", { step, total: RISK_SCORE_QUESTIONS.length })}
               </p>
               <h2 className="font-serif text-2xl font-semibold text-primary mb-6">
                 {currentQuestion.question}
@@ -194,7 +206,7 @@ export default function RiskScorePage() {
                   disabled={submitting}
                   onClick={() => { void handleSubmit(); }}
                 >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "See my score"}
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t("quiz.see_score")}
                 </Button>
               )}
 
@@ -202,7 +214,7 @@ export default function RiskScorePage() {
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
                 className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                ← Previous question
+                {t("quiz.previous")}
               </button>
             </motion.div>
           ) : null}

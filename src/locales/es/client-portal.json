@@ -1,0 +1,23 @@
+{
+  "header.tag": "Subida de documentos",
+  "no_checklist": "No pudimos encontrar una lista de documentos para este tipo de visa. Por favor, contacta a tu agente.",
+  "toast.too_large": "El archivo debe ser menor de 10MB.",
+  "toast.bad_type": "Por favor, sube un archivo JPG, PNG, WEBP o PDF.",
+  "toast.uploaded": "{{label}} subido.",
+  "toast.upload_failed": "Error al subir {{label}}. Por favor, inténtalo de nuevo.",
+  "there": "ahí",
+  "greeting": "Hola {{name}}",
+  "title": "Sube tus documentos",
+  "subtitle": "{{destination}} · {{visaType}}. Tu agente será notificado en cuanto subas cada documento.",
+  "required_docs": "Documentos requeridos",
+  "item.required": "Requerido",
+  "upload.uploading": "Subiendo...",
+  "upload.replace": "Reemplazar",
+  "upload.upload": "Subir",
+  "link_not_found.title": "Enlace no encontrado",
+  "link_not_found.body": "Este enlace de subida no es válido o ha expirado. Por favor, pide a tu agente que te envíe uno nuevo.",
+  "signin.title": "Inicia sesión para subir",
+  "signin.body": "Por tu seguridad, inicia sesión antes de subir tus documentos de visa.",
+  "signin.cta": "Iniciar sesión para continuar",
+  "signin.footer": "Tus documentos solo son visibles para tu agente."
+}

@@ -1,0 +1,13 @@
+{
+  "confirmed.title": "Email Confirmado",
+  "confirmed.body": "El email de tu cuenta ahora es {{email}}.",
+  "error.title": "No se Pudo Confirmar",
+  "error.fallback": "No se pudo confirmar este cambio de email.",
+  "idle.title": "Confirma Tu Nuevo Email",
+  "idle.body": "Haz clic abajo para confirmar esta dirección como tu nuevo email de VisaClear.",
+  "idle.cta": "Confirmar Este Email",
+  "idle.confirming": "Confirmando…",
+  "signin.title": "Inicia Sesión para Confirmar",
+  "signin.body": "Inicia sesión en la cuenta que solicitó este cambio de email para confirmarlo.",
+  "signin.cta": "Iniciar Sesión para Continuar"
+}

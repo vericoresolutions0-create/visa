@@ -4,6 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { useTranslation } from "react-i18next";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Authenticated } from "convex/react";
 import { Button } from "@/components/ui/button.tsx";
@@ -20,10 +23,11 @@ import {
 import { api } from "@/convex/_generated/api.js";
 import { downloadChecklistPDF, downloadBankLetterPDF } from "@/lib/pdf-export.ts";
 import {
-  AVAILABLE_DESTINATIONS, VISA_TYPES, getChecklist, type VisaType, type ChecklistItem,
+  AVAILABLE_DESTINATIONS, VISA_TYPES, type VisaType, type ChecklistItem,
   CHECKLISTS_WITH_DATA,
 } from "@/lib/visa-data.ts";
-import { ALL_COUNTRIES } from "@/lib/countries.ts";
+import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
+import { CountrySelect } from "@/components/CountrySelect.tsx";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { LiveDataDisclaimer } from "@/components/live-data-disclaimer.tsx";
@@ -36,109 +40,7 @@ import {
 import { ConvexError } from "convex/values";
 import { trackEvent } from "@/hooks/use-analytics.ts";
 
-const DEST_FLAGS: Record<string, string> = {
-  "United Kingdom": "🇬🇧",
-  "United States": "🇺🇸",
-  "Canada": "🇨🇦",
-  "Germany": "🇩🇪",
-  "Poland": "🇵🇱",
-  "France": "🇫🇷",
-  "Australia": "🇦🇺",
-  "Netherlands": "🇳🇱",
-  "Ireland": "🇮🇪",
-  "Italy": "🇮🇹",
-  "Spain": "🇪🇸",
-  "Sweden": "🇸🇪",
-  "Norway": "🇳🇴",
-  "Finland": "🇫🇮",
-  "Denmark": "🇩🇰",
-  "Portugal": "🇵🇹",
-  "Austria": "🇦🇹",
-  "Belgium": "🇧🇪",
-  "Switzerland": "🇨🇭",
-  "Japan": "🇯🇵",
-  "South Korea": "🇰🇷",
-  "UAE": "🇦🇪",
-  "New Zealand": "🇳🇿",
-  "Singapore": "🇸🇬",
-};
-
-// ─── Searchable Country Input ────────────────────────────────────────────────
-function CountrySearch({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [query, setQuery] = useState(value);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  const filtered = query.trim().length === 0
-    ? ALL_COUNTRIES
-    : ALL_COUNTRIES.filter((c) =>
-        c.toLowerCase().includes(query.toLowerCase())
-      );
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const select = (country: string) => {
-    onChange(country);
-    setQuery(country);
-    setOpen(false);
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={query}
-          placeholder="Search or type your country…"
-          className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            if (e.target.value === "") onChange("");
-          }}
-          onFocus={() => setOpen(true)}
-        />
-      </div>
-      <AnimatePresence>
-        {open && filtered.length > 0 && (
-          <motion.ul
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-1.5 w-full max-h-56 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
-          >
-            {filtered.map((country) => (
-              <li
-                key={country}
-                onMouseDown={() => select(country)}
-                className={cn(
-                  "px-4 py-2.5 text-sm cursor-pointer hover:bg-accent/8 transition-colors",
-                  value === country && "bg-primary/8 font-medium text-primary"
-                )}
-              >
-                {country}
-              </li>
-            ))}
-          </motion.ul>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+const DEST_FLAGS = DESTINATION_FLAGS;
 
 // ─── Checklist Item Card ──────────────────────────────────────────────────────
 function ChecklistItemCard({
@@ -152,6 +54,7 @@ function ChecklistItemCard({
   checked: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("checklist");
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -183,7 +86,7 @@ function ChecklistItemCard({
             </span>
             {!item.required && (
               <span className="text-[10px] tracking-wide uppercase font-medium border border-border text-muted-foreground rounded-full px-2 py-0.5">
-                Optional
+                {t("item.optional")}
               </span>
             )}
           </div>
@@ -210,7 +113,7 @@ function ChecklistItemCard({
               <div className="flex items-start gap-2.5 text-sm">
                 <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-foreground">Where to get it: </span>
+                  <span className="font-semibold text-foreground">{t("item.where_label")}</span>
                   <span className="text-muted-foreground">{item.where}</span>
                 </div>
               </div>
@@ -230,12 +133,13 @@ function ChecklistItemCard({
 
 // ─── Readiness Score Ring ─────────────────────────────────────────────────────
 function ReadinessScore({ score }: { score: number }) {
+  const { t } = useTranslation("checklist");
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   const color = score >= 80 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
-  const label = score >= 80 ? "Strong" : score >= 50 ? "Moderate" : "Needs Work";
+  const label = score >= 80 ? t("readiness.strong") : score >= 50 ? t("readiness.moderate") : t("readiness.needs_work");
 
   return (
     <div className="flex items-center gap-5">
@@ -259,14 +163,14 @@ function ReadinessScore({ score }: { score: number }) {
         </div>
       </div>
       <div>
-        <div className="font-semibold text-sm text-foreground mb-1">Application Readiness</div>
+        <div className="font-semibold text-sm text-foreground mb-1">{t("readiness.title")}</div>
         <div className="font-bold text-lg" style={{ color }}>{label}</div>
         <div className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-[180px]">
           {score >= 80
-            ? "Excellent! You have most documents ready. Final review recommended."
+            ? t("readiness.desc_strong")
             : score >= 50
-            ? "Good progress. Check remaining required items before applying."
-            : "Complete more required documents to strengthen your application."}
+            ? t("readiness.desc_moderate")
+            : t("readiness.desc_weak")}
         </div>
       </div>
     </div>
@@ -295,10 +199,12 @@ function AIAssistant({
   isDemoAuthenticated: boolean;
   onClose: () => void;
 }) {
+  const translateCountry = useCountryName();
+  const { t, i18n } = useTranslation("checklist");
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: `I'm your VisaClear AI assistant. I'm here to answer questions about your ${visaType} visa application to ${destination}. What would you like to know?`,
+      text: t("ai.welcome", { visaType, destination: translateCountry(destination) }),
     },
   ]);
   const [input, setInput] = useState("");
@@ -322,19 +228,20 @@ function AIAssistant({
     try {
       if (isDemoAuthenticated) {
         await new Promise((resolve) => setTimeout(resolve, 600));
-        const answer = `Demo answer — not generated by AI: For a real ${destination} ${visaType} visa application, our AI gives a personalised answer based on your actual checklist progress. Sign up for a free account to ask real questions about your own application.`;
+        const answer = t("ai.demo_answer", { destination: translateCountry(destination), visaType });
         setMessages((prev) => [...prev, { role: "assistant", text: answer, feedback: null }]);
         return;
       }
       const answer = await askQuestion({
         question: q,
         context: { origin, destination, visaType },
+        language: i18n.language,
       });
       setMessages((prev) => [...prev, { role: "assistant", text: answer, feedback: null }]);
     } catch (err) {
       const message = err instanceof ConvexError
         ? (err.data as { message: string }).message
-        : "Sorry, I could not process that request. Please try again.";
+        : t("ai.error_generic");
       toast.error(message);
       setMessages((prev) => [...prev, { role: "assistant", text: message, feedback: null }]);
     } finally {
@@ -347,17 +254,17 @@ function AIAssistant({
       prev.map((m, i) => i === index ? { ...m, feedback } : m)
     );
     if (feedback === "up") {
-      toast.success("Thanks for the feedback!");
+      toast.success(t("ai.feedback_thanks_up"));
     } else {
-      toast.info("Thanks for letting us know. We review all feedback to improve accuracy.");
+      toast.info(t("ai.feedback_thanks_down"));
     }
   };
 
   const quickQuestions = [
-    "What bank balance do I need?",
-    "How far in advance should I apply?",
-    "What is the most common rejection reason?",
-    "Do I need travel insurance?",
+    t("ai.quick_q1"),
+    t("ai.quick_q2"),
+    t("ai.quick_q3"),
+    t("ai.quick_q4"),
   ];
 
   return (
@@ -375,16 +282,16 @@ function AIAssistant({
             <Bot className="w-4.5 h-4.5 text-white" />
           </div>
           <div className="flex-1">
-            <div className="font-semibold text-white text-sm">VisaClear AI Assistant</div>
-            <div className="text-[11px] text-white/60">{destination} · {visaType} visa · by Vericore</div>
+            <div className="font-semibold text-white text-sm">{t("ai.header_title")}</div>
+            <div className="text-[11px] text-white/60">{t("ai.header_meta", { destination: translateCountry(destination), visaType })}</div>
           </div>
           {plan === "free" ? (
             <div className="text-[11px] text-white/70 font-medium px-2.5 py-1 rounded-lg bg-white/10">
-              Pro feature
+              {t("ai.pro_feature")}
             </div>
           ) : remaining !== null ? (
             <div className="text-[11px] text-white/70 font-medium px-2.5 py-1 rounded-lg bg-white/10">
-              {remaining}/{usage?.limit} left this month
+              {t("ai.remaining_left", { remaining, limit: usage?.limit })}
             </div>
           ) : null}
           <button onClick={onClose} className="text-white/60 hover:text-white transition-colors cursor-pointer p-1">
@@ -396,7 +303,7 @@ function AIAssistant({
         <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex items-start gap-2.5">
           <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
-            <strong>Not legal advice.</strong> AI responses are for guidance only. Always verify requirements with the official embassy or consulate before submitting your application.
+            <strong>{t("ai.disclaimer_strong")}</strong> {t("ai.disclaimer_rest")}
           </p>
         </div>
 
@@ -428,25 +335,25 @@ function AIAssistant({
                   <div className="flex items-center gap-1.5 pl-1">
                     {m.feedback === null || m.feedback === undefined ? (
                       <>
-                        <span className="text-[10px] text-muted-foreground mr-0.5">Was this helpful?</span>
+                        <span className="text-[10px] text-muted-foreground mr-0.5">{t("ai.was_helpful")}</span>
                         <button
                           onClick={() => setFeedback(i, "up")}
                           className="p-1 rounded text-muted-foreground hover:text-accent transition-colors cursor-pointer"
-                          title="Helpful"
+                          title={t("ai.helpful_title")}
                         >
                           <ThumbsUp className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => setFeedback(i, "down")}
                           className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                          title="Not helpful"
+                          title={t("ai.not_helpful_title")}
                         >
                           <ThumbsDown className="w-3 h-3" />
                         </button>
                       </>
                     ) : (
                       <span className="text-[10px] text-muted-foreground italic">
-                        {m.feedback === "up" ? "Marked helpful" : "Feedback noted"}
+                        {m.feedback === "up" ? t("ai.marked_helpful") : t("ai.feedback_noted")}
                       </span>
                     )}
                   </div>
@@ -461,7 +368,7 @@ function AIAssistant({
               </div>
               <div className="bg-muted/50 border border-border rounded-xl rounded-tl-sm px-3.5 py-3 flex items-center gap-2">
                 <Spinner />
-                <span className="text-xs text-muted-foreground">Thinking…</span>
+                <span className="text-xs text-muted-foreground">{t("ai.thinking")}</span>
               </div>
             </div>
           )}
@@ -471,7 +378,7 @@ function AIAssistant({
         {/* Quick questions */}
         {messages.length <= 1 && (
           <div className="px-4 pb-2">
-            <p className="text-[11px] text-muted-foreground mb-2 font-medium">Quick questions:</p>
+            <p className="text-[11px] text-muted-foreground mb-2 font-medium">{t("ai.quick_questions_label")}</p>
             <div className="flex flex-wrap gap-1.5">
               {quickQuestions.map((q) => (
                 <button
@@ -490,12 +397,12 @@ function AIAssistant({
         {plan === "pro" && remaining === 1 && (
           <div className="mx-4 px-3 py-2 rounded-lg bg-muted/50 border border-border text-center">
             <p className="text-[11px] text-muted-foreground">
-              Last question this month.{" "}
+              {t("ai.last_question")}{" "}
               <button
                 onClick={() => { onClose(); }}
                 className="text-accent font-semibold underline cursor-pointer"
               >
-                Upgrade for unlimited
+                {t("ai.upgrade_unlimited")}
               </button>
             </p>
           </div>
@@ -506,18 +413,16 @@ function AIAssistant({
           {plan === "free" || (remaining !== null && remaining <= 0) ? (
             <div className="text-center py-3">
               <p className="text-sm font-semibold text-foreground mb-1">
-                {plan === "free" ? "AI Visa Assistant is a Pro feature" : "Monthly limit reached"}
+                {plan === "free" ? t("ai.free_title") : t("ai.limit_reached_title")}
               </p>
               <p className="text-xs text-muted-foreground mb-3">
-                {plan === "free"
-                  ? "Upgrade to Pro for 10 AI questions a month, or Expert for unlimited."
-                  : "Upgrade to Expert for unlimited AI Visa Assistant questions."}
+                {plan === "free" ? t("ai.free_desc") : t("ai.limit_reached_desc")}
               </p>
               <button
                 onClick={() => onClose()}
                 className="text-xs font-semibold text-accent border border-accent/30 rounded-lg px-4 py-1.5 hover:bg-accent/5 transition-colors cursor-pointer"
               >
-                See Pro Plans
+                {t("ai.see_pro_plans")}
               </button>
             </div>
           ) : (
@@ -527,7 +432,7 @@ function AIAssistant({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { void send(); } }}
-                placeholder="Ask about your visa application…"
+                placeholder={t("ai.input_placeholder")}
                 className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                 disabled={loading}
               />
@@ -552,7 +457,8 @@ type Step = "selector" | "checklist";
 const INITIAL_SHOWN = 9;
 
 export default function ChecklistPage() {
-  useSeo({ title: "Visa Checklist", description: "Get your precise, personalised visa document checklist in 60 seconds. Built for African, Asian, and LatAm applicants. No vague advice — exact documents, insider tips." });
+  const { t, i18n } = useTranslation("checklist");
+  useSeo({ title: "Visa Checklist", description: "Get your precise, personalised visa document checklist in 60 seconds. No vague advice — exact documents and what embassies actually want to see." });
   const navigate = useNavigate();
   const goBackToDashboard = useSmartBack("/dashboard");
   const goBackToHome = useSmartBack("/");
@@ -570,6 +476,7 @@ export default function ChecklistPage() {
   // wizard in this session.
   const openedDirectlyAtChecklist = useRef(step === "checklist").current;
 
+  const translateCountry = useCountryName();
   const [origin, setOrigin] = useState(urlFrom);
   const [destination, setDestination] = useState(urlTo);
   const [visaType, setVisaType] = useState<VisaType | "">(urlType);
@@ -593,8 +500,18 @@ export default function ChecklistPage() {
     setCheckedItems({});
   }, [urlFrom, urlTo, urlType]);
 
+  // Scroll to top when the checklist results appear (setSearchParams doesn't
+  // change the pathname so useScrollToTop never fires on this transition).
+  useEffect(() => {
+    if (step === "checklist") {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      });
+    }
+  }, [step]);
+
   const checklist = destination && visaType
-    ? getChecklist(destination, visaType as VisaType)
+    ? getLocalizedChecklist(destination, visaType as VisaType, i18n.language)
     : null;
 
   const canProceed = origin !== "" && destination !== "" && visaType !== "";
@@ -651,9 +568,9 @@ export default function ChecklistPage() {
     setPdfLoading(true);
     try {
       await downloadChecklistPDF(checklist, origin, checkedItems);
-      toast.success("Checklist PDF downloaded successfully");
+      toast.success(t("pdf.toast_success"));
     } catch {
-      toast.error("Failed to generate PDF. Please try again.");
+      toast.error(t("pdf.toast_failed"));
     } finally {
       setPdfLoading(false);
     }
@@ -664,9 +581,9 @@ export default function ChecklistPage() {
     setBankLoading(true);
     try {
       await downloadBankLetterPDF(origin, destination, visaType as string, checklist.fee, checklist.processingTime);
-      toast.success("Bank letter template downloaded");
+      toast.success(t("bank.toast_success"));
     } catch {
-      toast.error("Failed to generate bank letter. Please try again.");
+      toast.error(t("bank.toast_failed"));
     } finally {
       setBankLoading(false);
     }
@@ -682,9 +599,9 @@ export default function ChecklistPage() {
     navigator.clipboard.writeText(url.toString()).then(() => {
       setLinkCopied(true);
       trackEvent("share_link_copied", { destination });
-      toast.success("Shareable link copied! Send it to your client.");
+      toast.success(t("share.toast_success"));
       setTimeout(() => setLinkCopied(false), 3000);
-    }).catch(() => toast.error("Failed to copy link."));
+    }).catch(() => toast.error(t("share.toast_failed")));
   };
 
   return (
@@ -717,12 +634,12 @@ export default function ChecklistPage() {
             {step === "checklist" && checklist && (
               <div className="flex items-center gap-3">
                 <div className="text-xs text-muted-foreground font-medium hidden sm:block">
-                  {checkedCount} / {checklist.items.length} complete
+                  {t("nav.complete_count", { checked: checkedCount, total: checklist.items.length })}
                 </div>
                 <button
                   onClick={() => {
                     if (!canUseAI(plan)) {
-                      toast.error("AI Assistant is a Pro feature. Upgrade to unlock.");
+                      toast.error(t("nav.ai_pro_feature_toast"));
                       return;
                     }
                     setShowAI(true);
@@ -730,7 +647,7 @@ export default function ChecklistPage() {
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/8 text-primary hover:bg-primary/15 transition-colors cursor-pointer border border-primary/20"
                 >
                   <Bot className="w-3.5 h-3.5" />
-                  Ask AI
+                  {t("nav.ask_ai")}
                 </button>
               </div>
             )}
@@ -739,18 +656,18 @@ export default function ChecklistPage() {
                 <button
                   onClick={() => navigate("/dashboard")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
-                  title="My Dashboard"
+                  title={t("nav.my_dashboard")}
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">My Dashboard</span>
+                  <span className="hidden md:inline">{t("nav.my_dashboard")}</span>
                 </button>
                 <button
                   onClick={() => navigate("/settings/profile")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
-                  title="Profile settings"
+                  title={t("nav.settings")}
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Settings</span>
+                  <span className="hidden md:inline">{t("nav.settings")}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -758,10 +675,10 @@ export default function ChecklistPage() {
                     navigate("/");
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
-                  title="Sign out"
+                  title={t("nav.sign_out")}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Sign Out</span>
+                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </div>
             )}
@@ -783,11 +700,11 @@ export default function ChecklistPage() {
             >
               <div className="text-center mb-10">
                 <h1 className="font-serif text-4xl font-semibold text-primary mb-3">
-                  Your Visa Checklist
+                  {t("selector.title")}
 
                 </h1>
                 <p className="text-muted-foreground text-base">
-                  Answer three questions. Receive your complete document guide instantly.
+                  {t("selector.subtitle")}
                 </p>
               </div>
 
@@ -797,13 +714,13 @@ export default function ChecklistPage() {
                 {/* Step 1 — Origin */}
                 <div className="bg-card border border-border rounded-xl p-6">
                   <label className="block text-sm font-semibold text-primary mb-1.5">
-                    1. Where are you from?
+                    {t("selector.step1_label")}
                   </label>
-                  <p className="text-xs text-muted-foreground mb-3">Search and select your country of origin</p>
-                  <CountrySearch value={origin} onChange={setOrigin} />
+                  <p className="text-xs text-muted-foreground mb-3">{t("selector.step1_desc")}</p>
+                  <CountrySelect value={origin} onChange={setOrigin} placeholder={t("search.placeholder")} />
                   {origin && (
                     <p className="text-xs text-accent mt-2 font-medium">
-                      ✓ {origin} selected
+                      ✓ {t("selector.origin_selected", { country: translateCountry(origin) })}
                     </p>
                   )}
                 </div>
@@ -811,9 +728,9 @@ export default function ChecklistPage() {
                 {/* Step 2 — Destination */}
                 <div className="bg-card border border-border rounded-xl p-6">
                   <label className="block text-sm font-semibold text-primary mb-1.5">
-                    2. Where do you want to go?
+                    {t("selector.step2_label")}
                   </label>
-                  <p className="text-xs text-muted-foreground mb-4">Select your destination country</p>
+                  <p className="text-xs text-muted-foreground mb-4">{t("selector.step2_desc")}</p>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {(showAllDest ? AVAILABLE_DESTINATIONS : AVAILABLE_DESTINATIONS.slice(0, INITIAL_SHOWN)).map((d, idx) => {
                       const locked = !canAccessDestination(plan, idx);
@@ -822,7 +739,7 @@ export default function ChecklistPage() {
                         key={d}
                         onClick={() => {
                           if (locked) {
-                            toast.error("Upgrade to Pro to access all 24+ destinations.");
+                            toast.error(t("selector.upgrade_toast"));
                             return;
                           }
                           setDestination(d); setVisaType("");
@@ -845,9 +762,9 @@ export default function ChecklistPage() {
                         <span className={cn(
                           "text-[11px] font-medium leading-tight",
                           destination === d ? "text-primary" : "text-foreground/75"
-                        )}>{d}</span>
+                        )}>{translateCountry(d)}</span>
                         {!CHECKLISTS_WITH_DATA.has(d) && (
-                          <span className="text-[9px] text-accent/80 tracking-wide font-medium">Coming soon</span>
+                          <span className="text-[9px] text-accent/80 tracking-wide font-medium">{t("selector.coming_soon")}</span>
                         )}
                       </button>
                     );})}
@@ -858,9 +775,9 @@ export default function ChecklistPage() {
                       className="mt-3 w-full flex items-center justify-center gap-2 text-xs text-primary font-medium py-2.5 rounded-lg border border-primary/20 hover:bg-primary/4 transition-colors cursor-pointer"
                     >
                       {showAllDest ? (
-                        <><ChevronUp className="w-3.5 h-3.5" /> Show fewer countries</>
+                        <><ChevronUp className="w-3.5 h-3.5" /> {t("selector.show_fewer")}</>
                       ) : (
-                        <><ChevronDown className="w-3.5 h-3.5" /> Show all {AVAILABLE_DESTINATIONS.length} countries</>
+                        <><ChevronDown className="w-3.5 h-3.5" /> {t("selector.show_all", { count: AVAILABLE_DESTINATIONS.length })}</>
                       )}
                     </button>
                   )}
@@ -868,9 +785,9 @@ export default function ChecklistPage() {
                     <div className="flex items-center gap-2 mt-2 p-2.5 rounded-lg bg-accent/8 border border-accent/20">
                       <Lock className="w-3 h-3 text-accent shrink-0" />
                       <p className="text-[11px] text-accent/80 leading-snug">
-                        Free plan includes {FREE_DESTINATION_LIMIT} destinations.{" "}
-                        <button onClick={() => navigate("/pricing")} className="underline font-semibold cursor-pointer">Upgrade to Pro</button>
-                        {" "}for all 24+ countries.
+                        {t("selector.free_plan_limit", { count: FREE_DESTINATION_LIMIT })}{" "}
+                        <button onClick={() => navigate("/pricing")} className="underline font-semibold cursor-pointer">{t("selector.upgrade_to_pro")}</button>
+                        {" "}{t("selector.for_all_countries")}
                       </p>
                     </div>
                   )}
@@ -879,9 +796,9 @@ export default function ChecklistPage() {
                 {/* Step 3 — Visa Type */}
                 <div className="bg-card border border-border rounded-xl p-6">
                   <label className="block text-sm font-semibold text-primary mb-1.5">
-                    3. Purpose of visit
+                    {t("selector.step3_label")}
                   </label>
-                  <p className="text-xs text-muted-foreground mb-4">What is the reason for your travel?</p>
+                  <p className="text-xs text-muted-foreground mb-4">{t("selector.step3_desc")}</p>
                   <div className="space-y-2">
                     {VISA_TYPES.map((vt) => (
                       <button
@@ -922,20 +839,20 @@ export default function ChecklistPage() {
                   disabled={!canProceed}
                   onClick={handleGenerate}
                 >
-                  Generate My Checklist
+                  {t("selector.generate_button")}
                   <ChevronRight className="w-5 h-5 ml-1.5" />
                 </Button>
                 </motion.div>
 
                 {!canProceed && (
                   <p className="text-center text-xs text-muted-foreground">
-                    Complete all three fields above to continue
+                    {t("selector.complete_fields")}
                   </p>
                 )}
                 {/* Privacy note */}
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
                   <Lock className="w-3 h-3 text-accent" />
-                  <span><em>It&apos;s all about Privacy.</em> We collect no personal data at this stage.</span>
+                  <span><em>{t("selector.privacy_em")}</em> {t("selector.privacy_rest")}</span>
                 </div>
               </div>
 
@@ -953,9 +870,9 @@ export default function ChecklistPage() {
                     <div className="max-w-3xl mx-auto">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-muted-foreground">Ready to generate</p>
+                          <p className="text-xs text-muted-foreground">{t("selector.ready_to_generate")}</p>
                           <p className="text-sm font-semibold text-primary truncate">
-                            {DEST_FLAGS[destination] ?? "🌍"} {destination} · {VISA_TYPES.find(v => v.value === visaType)?.label}
+                            {DEST_FLAGS[destination] ?? "🌍"} {translateCountry(destination)} · {VISA_TYPES.find(v => v.value === visaType)?.label}
                           </p>
                         </div>
                         <Button
@@ -963,7 +880,7 @@ export default function ChecklistPage() {
                           className="cursor-pointer font-semibold shrink-0 bg-primary hover:bg-primary/90 shadow-md"
                           onClick={handleGenerate}
                         >
-                          View My Checklist
+                          {t("selector.view_checklist")}
                           <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                       </div>
@@ -994,17 +911,17 @@ export default function ChecklistPage() {
                         <div className="flex items-center gap-2.5 mb-1">
                           <span className="text-2xl">{DEST_FLAGS[destination] ?? "🌍"}</span>
                           <h2 className="font-serif text-2xl font-semibold capitalize">
-                            {destination} {checklist.visaType} Visa
+                            {t("header.visa_title", { country: translateCountry(destination), visaType: checklist.visaType })}
                           </h2>
                         </div>
                         <p className="text-primary-foreground/60 text-sm">
-                          Applied from {origin}
+                          {t("header.applied_from", { country: translateCountry(origin) })}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
                         <div className="font-serif text-3xl font-semibold"
                           style={{ color: "oklch(0.72 0.13 80)" }}>{progress}%</div>
-                        <div className="text-xs text-primary-foreground/50 mt-0.5">complete</div>
+                        <div className="text-xs text-primary-foreground/50 mt-0.5">{t("header.complete_label")}</div>
                       </div>
                     </div>
 
@@ -1022,9 +939,9 @@ export default function ChecklistPage() {
                     {/* Meta row */}
                     <div className="grid grid-cols-3 gap-3">
                       {[
-                        { icon: <Clock className="w-3.5 h-3.5" />, label: "Processing", val: checklist.processingTime, onClick: () => navigate(`/wait-times?to=${encodeURIComponent(destination)}&type=${encodeURIComponent(visaType)}`) },
-                        { icon: <DollarSign className="w-3.5 h-3.5" />, label: "Visa Fee", val: checklist.fee },
-                        { icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: "Required", val: `${checkedRequired}/${totalRequired}` },
+                        { icon: <Clock className="w-3.5 h-3.5" />, label: t("meta.processing"), val: checklist.processingTime, onClick: () => navigate(`/wait-times?to=${encodeURIComponent(destination)}&type=${encodeURIComponent(visaType)}`) },
+                        { icon: <DollarSign className="w-3.5 h-3.5" />, label: t("meta.visa_fee"), val: checklist.fee },
+                        { icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: t("meta.required"), val: `${checkedRequired}/${totalRequired}` },
                       ].map((m) => (
                         <div
                           key={m.label}
@@ -1038,7 +955,7 @@ export default function ChecklistPage() {
                             <span className="text-[10px] tracking-wide uppercase font-medium text-primary-foreground/50">{m.label}</span>
                           </div>
                           <div className="text-xs font-semibold text-primary-foreground leading-snug">{m.val}</div>
-                          {m.onClick && <div className="text-[9px] text-primary-foreground/40 mt-0.5">See real wait times →</div>}
+                          {m.onClick && <div className="text-[9px] text-primary-foreground/40 mt-0.5">{t("meta.see_wait_times")}</div>}
                         </div>
                       ))}
                     </div>
@@ -1048,11 +965,11 @@ export default function ChecklistPage() {
                   <div className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <TrendingUp className="w-4 h-4 text-primary" />
-                      <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Application Readiness Score</h3>
+                      <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("readiness_card.title")}</h3>
                     </div>
                     <ReadinessScore score={readinessScore} />
                     <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
-                      Score is based on {checkedCount} of {checklist.items.length} documents checked. Required items carry more weight than optional ones.
+                      {t("readiness_card.desc", { checked: checkedCount, total: checklist.items.length })}
                     </p>
                   </div>
 
@@ -1066,12 +983,12 @@ export default function ChecklistPage() {
                         <Share2 className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <div className="font-semibold text-sm text-foreground">Share Checklist Link</div>
-                        <div className="text-[11px] text-muted-foreground">For visa agents · Pre-filled for your client</div>
+                        <div className="font-semibold text-sm text-foreground">{t("share.title")}</div>
+                        <div className="text-[11px] text-muted-foreground">{t("share.subtitle")}</div>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                      Copy a unique link that opens this exact checklist pre-filled for your client. Send it via WhatsApp, email, or any channel.
+                      {t("share.desc")}
                     </p>
                     <div className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-lg border border-border mb-3 text-xs font-mono text-muted-foreground overflow-hidden">
                       <span className="truncate">
@@ -1085,7 +1002,7 @@ export default function ChecklistPage() {
                       className="inline-flex items-center gap-1.5 text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/5 transition-colors rounded-lg px-3 py-2 cursor-pointer"
                     >
                       {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {linkCopied ? "Copied!" : "Copy Link"}
+                      {linkCopied ? t("share.copied") : t("share.copy_link")}
                     </button>
                   </div>
 
@@ -1098,17 +1015,17 @@ export default function ChecklistPage() {
                           <Download className="w-4 h-4 text-primary" />
                         </div>
                         <div>
-                          <div className="font-semibold text-sm text-foreground">Download Checklist</div>
-                          <div className="text-[11px] text-muted-foreground">Premium PDF · Print-ready</div>
+                          <div className="font-semibold text-sm text-foreground">{t("pdf.title")}</div>
+                          <div className="text-[11px] text-muted-foreground">{t("pdf.subtitle")}</div>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                        Professionally formatted PDF with your progress, approval tips, and all document requirements.
+                        {t("pdf.desc")}
                       </p>
                       <button
                         onClick={() => {
                           if (!canDownloadPDF(plan)) {
-                            toast.error("PDF export is a Pro feature. Upgrade to download.");
+                            toast.error(t("pdf.upgrade_toast"));
                             return;
                           }
                           void handleDownloadPDF();
@@ -1117,7 +1034,7 @@ export default function ChecklistPage() {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer disabled:opacity-60"
                       >
                         {pdfLoading ? <Spinner /> : canDownloadPDF(plan) ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                        {pdfLoading ? "Generating…" : canDownloadPDF(plan) ? "Download PDF" : "Pro Feature"}
+                        {pdfLoading ? t("pdf.generating") : canDownloadPDF(plan) ? t("pdf.download") : t("pdf.pro_feature")}
                       </button>
                     </div>
 
@@ -1128,12 +1045,12 @@ export default function ChecklistPage() {
                           <FileText className="w-4 h-4 text-accent" />
                         </div>
                         <div>
-                          <div className="font-semibold text-sm text-foreground">Bank Letter Template</div>
-                          <div className="text-[11px] text-muted-foreground">Sample · Take to your bank</div>
+                          <div className="font-semibold text-sm text-foreground">{t("bank.title")}</div>
+                          <div className="text-[11px] text-muted-foreground">{t("bank.subtitle")}</div>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                        Official-style template your bank or employer can use to write your financial support letter.
+                        {t("bank.desc")}
                       </p>
                       <button
                         onClick={() => { void handleDownloadBankLetter(); }}
@@ -1141,7 +1058,7 @@ export default function ChecklistPage() {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold border border-accent/40 text-accent hover:bg-accent/5 transition-colors rounded-lg px-3 py-2 cursor-pointer disabled:opacity-60"
                       >
                         {bankLoading ? <Spinner /> : <FileText className="w-3.5 h-3.5" />}
-                        {bankLoading ? "Generating…" : "Download Template"}
+                        {bankLoading ? t("pdf.generating") : t("bank.download")}
                       </button>
                     </div>
                   </div>
@@ -1151,13 +1068,13 @@ export default function ChecklistPage() {
                     <div className="flex items-start gap-3">
                       <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold text-sm text-foreground mb-1">How to use the Bank Letter Template</div>
+                        <div className="font-semibold text-sm text-foreground mb-1">{t("bank.how_to_title")}</div>
                         <ol className="text-xs text-muted-foreground leading-relaxed space-y-1 list-decimal ml-4">
-                          <li>Download and print the template</li>
-                          <li>Take it to your bank or employer</li>
-                          <li>Ask them to reproduce it on official letterhead</li>
-                          <li>Ensure it is stamped, signed, and dated by an authorised officer</li>
-                          <li>Submit the official version with your visa application</li>
+                          <li>{t("bank.how_to_1")}</li>
+                          <li>{t("bank.how_to_2")}</li>
+                          <li>{t("bank.how_to_3")}</li>
+                          <li>{t("bank.how_to_4")}</li>
+                          <li>{t("bank.how_to_5")}</li>
                         </ol>
                       </div>
                     </div>
@@ -1167,7 +1084,7 @@ export default function ChecklistPage() {
                   <button
                     onClick={() => {
                       if (!canUseAI(plan)) {
-                        toast.error("AI Assistant is a Pro feature. Upgrade to unlock.");
+                        toast.error(t("nav.ai_pro_feature_toast"));
                         return;
                       }
                       setShowAI(true);
@@ -1178,9 +1095,9 @@ export default function ChecklistPage() {
                       <MessageSquare className="w-4.5 h-4.5 text-primary-foreground" />
                     </div>
                     <div className="flex-1 text-left">
-                      <div className="font-semibold text-sm text-primary">Ask VisaClear AI</div>
+                      <div className="font-semibold text-sm text-primary">{t("ask_ai_button.title")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Get instant answers about your {destination} {visaType} visa application
+                        {t("ask_ai_button.desc", { destination: translateCountry(destination), visaType })}
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-primary shrink-0" />
@@ -1190,7 +1107,7 @@ export default function ChecklistPage() {
                   <div className="flex items-start gap-3 border border-primary/20 bg-primary/5 rounded-xl p-4">
                     <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-semibold text-sm text-primary mb-1">Top Approval Tip</div>
+                      <div className="font-semibold text-sm text-primary mb-1">{t("success_tip.title")}</div>
                       <p className="text-sm text-muted-foreground leading-relaxed">{checklist.successTip}</p>
                     </div>
                   </div>
@@ -1200,15 +1117,13 @@ export default function ChecklistPage() {
                     <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                        <span className="font-semibold text-foreground">Important: </span>
-                        This checklist is a guidance tool only and does not constitute legal or immigration advice.
-                        Requirements change regularly — always verify with the official embassy or consulate website
-                        before submitting your application.
+                        <span className="font-semibold text-foreground">{t("disclaimer.important_label")}</span>
+                        {t("disclaimer.text")}
                       </p>
                       <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border/50">
                         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Shield className="w-3 h-3 text-accent" />
-                          Last verified: <strong className="text-foreground">{new Date(checklist.lastVerified).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</strong>
+                          {t("disclaimer.last_verified")} <strong className="text-foreground">{new Date(checklist.lastVerified).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</strong>
                         </span>
                         {checklist.embassyUrl && (
                           <a
@@ -1218,7 +1133,7 @@ export default function ChecklistPage() {
                             className="flex items-center gap-1 text-[11px] text-accent font-semibold hover:underline"
                           >
                             <Globe className="w-3 h-3" />
-                            Official {destination} Embassy Portal
+                            {t("disclaimer.embassy_portal", { country: translateCountry(destination) })}
                           </a>
                         )}
                       </div>
@@ -1229,10 +1144,10 @@ export default function ChecklistPage() {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-primary text-sm uppercase tracking-widest">
-                        Document Checklist
+                        {t("items_section.title")}
                       </h3>
                       <span className="text-xs text-muted-foreground">
-                        {checklist.items.length} items · {totalRequired} required
+                        {t("items_section.count", { count: checklist.items.length, required: totalRequired })}
                       </span>
                     </div>
                     <div className="space-y-2.5">
@@ -1262,10 +1177,10 @@ export default function ChecklistPage() {
                             <CheckCircle2 className="w-7 h-7 text-accent" />
                           </div>
                           <h3 className="font-serif text-2xl font-semibold text-primary mb-2">
-                            You&apos;re ready to apply!
+                            {t("completion.title")}
                           </h3>
                           <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                            All required documents are gathered. Here are your next steps to submit a strong application.
+                            {t("completion.desc")}
                           </p>
                         </div>
 
@@ -1278,10 +1193,10 @@ export default function ChecklistPage() {
                                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                                   <Globe className="w-4 h-4" />
                                 </div>
-                                <span className="font-semibold text-sm">Apply Online Now</span>
+                                <span className="font-semibold text-sm">{t("action_cards.apply_now")}</span>
                               </div>
                               <p className="text-xs text-primary-foreground/70 leading-relaxed mb-4">
-                                Go directly to the official embassy or immigration portal to start your application.
+                                {t("action_cards.apply_desc")}
                               </p>
                               <a
                                 href={checklist.embassyUrl}
@@ -1289,7 +1204,7 @@ export default function ChecklistPage() {
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 hover:bg-white/25 transition-colors rounded-lg px-3 py-2 cursor-pointer"
                               >
-                                Open Official Portal
+                                {t("action_cards.open_portal")}
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </a>
                             </div>
@@ -1301,16 +1216,16 @@ export default function ChecklistPage() {
                               <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
                                 <Award className="w-4 h-4 text-accent" />
                               </div>
-                              <span className="font-semibold text-sm text-foreground">Find a Visa Agent</span>
+                              <span className="font-semibold text-sm text-foreground">{t("action_cards.find_agent")}</span>
                             </div>
                             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                              For complex or high-stakes applications, a verified agent dramatically reduces rejection risk.
+                              {t("action_cards.find_agent_desc")}
                             </p>
                             <button
                               onClick={() => navigate("/agents")}
                               className="inline-flex items-center gap-1.5 text-xs font-semibold border border-accent/40 text-accent hover:bg-accent/5 transition-colors rounded-lg px-3 py-2 cursor-pointer"
                             >
-                              Browse Verified Agents
+                              {t("action_cards.browse_agents")}
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1321,10 +1236,10 @@ export default function ChecklistPage() {
                               <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
                                 <Lock className="w-4 h-4 text-primary" />
                               </div>
-                              <span className="font-semibold text-sm text-foreground">Save Your Progress</span>
+                              <span className="font-semibold text-sm text-foreground">{t("action_cards.save_progress")}</span>
                             </div>
                             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                              Save this checklist to your dashboard, get deadline reminders, and pick up where you left off.
+                              {t("action_cards.save_desc")}
                             </p>
                             <Authenticated>
                               <button
@@ -1341,7 +1256,7 @@ export default function ChecklistPage() {
                                       title: `${destination} ${visaType} Visa`,
                                       progress,
                                     });
-                                    toast.success("Checklist saved to your dashboard!");
+                                    toast.success(t("action_cards.toast_saved"));
                                   } catch (err) {
                                     if (err instanceof ConvexError) {
                                       const { code } = err.data as { code: string; message: string };
@@ -1351,7 +1266,7 @@ export default function ChecklistPage() {
                                         toast.error((err.data as { message: string }).message);
                                       }
                                     } else {
-                                      toast.error("Failed to save. Please try again.");
+                                      toast.error(t("action_cards.toast_save_failed"));
                                     }
                                   } finally {
                                     setSaveLoading(false);
@@ -1360,16 +1275,16 @@ export default function ChecklistPage() {
                                 className="inline-flex items-center gap-1.5 text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/5 transition-colors rounded-lg px-3 py-2 cursor-pointer disabled:opacity-60"
                               >
                                 {saveLoading ? <Spinner /> : <Lock className="w-3.5 h-3.5" />}
-                                {saveLoading ? "Saving…" : "Save Checklist"}
+                                {saveLoading ? t("action_cards.saving") : t("action_cards.save_checklist")}
                               </button>
                             </Authenticated>
                             {isDemoAuthenticated && (
                               <button
-                                onClick={() => toast.success("Checklist saved! (Demo Account) — visit My Trips on your dashboard to see saved checklists.")}
+                                onClick={() => toast.success(t("action_cards.demo_toast_saved"))}
                                 className="inline-flex items-center gap-1.5 text-xs font-semibold border border-primary/30 text-primary hover:bg-primary/5 transition-colors rounded-lg px-3 py-2 cursor-pointer"
                               >
                                 <Lock className="w-3.5 h-3.5" />
-                                Save Checklist
+                                {t("action_cards.save_checklist")}
                               </button>
                             )}
                           </div>
@@ -1381,18 +1296,18 @@ export default function ChecklistPage() {
                                 <Shield className="w-4 h-4 text-primary" />
                               </div>
                               <div>
-                                <span className="font-semibold text-sm text-foreground">VisaClear Pro</span>
-                                <span className="ml-2 text-[10px] tracking-wide uppercase font-bold text-accent">New</span>
+                                <span className="font-semibold text-sm text-foreground">{t("action_cards.pro_title")}</span>
+                                <span className="ml-2 text-[10px] tracking-wide uppercase font-bold text-accent">{t("action_cards.pro_new_badge")}</span>
                               </div>
                             </div>
                             <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                              AI rejection analyser, PDF export, deadline alerts, unlimited checklists, and priority support.
+                              {t("action_cards.pro_desc")}
                             </p>
                             <button
                       onClick={() => navigate("/pricing")}
                               className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer"
                             >
-                              See Pro Plans
+                              {t("action_cards.see_pro_plans")}
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1400,14 +1315,14 @@ export default function ChecklistPage() {
 
                         {/* Step-by-step guide */}
                         <div className="bg-card border border-border rounded-xl p-6">
-                          <h4 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">Application Roadmap</h4>
+                          <h4 className="font-semibold text-sm text-primary uppercase tracking-widest mb-4">{t("roadmap.title")}</h4>
                           <div className="space-y-3">
                             {[
-                              { n: "1", title: "Double-check every document", desc: "Check for expired dates, missing stamps, and name spelling errors." },
-                              { n: "2", title: "Confirm requirements on official embassy site", desc: "Rules change. Always verify before submitting." },
-                              { n: "3", title: "Book your biometric or interview appointment", desc: "Slots fill fast — book as early as possible." },
-                              { n: "4", title: "Submit your application", desc: "Apply online or in person at the embassy / VAC." },
-                              { n: "5", title: "Track your application status", desc: "Use your reference number at the embassy's tracking portal." },
+                              { n: "1", title: t("roadmap.step1_title"), desc: t("roadmap.step1_desc") },
+                              { n: "2", title: t("roadmap.step2_title"), desc: t("roadmap.step2_desc") },
+                              { n: "3", title: t("roadmap.step3_title"), desc: t("roadmap.step3_desc") },
+                              { n: "4", title: t("roadmap.step4_title"), desc: t("roadmap.step4_desc") },
+                              { n: "5", title: t("roadmap.step5_title"), desc: t("roadmap.step5_desc") },
                             ].map((item) => (
                               <div key={item.n} className="flex gap-3 items-start">
                                 <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
@@ -1427,16 +1342,16 @@ export default function ChecklistPage() {
                           <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3">
                             <Share2 className="w-5 h-5 text-accent" />
                           </div>
-                          <h4 className="font-serif text-lg font-semibold text-primary mb-1">Know someone applying for the same visa?</h4>
+                          <h4 className="font-serif text-lg font-semibold text-primary mb-1">{t("referral.title")}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed mb-4 max-w-xs mx-auto">
-                            Share this exact checklist with them. One click — they arrive with everything pre-filled.
+                            {t("referral.desc")}
                           </p>
                           <button
                             onClick={handleCopyShareLink}
                             className="inline-flex items-center gap-2 text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors rounded-lg px-5 py-2.5 cursor-pointer"
                           >
                             {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            {linkCopied ? "Link Copied!" : "Copy Shareable Link"}
+                            {linkCopied ? t("referral.link_copied") : t("referral.copy_link")}
                           </button>
                         </div>
                       </motion.div>
@@ -1446,13 +1361,13 @@ export default function ChecklistPage() {
                   {/* Trust badges */}
                   <div className="flex flex-wrap items-center justify-center gap-4 py-2">
                     {[
-                      { icon: <Shield className="w-3 h-3" />, label: "GDPR-Aligned" },
-                      { icon: <Lock className="w-3 h-3" />, label: "NDPA-Aligned" },
-                      { icon: <Award className="w-3 h-3" />, label: "CISA Certified" },
-                    ].map((t) => (
-                      <div key={t.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="text-accent">{t.icon}</span>
-                        {t.label}
+                      { icon: <Shield className="w-3 h-3" />, label: t("trust.gdpr") },
+                      { icon: <Lock className="w-3 h-3" />, label: t("trust.ndpa") },
+                      { icon: <Award className="w-3 h-3" />, label: t("trust.cisa") },
+                    ].map((badge) => (
+                      <div key={badge.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="text-accent">{badge.icon}</span>
+                        {badge.label}
                       </div>
                     ))}
                   </div>
@@ -1461,27 +1376,27 @@ export default function ChecklistPage() {
                     variant="secondary"
                     className="w-full cursor-pointer font-medium"
                     onClick={() => setSearchParams({})}                  >
-                    Start a New Checklist
+                    {t("start_new")}
                   </Button>
 
                   {/* ── What's Next for VisaClear ── */}
                   <div className="bg-primary rounded-xl p-6 text-primary-foreground">
                     <div className="mb-4">
                       <div className="text-sm tracking-widest uppercase font-bold mb-1" style={{ color: "oklch(0.72 0.13 80)" }}>
-                        Unlock More
+                        {t("unlock.eyebrow")}
                       </div>
-                      <h3 className="font-serif text-2xl font-semibold">Take Your Application Further</h3>
+                      <h3 className="font-serif text-2xl font-semibold">{t("unlock.title")}</h3>
                       <p className="text-primary-foreground/60 text-xs mt-1">
-                        Upgrade to VisaClear Pro for the complete toolkit.
+                        {t("unlock.subtitle")}
                       </p>
                     </div>
                     <div className="space-y-3 mb-5">
                       {[
-                        { emoji: "🤖", label: "AI Rejection Analyser", desc: "Understand exactly why applications fail and fix yours before submitting" },
-                        { emoji: "📸", label: "Passport Photo Checker", desc: "AI-powered photo compliance check against embassy standards" },
-                        { emoji: "📄", label: "Unlimited PDF Exports", desc: "Download branded checklists and bank letter templates anytime" },
-                        { emoji: "🔔", label: "Deadline Reminders", desc: "Never miss a biometric appointment or document expiry" },
-                        { emoji: "🔗", label: "Agent Share Links", desc: "Send pre-filled checklists to clients with one link" },
+                        { emoji: "🤖", label: t("unlock.f1_label"), desc: t("unlock.f1_desc") },
+                        { emoji: "📸", label: t("unlock.f2_label"), desc: t("unlock.f2_desc") },
+                        { emoji: "📄", label: t("unlock.f3_label"), desc: t("unlock.f3_desc") },
+                        { emoji: "🔔", label: t("unlock.f4_label"), desc: t("unlock.f4_desc") },
+                        { emoji: "🔗", label: t("unlock.f5_label"), desc: t("unlock.f5_desc") },
                       ].map((f) => (
                         <div key={f.label} className="flex items-start gap-3">
                           <span className="text-lg shrink-0 mt-0.5">{f.emoji}</span>
@@ -1497,7 +1412,7 @@ export default function ChecklistPage() {
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-base cursor-pointer transition-colors"
                       style={{ background: "oklch(0.72 0.13 80)", color: "oklch(0.18 0.04 80)" }}
                     >
-                      See All Pro Features & Pricing
+                      {t("unlock.cta")}
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -1508,13 +1423,13 @@ export default function ChecklistPage() {
                     <AlertCircle className="w-6 h-6 text-muted-foreground" />
                   </div>
                   <h3 className="font-serif text-2xl font-semibold text-primary mb-2">
-                    Checklist not available yet
+                    {t("not_available.title")}
                   </h3>
                   <p className="text-muted-foreground text-sm mb-8 max-w-sm mx-auto">
-                    We do not have data for this combination yet. We are expanding our database regularly.
+                    {t("not_available.desc")}
                   </p>
                   <Button onClick={() => setSearchParams({})} className="cursor-pointer">
-                    Try Another Combination
+                    {t("not_available.try_another")}
                   </Button>
                 </div>
               )}
@@ -1526,9 +1441,9 @@ export default function ChecklistPage() {
 
       {/* Footer */}
       <footer className="border-t border-border mt-10 py-6 px-6 text-center">
-        <p className="text-xs text-muted-foreground italic mb-1">&ldquo;It&apos;s all about Privacy.&rdquo;</p>
+        <p className="text-xs text-muted-foreground italic mb-1">&ldquo;{t("footer.privacy_quote")}&rdquo;</p>
         <p className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Vericore Ltd. · VisaClear is a guidance tool, not legal advice.
+          &copy; {new Date().getFullYear()} Vericore Ltd. · {t("footer.copyright")}
         </p>
       </footer>
 

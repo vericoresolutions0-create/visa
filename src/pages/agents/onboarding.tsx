@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 
 export default function AgentOnboardingPage() {
+  const { t } = useTranslation("agents");
   useSeo({
     title: "Agent Onboarding",
     description: "Guide your agency through the partner onboarding flow on VisaClear.",
@@ -31,16 +33,16 @@ export default function AgentOnboardingPage() {
 
   const steps = [
     {
-      title: "Create your agent account",
-      text: "Use Google or email/password to create a partner account. This is your secure business entry point.",
+      title: t("onboarding.step1_title"),
+      text: t("onboarding.step1_text"),
     },
     {
-      title: "Verify your profile",
-      text: "Our review team checks your agency details, experience, and trust signals before publishing you live.",
+      title: t("onboarding.step2_title"),
+      text: t("onboarding.step2_text"),
     },
     {
-      title: "Launch your dashboard",
-      text: "Once approved, your dashboard becomes the place to manage enquiries, follow-ups, and partner visibility.",
+      title: t("onboarding.step3_title"),
+      text: t("onboarding.step3_text"),
     },
   ];
 
@@ -58,12 +60,12 @@ export default function AgentOnboardingPage() {
               </div>
               <div>
                 <span className="font-serif text-lg font-semibold text-primary">VisaClear</span>
-                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Partner Onboarding</span>
+                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">{t("onboarding.header_tag")}</span>
               </div>
             </button>
           </div>
           <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-primary">
-            <BadgeCheck className="w-3.5 h-3.5 text-accent" /> Verify · Launch · Grow
+            <BadgeCheck className="w-3.5 h-3.5 text-accent" /> {t("onboarding.verify_launch_grow")}
           </div>
         </div>
       </header>
@@ -72,10 +74,10 @@ export default function AgentOnboardingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.95fr] gap-8 items-start">
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
-              <Shield className="w-3.5 h-3.5" /> Agent onboarding
+              <Shield className="w-3.5 h-3.5" /> {t("onboarding.eyebrow")}
             </div>
-            <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">The right partner journey, from signup to verified dashboard.</h1>
-            <p className="text-muted-foreground text-base md:text-lg leading-relaxed mb-6">This is the trusted path for professionals who want to grow with VisaClear: register, verify, then manage applicants from a serious partner workspace.</p>
+            <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">{t("onboarding.h1")}</h1>
+            <p className="text-muted-foreground text-base md:text-lg leading-relaxed mb-6">{t("onboarding.subtitle")}</p>
 
             <div className="space-y-4">
               {steps.map((step, index) => (
@@ -92,52 +94,52 @@ export default function AgentOnboardingPage() {
 
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm space-y-5">
             <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-accent font-semibold mb-2"><CheckCircle2 className="w-4 h-4" /> Verification status</div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-accent font-semibold mb-2"><CheckCircle2 className="w-4 h-4" /> {t("onboarding.verification_status")}</div>
               <h2 className="font-serif text-2xl font-semibold text-primary mb-1">
-                {!hasProfile ? "No profile yet" : isVerified ? "Verified — you're live" : "Pending review"}
+                {!hasProfile ? t("onboarding.no_profile") : isVerified ? t("onboarding.verified_live") : t("onboarding.pending_review")}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {!hasProfile
-                  ? "Register your profile to start the verification process."
+                  ? t("onboarding.no_profile_body")
                   : isVerified
-                    ? "Applicants can find and contact you in the marketplace right now."
-                    : "Your partner profile will be reviewed and approved before you go live to applicants."}
+                    ? t("onboarding.verified_body")
+                    : t("onboarding.pending_body")}
               </p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Briefcase className="w-4 h-4 text-accent" /> What you get after verification</div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Briefcase className="w-4 h-4 text-accent" /> {t("onboarding.benefits_title")}</div>
               <ul className="space-y-2 text-sm text-muted-foreground list-disc ml-4">
-                <li>Verified partner badge and trust signal</li>
-                <li>Applicant enquiries and profile visibility</li>
-                <li>Dashboard tools for follow-up and business growth</li>
+                <li>{t("onboarding.benefit1")}</li>
+                <li>{t("onboarding.benefit2")}</li>
+                <li>{t("onboarding.benefit3")}</li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Bell className="w-4 h-4 text-accent" /> Why this partner model works</div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Bell className="w-4 h-4 text-accent" /> {t("onboarding.why_title")}</div>
               <ul className="space-y-2 text-sm text-muted-foreground list-disc ml-4">
-                <li>Applicants find verified professionals instead of random listings.</li>
-                <li>Agencies collect better leads and reduce wasted time on low-intent enquiries.</li>
-                <li>Premium placement and white-label options create real commercial growth.</li>
+                <li>{t("onboarding.why1")}</li>
+                <li>{t("onboarding.why2")}</li>
+                <li>{t("onboarding.why3")}</li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Bell className="w-4 h-4 text-accent" /> Suggested next steps</div>
-              <p className="text-xs text-muted-foreground">Complete your account details, upload your agency information, and prepare your business profile for approval.</p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Bell className="w-4 h-4 text-accent" /> {t("onboarding.next_steps_title")}</div>
+              <p className="text-xs text-muted-foreground">{t("onboarding.next_steps_body")}</p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={() => navigate("/payment?product=agent&plan=agent_listing&billing=monthly")} className="cursor-pointer">
-                  <CreditCard className="w-4 h-4 mr-2" /> Activate listing
+                  <CreditCard className="w-4 h-4 mr-2" /> {t("onboarding.activate_listing")}
                 </Button>
-                <Button onClick={() => navigate("/agents/dashboard")} className="cursor-pointer">Preview dashboard</Button>
-                <Button variant="secondary" onClick={() => navigate("/agents/register")} className="cursor-pointer">Back to sign-up</Button>
+                <Button onClick={() => navigate("/agents/dashboard")} className="cursor-pointer">{t("onboarding.preview_dashboard")}</Button>
+                <Button variant="secondary" onClick={() => navigate("/agents/register")} className="cursor-pointer">{t("onboarding.back_to_signup")}</Button>
               </div>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 flex items-center gap-3 text-sm text-muted-foreground">
               <LayoutDashboard className="w-4 h-4 text-accent" />
-              This onboarding flow is intentionally different from the regular applicant dashboard because the agent product is a revenue-facing partner workspace.
+              {t("onboarding.footer_note")}
             </div>
           </motion.section>
         </div>

@@ -1,0 +1,270 @@
+{
+  "United Kingdom": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "uk-bank-1": { "title": "Choisissez une banque", "description": "Monzo, Starling et Revolut acceptent un passeport + visa comme pièce d'identité et permettent d'ouvrir un compte en ligne avant même d'avoir un justificatif de domicile au Royaume-Uni.", "where": "Application/site web de la banque" },
+        "uk-bank-2": { "title": "Obtenez un justificatif de domicile", "description": "La plupart des banques l'exigent dans vos premières semaines — un contrat de location ou une lettre de logement universitaire fonctionne généralement.", "where": "Votre propriétaire ou votre université" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "uk-sim-1": { "title": "Choisissez une carte SIM prépayée", "description": "Giffgaff, Lebara et Lycamobile sont des options sans engagement, peu coûteuses, largement vendues dans les aéroports et supermarchés.", "where": "Supermarchés, aéroports ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "S'inscrire pour un numéro d'assurance nationale",
+      "items": {
+        "uk-tax-1": { "title": "Demandez votre numéro NI", "description": "Requis pour travailler légalement et payer des impôts. Faites la demande dès votre arrivée — cela peut prendre plusieurs semaines par courrier.", "where": "gov.uk/apply-national-insurance-number" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "uk-housing-1": { "title": "Inscrivez-vous à la taxe d'habitation (council tax)", "description": "Chaque foyer britannique la paie au conseil local — inscrivez-vous dans votre premier mois pour éviter des factures rétroactives.", "where": "Le site web de votre conseil local" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "uk-health-1": { "title": "Inscrivez-vous auprès d'un médecin généraliste (GP)", "description": "Inscrivez-vous auprès d'un cabinet médical local même si vous vous sentez en bonne santé — vous en aurez besoin pour accéder au NHS.", "where": "Cabinet GP le plus proche, trouvez-en un via nhs.uk" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "uk-30-1": { "title": "Récupérez votre permis de séjour biométrique (BRP)", "description": "La plupart des titulaires de visa doivent le récupérer dans les 10 jours suivant leur arrivée dans un bureau de poste désigné.", "where": "Le bureau de poste indiqué dans votre lettre de décision de visa" }
+      }
+    }
+  },
+  "Canada": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "ca-bank-1": { "title": "Ouvrez un compte nouvel arrivant", "description": "RBC, TD, Scotiabank et CIBC ont tous des forfaits dédiés aux « nouveaux arrivants » sans frais la première année.", "where": "N'importe quelle agence bancaire majeure — apportez votre passeport et votre permis d'études/travail" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "ca-sim-1": { "title": "Comparez les opérateurs", "description": "Fido, Koodo et Public Mobile sont les plus abordables ; les grands opérateurs (Bell, Rogers, Telus) coûtent plus cher mais offrent une meilleure couverture rurale.", "where": "Boutiques d'opérateurs ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "Demander un numéro d'assurance sociale (NAS)",
+      "items": {
+        "ca-tax-1": { "title": "Obtenez votre NAS", "description": "Requis pour travailler et déclarer ses impôts au Canada — faites la demande en personne ou en ligne dès votre arrivée.", "where": "Centre Service Canada ou canada.ca" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "ca-housing-1": { "title": "Construisez votre historique de crédit", "description": "Le Canada ne transfère pas l'historique de crédit étranger — une carte de crédit garantie de votre nouvelle banque vous aide à en construire un immédiatement, utile pour louer.", "where": "Votre banque" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "ca-health-1": { "title": "Demandez la couverture santé provinciale", "description": "La couverture et les délais d'attente varient selon la province (ex. l'OHIP de l'Ontario a un délai de 3 mois) — souscrivez une couverture privée temporaire en cas de lacune.", "where": "Le site web du ministère de la santé de votre province" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "ca-30-1": { "title": "Activez les conditions de votre permis d'études/travail", "description": "Confirmez les conditions de votre permis (heures autorisées, restrictions d'employeur) avant de commencer à travailler pour éviter les violations de statut.", "where": "Lettre de confirmation IRCC / document de permis" }
+      }
+    }
+  },
+  "United States": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "us-bank-1": { "title": "Choisissez une banque", "description": "Chase, Bank of America et Wells Fargo ont tous des programmes pour étudiants internationaux/nouveaux arrivants ; apportez votre passeport, visa et I-20/preuve d'inscription si applicable.", "where": "Agence bancaire près de chez vous" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "us-sim-1": { "title": "Choisissez un opérateur", "description": "Mint Mobile, Visible et T-Mobile prépayé sont des options peu coûteuses sans engagement ; les grands opérateurs coûtent plus cher mais offrent une couverture plus large.", "where": "Boutiques d'opérateurs, Walmart ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "Demander un numéro de sécurité sociale (SSN)",
+      "items": {
+        "us-tax-1": { "title": "Obtenez votre SSN", "description": "Requis pour travailler légalement et pour la plupart des demandes de crédit/bancaires. Les étudiants internationaux en F-1 ont généralement besoin d'une offre d'emploi au préalable.", "where": "Bureau local de la Social Security Administration" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "us-housing-1": { "title": "Construisez un crédit américain à partir de zéro", "description": "L'historique de crédit étranger ne se transfère pas — une carte de crédit garantie est le moyen légitime le plus rapide de commencer, important pour louer et les services publics.", "where": "Votre nouvelle banque américaine" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "us-health-1": { "title": "Souscrivez une assurance santé immédiatement", "description": "Les États-Unis n'ont pas de couverture santé universelle gratuite — la plupart des catégories de visa exigent une preuve d'assurance, et une visite aux urgences sans assurance peut coûter des milliers de dollars.", "where": "Votre université (plans étudiants) ou employeur (visas de travail)" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "us-30-1": { "title": "Terminez votre enregistrement SEVIS/visa", "description": "Les étudiants F-1/J-1 doivent s'enregistrer auprès du bureau international de leur école dans les premiers jours du semestre pour rester en règle.", "where": "Le bureau des étudiants internationaux de votre université" }
+      }
+    }
+  },
+  "Germany": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "de-bank-1": { "title": "Ouvrez un Girokonto", "description": "N26, DKB et Deutsche Bank permettent tous aux non-résidents d'ouvrir un compte avec seulement un passeport et une adresse enregistrée.", "where": "Agence bancaire ou application — N26/DKB sont les plus rapides" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "de-sim-1": { "title": "Choisissez un opérateur", "description": "Lebara, Aldi Talk et O2 prépayé sont des options courantes et peu coûteuses vendues dans les supermarchés et kiosques.", "where": "Supermarchés (Aldi, Rewe) ou boutiques d'opérateurs" }
+      }
+    },
+    "tax-id": {
+      "label": "Enregistrer votre adresse (Anmeldung)",
+      "items": {
+        "de-tax-1": { "title": "Effectuez votre Anmeldung", "description": "L'enregistrement d'adresse obligatoire en Allemagne — vous devez légalement le faire dans les 14 jours suivant votre emménagement, et vous aurez besoin de la confirmation pour presque tout le reste (banque, numéro fiscal, prolongation de visa).", "where": "Bürgeramt local (bureau des citoyens)" },
+        "de-tax-2": { "title": "Recevez votre Steuer-ID", "description": "Votre numéro fiscal est envoyé automatiquement par courrier quelques semaines après l'Anmeldung — nécessaire pour que votre employeur vous paie correctement.", "where": "Envoyé à votre adresse enregistrée" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "de-housing-1": { "title": "Souscrivez une Hausratversicherung", "description": "L'assurance contenu/responsabilité civile est peu coûteuse et couramment attendue par les propriétaires, et vous couvre en cas de dommage accidentel à un appartement loué.", "where": "N'importe quel assureur allemand (ex. HUK24, comparateur Check24)" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "de-health-1": { "title": "Souscrivez une assurance maladie légale (GKV)", "description": "L'assurance maladie est légalement obligatoire en Allemagne — la plupart des employés sont automatiquement affiliés à un assureur public (TK, AOK) via la paie.", "where": "Krankenkasse de votre choix, ou via votre employeur" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "de-30-1": { "title": "Inscrivez-vous pour le titre de séjour (Aufenthaltstitel)", "description": "Prenez rendez-vous à l'Ausländerbehörde le plus tôt possible — les délais d'attente peuvent être longs dans les grandes villes comme Berlin et Munich.", "where": "Ausländerbehörde locale (bureau des étrangers)" }
+      }
+    }
+  },
+  "Australia": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "au-bank-1": { "title": "Ouvrez un compte avant ou après votre arrivée", "description": "Commonwealth Bank, ANZ et NAB vous permettent d'ouvrir un compte en ligne avant d'atterrir, prêt à utiliser dès votre arrivée.", "where": "Site web de la banque, finalisé en agence avec votre passeport" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "au-sim-1": { "title": "Choisissez un opérateur", "description": "Boost, Amaysim et Woolworths Mobile fonctionnent sur les grands réseaux (Telstra/Optus) à des prix prépayés.", "where": "Supermarchés, aéroports ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "Demander un numéro fiscal (TFN)",
+      "items": {
+        "au-tax-1": { "title": "Obtenez votre TFN", "description": "Requis pour travailler et éviter le taux d'imposition d'urgence maximal sur votre premier salaire — faites la demande en ligne dès votre arrivée.", "where": "ato.gov.au" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "au-housing-1": { "title": "Constituez un dossier de référence locative", "description": "Les demandes de location en Australie sont compétitives — rassemblez des lettres de référence et relevés bancaires tôt pour postuler rapidement quand vous trouvez un logement.", "where": "Anciens propriétaires/employeur, votre banque" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "au-health-1": { "title": "Vérifiez votre éligibilité Medicare ou souscrivez OSHC/OVHC", "description": "La plupart des titulaires de visa ont besoin d'une couverture santé étudiant/visiteur étranger jusqu'à/à moins d'être éligible à Medicare via un accord réciproque.", "where": "Votre lettre d'octroi de visa précise laquelle s'applique" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "au-30-1": { "title": "Configurez myGov", "description": "Votre passerelle vers Medicare, l'ATO et Centrelink — configurez-le tôt car plusieurs autres inscriptions y sont liées.", "where": "my.gov.au" }
+      }
+    }
+  },
+  "Netherlands": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "nl-bank-1": { "title": "Ouvrez un compte bancaire néerlandais", "description": "ING, ABN AMRO et bunq acceptent tous un passeport + permis de séjour (ou preuve d'enregistrement) pour ouvrir un compte.", "where": "Agence bancaire ou application (bunq est la plus rapide pour les nouveaux arrivants)" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "nl-sim-1": { "title": "Choisissez un opérateur", "description": "Lebara, Simyo et Lycamobile sont des options prépayées courantes sans engagement requis.", "where": "Supermarchés ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "Enregistrer votre adresse (BRP) et obtenir un BSN",
+      "items": {
+        "nl-tax-1": { "title": "Inscrivez-vous à la Gemeente", "description": "Enregistrement municipal obligatoire dans les 5 jours suivant l'arrivée si vous restez plus de 4 mois — c'est aussi comme cela que vous obtenez votre BSN (numéro fiscal/social).", "where": "Bureau de la Gemeente (municipalité) local" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "nl-housing-1": { "title": "Postulez tôt — le logement est compétitif", "description": "Les grandes villes néerlandaises (Amsterdam, Utrecht) ont des marchés locatifs très tendus ; ayez votre BSN et preuve de revenu prêts avant la visite.", "where": "Funda, Pararius, ou une agence de relocalisation locale" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "nl-health-1": { "title": "Souscrivez une assurance santé néerlandaise", "description": "Obligatoire dans les 4 mois suivant l'arrivée si vous travaillez aux Pays-Bas — des amendes s'appliquent en cas d'inscription tardive.", "where": "N'importe quel assureur néerlandais (ex. Zilveren Kruis, CZ)" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "nl-30-1": { "title": "Récupérez votre carte de permis de séjour", "description": "Le cas échéant, récupérez votre carte verblijfsvergunning auprès de l'IND dans le délai indiqué dans votre lettre d'approbation.", "where": "Guichet IND précisé dans votre lettre de décision" }
+      }
+    }
+  },
+  "Ireland": {
+    "banking": {
+      "label": "Ouvrir un compte bancaire",
+      "items": {
+        "ie-bank-1": { "title": "Ouvrez un compte bancaire", "description": "AIB, Bank of Ireland et Revolut acceptent tous un passeport + justificatif de domicile (ou un permis de séjour irlandais) pour les nouveaux arrivants.", "where": "Agence bancaire ou application Revolut" }
+      }
+    },
+    "sim": {
+      "label": "Obtenir une carte SIM locale",
+      "items": {
+        "ie-sim-1": { "title": "Choisissez un opérateur", "description": "Tesco Mobile, GoMo et 48 sont des options courantes peu coûteuses sans engagement.", "where": "Supermarchés ou en ligne" }
+      }
+    },
+    "tax-id": {
+      "label": "Demander un numéro de service public personnel (PPS)",
+      "items": {
+        "ie-tax-1": { "title": "Obtenez votre numéro PPS", "description": "Requis pour travailler, ouvrir certains comptes et accéder aux services publics — prenez rendez-vous le plus tôt possible car les délais d'attente peuvent être de quelques semaines.", "where": "Votre Intreo Centre local" }
+      }
+    },
+    "housing": {
+      "label": "Régler le logement",
+      "items": {
+        "ie-housing-1": { "title": "Commencez votre recherche locative tôt", "description": "Dublin et Cork ont des marchés locatifs très tendus — les références et la preuve de revenu/numéro PPS accélèrent considérablement les candidatures.", "where": "Daft.ie, Rent.ie" }
+      }
+    },
+    "healthcare": {
+      "label": "S'inscrire pour les soins de santé",
+      "items": {
+        "ie-health-1": { "title": "Inscrivez-vous auprès d'un médecin généraliste (GP)", "description": "Inscrivez-vous auprès d'un GP local même avant d'en avoir besoin — la plupart des titulaires de visa sans carte médicale paient des frais de consultation standard, prévoyez-le dans votre budget.", "where": "Cabinet GP le plus proche" }
+      }
+    },
+    "first-30-days": {
+      "label": "Vos 30 premiers jours",
+      "items": {
+        "ie-30-1": { "title": "Enregistrez votre permission d'immigration", "description": "Les ressortissants hors UE/EEE séjournant plus de 90 jours doivent s'enregistrer auprès du service d'immigration irlandais et obtenir une carte de permis de séjour.", "where": "Bureau d'enregistrement de Burgh Quay (Dublin) ou poste de Garda local ailleurs" }
+      }
+    }
+  }
+}

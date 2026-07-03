@@ -1,0 +1,22 @@
+{
+  "header.badge": "Monitoramento de países",
+  "nav.dashboard": "Meu painel",
+  "nav.settings": "Configurações",
+  "nav.sign_out": "Sair",
+  "signin.title": "Faça login para continuar",
+  "signin.body": "Monitore os países onde você está solicitando e seja notificado quando uma regra mudar.",
+  "upgrade.title": "Nunca perca uma mudança de regra",
+  "upgrade.body": "O monitoramento de países é um recurso Pro. Monitore até 5 países (10 no Expert) e enviaremos um email quando uma mudança real de política for publicada.",
+  "upgrade.cta": "Melhorar para Pro",
+  "watching.title": "Monitorando ({{count}}/{{limit}})",
+  "watching.empty": "Você ainda não está monitorando nenhum país.",
+  "watching.placeholder": "Selecione um país para monitorar…",
+  "watching.add": "Adicionar",
+  "updates.title": "Atualizações recentes",
+  "updates.empty": "Sem atualizações para seus países monitorados. Enviaremos um email quando algo mudar.",
+  "toast.added": "Agora monitorando {{country}}.",
+  "toast.limit": "Seu plano {{plan}} pode monitorar até {{limit}} países. Remova um para adicionar outro.",
+  "toast.removed": "Removido.",
+  "toast.add_error": "Não foi possível adicionar este país. Tente novamente.",
+  "toast.remove_error": "Não foi possível remover este país."
+}

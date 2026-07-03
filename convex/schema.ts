@@ -81,6 +81,14 @@ export default defineSchema({
     stripeSubscriptionId: v.optional(v.string()),
     agentStripeSubscriptionId: v.optional(v.string()),
     paystackReference: v.optional(v.string()),
+    // Which influencer affiliate code (if any) brought this user to VisaClear.
+    // Separate from referredByCode, which is the peer-to-peer user referral system.
+    influencerCode: v.optional(v.string()),
+    influencerTrackedAt: v.optional(v.string()),
+    // Which creator (path-based /ref/:slug affiliate) referred this user.
+    // Separate from influencerCode (?af=) and referredByCode (peer referral).
+    creatorCode: v.optional(v.string()),
+    creatorTrackedAt: v.optional(v.string()),
   })
     .index("email", ["email"])
     .index("phone", ["phone"])
@@ -89,7 +97,9 @@ export default defineSchema({
     .index("by_referred_by_code", ["referredByCode"])
     .index("by_plan", ["plan"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"])
-    .index("by_agent_stripe_subscription", ["agentStripeSubscriptionId"]),
+    .index("by_agent_stripe_subscription", ["agentStripeSubscriptionId"])
+    .index("by_influencer_code", ["influencerCode"])
+    .index("by_creator_code", ["creatorCode"]),
 
   // A saved_checklists row is a "trip": the checklist IS the trip's core
   // workspace. Pro fields below extend it into the full Multi-Trip Manager
@@ -137,6 +147,9 @@ export default defineSchema({
       v.literal("travel"),
       v.literal("education"),
       v.literal("photo"),
+      v.literal("legal"),
+      v.literal("medical"),
+      v.literal("other"),
     ),
     label: v.string(),
     storageId: v.id("_storage"),
@@ -283,6 +296,7 @@ export default defineSchema({
       v.literal("complete"),
     ),
     claimedByUserId: v.optional(v.id("users")),
+    sourceContactRequestId: v.optional(v.id("agent_contact_requests")),
     createdAt: v.string(),
   })
     .index("by_agent", ["agentId"])
@@ -490,6 +504,57 @@ export default defineSchema({
     count: v.number(),
   }).index("by_date", ["dateKey"]),
 
+  // Community posts — paid users (pro/expert) only. Broader than Wall of Fame:
+  // trip experiences, questions, tips, complaints. Every post sits pending until
+  // an admin approves it. flaggedByUserIds prevents a single user flagging the
+  // same post twice; at 3 flags the post is auto-hidden for re-review.
+  community_posts: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    category: v.union(
+      v.literal("experience"),
+      v.literal("question"),
+      v.literal("tip"),
+      v.literal("complaint"),
+    ),
+    country: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("hidden"),
+    ),
+    flagCount: v.number(),
+    flaggedByUserIds: v.array(v.id("users")),
+    featured: v.boolean(),
+    createdAt: v.string(),
+    moderatedAt: v.optional(v.string()),
+    moderatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_status", ["status"])
+    .index("by_user", ["userId"])
+    .index("by_country", ["country"]),
+
+  // Admin-authored blog articles stored in Convex so they can be created,
+  // edited, published, and unpublished from the admin panel without a code
+  // deploy. The static ARTICLES array in article.tsx is replaced by this table.
+  blog_articles: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    excerpt: v.string(),
+    body: v.string(),
+    category: v.string(),
+    readTime: v.string(),
+    featured: v.boolean(),
+    published: v.boolean(),
+    publishedAt: v.optional(v.string()),
+    createdByUserId: v.optional(v.id("users")),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_published", ["published"])
+    .index("by_published_at", ["published", "publishedAt"]),
+
   // Real blog newsletter subscribers — public, no-sign-in, deduped by email.
   newsletter_subscribers: defineTable({
     email: v.string(),
@@ -614,6 +679,164 @@ export default defineSchema({
     details: v.optional(v.string()),
     createdAt: v.string(),
   }).index("by_created", ["createdAt"]),
+
+  // Real-time in-app notifications for paid users (pro/expert). Created by
+  // cron dispatchers (document expiry, trip deadline, reminder due) and read
+  // by the NotificationBell component in the dashboard nav. Free users never
+  // get rows here — every insertion point checks plan before inserting.
+  in_app_notifications: defineTable({
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("reminder_due"),
+      v.literal("document_expiry"),
+      v.literal("trip_deadline"),
+    ),
+    title: v.string(),
+    body: v.string(),
+    linkTo: v.optional(v.string()),
+    read: v.boolean(),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_read", ["userId", "read"]),
+
+  // Per-user monthly count for the rejection analyser (uses gpt-4o, so more
+  // expensive than mini). Expert-only feature but we still cap at 20/month as
+  // a backstop — no legitimate user needs more than that per month.
+  rejection_analyser_usage: defineTable({
+    userId: v.id("users"),
+    yearMonth: v.string(),
+    count: v.number(),
+  }).index("by_user_month", ["userId", "yearMonth"]),
+
+  // An influencer or content creator who promotes VisaClear in exchange for
+  // a 20% commission on the first month's subscription of every user they
+  // attribute within a 90-day window. Separate from the peer-to-peer agent
+  // referral system — different audience, different rate, different payout.
+  influencer_codes: defineTable({
+    code: v.string(),           // e.g. "MIKETALKS" — used in ?af=MIKETALKS URLs
+    name: v.string(),           // Display name for admin panel
+    email: v.string(),          // For payout contact
+    commissionRate: v.number(), // 20 (percent of first month's payment)
+    attributionWindowDays: v.number(), // 90 days
+    portalToken: v.string(),    // Unguessable token for their private stats URL
+    active: v.boolean(),
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+    createdByUserId: v.id("users"),
+  })
+    .index("by_code", ["code"])
+    .index("by_portal_token", ["portalToken"])
+    .index("by_active", ["active"]),
+
+  // Immutable ledger of commissions owed to influencers. One row per
+  // qualifying first-month payment from a user they attributed. Status starts
+  // "pending" and is manually flipped to "paid" by an admin once the payout
+  // has been sent — no auto-transfer at this stage.
+  influencer_commissions: defineTable({
+    influencerCode: v.string(),
+    referredUserId: v.id("users"),
+    plan: v.union(v.literal("pro"), v.literal("expert")),
+    subscriptionAmountCents: v.number(),
+    commissionRatePercent: v.number(),
+    commissionCents: v.number(),
+    status: v.union(v.literal("pending"), v.literal("paid")),
+    createdAt: v.string(),
+    paidAt: v.optional(v.string()),
+    paidByAdminId: v.optional(v.id("users")),
+    paymentNotes: v.optional(v.string()),
+  })
+    .index("by_code", ["influencerCode"])
+    .index("by_status", ["status"])
+    .index("by_referred_user", ["referredUserId"]),
+
+  // One row per user's active visa setup. Users enter this manually; VisaClear
+  // uses it to drive the ILR countdown, absence limit rules, and doc readiness.
+  visa_status: defineTable({
+    userId: v.id("users"),
+    jurisdiction: v.string(), // "uk_ilr" | "eu_ltr" | "de_nbe" | "fr_cr" | "nl_vvotd" | "other"
+    visaType: v.string(),     // e.g. "Skilled Worker", "Student", "Family"
+    hostCountry: v.string(),  // e.g. "United Kingdom", "Germany"
+    grantDate: v.string(),    // ISO date "YYYY-MM-DD"
+    expiryDate: v.string(),   // ISO date "YYYY-MM-DD"
+    sponsorEmployer: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_active", ["userId", "active"]),
+
+  // Every trip a user has logged for absence tracking. One row per trip.
+  // daysAbsent is stored as a plain number so queries never re-derive dates.
+  travel_trips: defineTable({
+    userId: v.id("users"),
+    destination: v.string(),       // Country name, e.g. "Nigeria"
+    destinationEmoji: v.optional(v.string()), // flag emoji e.g. "🇳🇬"
+    departureDate: v.string(),     // ISO "YYYY-MM-DD" (day user LEFT host country)
+    returnDate: v.string(),        // ISO "YYYY-MM-DD" (day user RETURNED)
+    daysAbsent: v.number(),        // computed at insert/update — (return - departure) in days
+    purpose: v.optional(v.string()), // "Holiday", "Business", "Family", "Medical", "Other"
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_departure", ["userId", "departureDate"]),
+
+  // A content creator or YouTuber who promotes VisaClear via a clean URL
+  // (visaclear.app/ref/creator-slug). Different from influencer_codes (?af=):
+  // this system uses path-based URLs, tracks clicks, and pays 20% recurring for
+  // 12 months per referred subscriber (vs influencer's 20% first month only).
+  creator_codes: defineTable({
+    slug: v.string(),              // URL slug: "mike-visa-coach"
+    name: v.string(),              // Display name for admin panel
+    email: v.string(),             // For payout contact
+    commissionRatePercent: v.number(), // 20
+    commissionMonths: v.number(),  // 12 — max months per subscriber (0 = no cap)
+    portalToken: v.string(),       // Unguessable token for their private stats portal
+    active: v.boolean(),
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+    createdByUserId: v.id("users"),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_portal_token", ["portalToken"])
+    .index("by_active", ["active"]),
+
+  // A single click on a creator's /ref/:slug link. Deduped per sessionId so
+  // refreshing the page doesn't inflate the count.
+  creator_click_events: defineTable({
+    creatorSlug: v.string(),
+    sessionId: v.string(),   // random ID stored in sessionStorage
+    createdAt: v.string(),
+  })
+    .index("by_slug", ["creatorSlug"])
+    .index("by_slug_and_created", ["creatorSlug", "createdAt"]),
+
+  // Immutable monthly commission ledger for creators. One row per billing month
+  // per referred subscriber. monthsFromSignup (1–commissionMonths) enforces the
+  // cap — if it equals commissionMonths no further rows are created for that user.
+  creator_commissions: defineTable({
+    creatorSlug: v.string(),
+    referredUserId: v.id("users"),
+    plan: v.union(v.literal("pro"), v.literal("expert")),
+    billingMonth: v.string(),          // "YYYY-MM" e.g. "2026-08"
+    subscriptionAmountCents: v.number(),
+    commissionRatePercent: v.number(),
+    commissionCents: v.number(),
+    monthsFromSignup: v.number(),      // 1..commissionMonths cap check
+    status: v.union(v.literal("pending"), v.literal("paid")),
+    createdAt: v.string(),
+    paidAt: v.optional(v.string()),
+    paidByAdminId: v.optional(v.id("users")),
+    paymentNotes: v.optional(v.string()),
+  })
+    .index("by_slug", ["creatorSlug"])
+    .index("by_referred_user", ["referredUserId"])
+    .index("by_status", ["status"])
+    .index("by_slug_and_month", ["creatorSlug", "billingMonth"]),
 
   // Single-row denormalized counters for the admin dashboard. See
   // convex/platformStats.ts — never read with collect() across the real

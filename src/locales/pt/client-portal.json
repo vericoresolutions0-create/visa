@@ -1,0 +1,23 @@
+{
+  "header.tag": "Envio de Documentos",
+  "no_checklist": "Não conseguimos encontrar uma lista de documentos para este tipo de visto. Por favor, entre em contato com seu agente.",
+  "toast.too_large": "O arquivo deve ter menos de 10MB.",
+  "toast.bad_type": "Por favor, envie um arquivo JPG, PNG, WEBP ou PDF.",
+  "toast.uploaded": "{{label}} enviado.",
+  "toast.upload_failed": "Falha ao enviar {{label}}. Por favor, tente novamente.",
+  "there": "aí",
+  "greeting": "Olá {{name}}",
+  "title": "Envie seus documentos",
+  "subtitle": "{{destination}} · {{visaType}}. Seu agente será notificado assim que você enviar cada documento.",
+  "required_docs": "Documentos obrigatórios",
+  "item.required": "Obrigatório",
+  "upload.uploading": "Enviando...",
+  "upload.replace": "Substituir",
+  "upload.upload": "Enviar",
+  "link_not_found.title": "Link não encontrado",
+  "link_not_found.body": "Este link de envio é inválido ou expirou. Por favor, peça ao seu agente para enviar um novo.",
+  "signin.title": "Faça login para enviar",
+  "signin.body": "Para sua segurança, faça login antes de enviar seus documentos de visto.",
+  "signin.cta": "Fazer login para continuar",
+  "signin.footer": "Seus documentos são visíveis apenas para seu agente."
+}

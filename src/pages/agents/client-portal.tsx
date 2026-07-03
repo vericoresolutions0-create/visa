@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { getChecklist, type VisaType } from "@/lib/visa-data.ts";
+import { type VisaType } from "@/lib/visa-data.ts";
+import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
@@ -26,6 +28,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB, matches document-scan use case
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 function PortalHeader() {
+  const { t } = useTranslation("client-portal");
   const goBack = useSmartBack("/");
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
@@ -38,7 +41,7 @@ function PortalHeader() {
         </div>
         <div>
           <span className="font-serif text-lg font-semibold text-primary">VisaClear</span>
-          <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Document Upload</span>
+          <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">{t("header.tag")}</span>
         </div>
       </div>
     </header>
@@ -56,7 +59,8 @@ function ClientPortalInner({
   visaType: string;
   clientName: string;
 }) {
-  const checklist = getChecklist(destination, visaType as VisaType);
+  const { t, i18n } = useTranslation("client-portal");
+  const checklist = getLocalizedChecklist(destination, visaType as VisaType, i18n.language);
   const uploads = useQuery(api.clientIntakes.listMyUploadsForIntake, { token });
   const generateUploadUrl = useMutation(api.clientIntakes.generateUploadUrl);
   const recordDocument = useMutation(api.clientIntakes.recordDocument);
@@ -69,7 +73,7 @@ function ClientPortalInner({
       <div className="text-center py-16">
         <FileWarning className="w-10 h-10 text-amber-500 mx-auto mb-3" />
         <p className="text-sm text-muted-foreground">
-          We couldn&apos;t find a document checklist for this visa type. Please contact your agent.
+          {t("no_checklist")}
         </p>
       </div>
     );
@@ -77,11 +81,11 @@ function ClientPortalInner({
 
   const handleFileSelected = async (itemId: string, label: string, file: File) => {
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("File must be under 10MB.");
+      toast.error(t("toast.too_large"));
       return;
     }
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      toast.error("Please upload a JPG, PNG, WEBP, or PDF file.");
+      toast.error(t("toast.bad_type"));
       return;
     }
 
@@ -103,9 +107,9 @@ function ClientPortalInner({
         fileSize: file.size,
         mimeType: file.type,
       });
-      toast.success(`${label} uploaded.`);
+      toast.success(t("toast.uploaded", { label }));
     } catch {
-      toast.error(`Failed to upload ${label}. Please try again.`);
+      toast.error(t("toast.upload_failed", { label }));
     } finally {
       setUploadingIds((prev) => {
         const next = new Set(prev);
@@ -122,17 +126,17 @@ function ClientPortalInner({
     <div className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] font-semibold text-accent mb-2">
-          Hi {clientName || "there"}
+          {t("greeting", { name: clientName || t("there") })}
         </p>
         <h1 className="font-serif text-3xl font-semibold text-primary mb-2">
-          Upload your documents
+          {t("title")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {destination} &middot; {visaType}. Your agent will be notified as soon as you upload each document.
+          {t("subtitle", { destination, visaType })}
         </p>
         <div className="mt-4 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between text-xs font-semibold mb-2">
-            <span className="text-muted-foreground">Required documents</span>
+            <span className="text-muted-foreground">{t("required_docs")}</span>
             <span className="text-primary">{requiredUploaded} / {requiredCount}</span>
           </div>
           <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -162,7 +166,7 @@ function ClientPortalInner({
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
                   {item.required && (
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Required</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("item.required")}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
@@ -181,7 +185,7 @@ function ClientPortalInner({
                 ) : (
                   <UploadCloud className="w-3.5 h-3.5" />
                 )}
-                {isUploading ? "Uploading..." : isUploaded ? "Replace" : "Upload"}
+                {isUploading ? t("upload.uploading") : isUploaded ? t("upload.replace") : t("upload.upload")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -203,6 +207,7 @@ function ClientPortalInner({
 }
 
 export default function ClientPortalPage() {
+  const { t } = useTranslation("client-portal");
   const { token } = useParams<{ token: string }>();
   useSeo({
     title: "Document Upload",
@@ -226,9 +231,9 @@ export default function ClientPortalPage() {
         {intake === null && (
           <div className="text-center py-16">
             <FileWarning className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Link not found</h2>
+            <h2 className="font-serif text-2xl font-semibold text-primary mb-2">{t("link_not_found.title")}</h2>
             <p className="text-sm text-muted-foreground">
-              This upload link is invalid or has expired. Please ask your agent to send you a new one.
+              {t("link_not_found.body")}
             </p>
           </div>
         )}
@@ -244,14 +249,14 @@ export default function ClientPortalPage() {
                 <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
                   <LogIn className="w-7 h-7 text-primary" />
                 </div>
-                <h2 className="font-serif text-3xl font-semibold text-primary mb-3">Sign In to Upload</h2>
+                <h2 className="font-serif text-3xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-                  For your security, sign in before uploading your visa documents.
+                  {t("signin.body")}
                 </p>
-                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText="Sign In to Continue" />
+                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("signin.cta")} />
                 <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                   <Shield className="w-3.5 h-3.5" />
-                  Your documents are only visible to your agent.
+                  {t("signin.footer")}
                 </div>
               </div>
             </Unauthenticated>

@@ -1,0 +1,16 @@
+{
+  "header.account_access": "Account Access",
+  "eyebrow": "Access Flow",
+  "steps.s1": "Choose Google, email/password, or demo access.",
+  "steps.s2": "Complete the account step.",
+  "steps.s3": "Land directly in your dashboard.",
+  "signup.eyebrow": "Create an account",
+  "signup.title": "Create your VisaClear account",
+  "signup.subtitle": "Register with email/password, use Google, or continue with the demo account.",
+  "login.eyebrow": "Sign up / Login",
+  "login.title": "Create or access your account",
+  "login.subtitle": "Use the demo account for now, or start the real auth flow when the external provider is ready.",
+  "active.title": "Account access is active",
+  "active.body": "Continue to your dashboard to manage checklists, reminders, profile settings, and checkout.",
+  "active.cta": "Continue to Dashboard"
+}

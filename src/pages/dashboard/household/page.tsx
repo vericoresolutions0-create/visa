@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDemoGate } from "@/components/DemoGateModal.tsx";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import {
   Globe, ArrowLeft, Users, LayoutDashboard, Settings, LogOut, LogIn,
   UserPlus, Mail, Trash2, RefreshCw, Baby, Pencil, X, Check,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -68,31 +70,33 @@ function errMessage(err: unknown, fallback: string) {
   return err instanceof ConvexError ? (err.data as { message: string }).message : fallback;
 }
 
-function statusBadge(status: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: "Pending", cls: "bg-amber-500/10 text-amber-600" },
-    accepted: { label: "Connected", cls: "bg-accent/10 text-accent" },
-    declined: { label: "Declined", cls: "bg-muted text-muted-foreground" },
-    revoked: { label: "Revoked", cls: "bg-muted text-muted-foreground" },
+function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation("household");
+  const map: Record<string, { labelKey: string; cls: string }> = {
+    pending: { labelKey: "status.pending", cls: "bg-amber-500/10 text-amber-600" },
+    accepted: { labelKey: "status.accepted", cls: "bg-accent/10 text-accent" },
+    declined: { labelKey: "status.declined", cls: "bg-muted text-muted-foreground" },
+    revoked: { labelKey: "status.revoked", cls: "bg-muted text-muted-foreground" },
   };
-  const entry = map[status] ?? { label: status, cls: "bg-muted text-muted-foreground" };
-  return <span className={cn("text-[11px] font-semibold px-2 py-1 rounded-full", entry.cls)}>{entry.label}</span>;
+  const entry = map[status] ?? { labelKey: "", cls: "bg-muted text-muted-foreground" };
+  return <span className={cn("text-[11px] font-semibold px-2 py-1 rounded-full", entry.cls)}>{entry.labelKey ? t(entry.labelKey) : status}</span>;
 }
 
 function CreateHouseholdCard() {
+  const { t } = useTranslation("household");
   const createHousehold = useMutation(api.household.createHousehold);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error("Please name your household (e.g. \"The Adeyemi Family\").");
+      toast.error(t("create.error_name"));
       return;
     }
     setSubmitting(true);
     try {
       await createHousehold({ name: name.trim() });
-      toast.success("Household created.");
+      toast.success(t("create.success"));
     } catch (err) {
       toast.error(errMessage(err, "Failed to create household."));
     } finally {
@@ -106,15 +110,15 @@ function CreateHouseholdCard() {
         <Users className="w-5 h-5 text-accent" />
       </div>
       <div>
-        <h2 className="font-serif text-xl font-semibold text-primary mb-1">Set up your household</h2>
+        <h2 className="font-serif text-xl font-semibold text-primary mb-1">{t("create.title")}</h2>
         <p className="text-sm text-muted-foreground">
-          Give your family a name to start inviting adult relatives and adding dependents you manage directly.
+          {t("create.body")}
         </p>
       </div>
       <div className="flex gap-2">
-        <Input placeholder="The Adeyemi Family" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input placeholder={t("create.placeholder")} value={name} onChange={(e) => setName(e.target.value)} />
         <Button onClick={() => void handleCreate()} disabled={submitting} className="cursor-pointer font-semibold shrink-0 disabled:opacity-60">
-          {submitting ? "Creating…" : "Create"}
+          {submitting ? t("create.submitting") : t("create.submit")}
         </Button>
       </div>
     </div>
@@ -122,7 +126,9 @@ function CreateHouseholdCard() {
 }
 
 function AdultMembersSection({ householdName }: { householdName: string }) {
+  const { t } = useTranslation("household");
   const { isDemoAuthenticated } = useDemoAuth();
+  const { gate, GateModal } = useDemoGate();
   const members = useQuery(api.household.listMyHousehold, isDemoAuthenticated ? "skip" : {});
   const inviteMember = useMutation(api.household.inviteHouseholdMember);
   const resendInvite = useMutation(api.household.resendHouseholdInvite);
@@ -134,61 +140,37 @@ function AdultMembersSection({ householdName }: { householdName: string }) {
   const [inviting, setInviting] = useState(false);
 
   const handleInvite = async () => {
-    if (isDemoAuthenticated) {
-      setDemoMembers((prev) => [
-        ...prev,
-        {
-          linkId: `demo_link_${Date.now()}`,
-          invitedEmail: email.trim(),
-          status: "pending",
-          relationship: relationship.trim(),
-          createdAt: new Date().toISOString(),
-          memberName: null,
-          readinessPercent: null,
-        },
-      ]);
-      toast.success(`Invite sent to ${email.trim()}. (demo only)`);
-      setEmail("");
-      setRelationship("");
-      return;
-    }
+    if (gate()) return;
     setInviting(true);
     try {
       await inviteMember({ email: email.trim(), relationship: relationship.trim() });
-      toast.success(`Invite sent to ${email.trim()}.`);
+      toast.success(t("adult.toast_invited", { email: email.trim() }));
       setEmail("");
       setRelationship("");
     } catch (err) {
-      toast.error(errMessage(err, "Failed to send invite."));
+      toast.error(errMessage(err, t("adult.toast_invite_error")));
     } finally {
       setInviting(false);
     }
   };
 
   const handleResend = async (linkId: string) => {
-    if (isDemoAuthenticated) {
-      toast.success("Invite resent. (demo only)");
-      return;
-    }
+    if (gate()) return;
     try {
       await resendInvite({ linkId: linkId as Parameters<typeof resendInvite>[0]["linkId"] });
-      toast.success("Invite resent.");
+      toast.success(t("adult.toast_resent"));
     } catch (err) {
-      toast.error(errMessage(err, "Failed to resend."));
+      toast.error(errMessage(err, t("adult.toast_resend_error")));
     }
   };
 
   const handleRevoke = async (linkId: string) => {
-    if (isDemoAuthenticated) {
-      setDemoMembers((prev) => prev.filter((m) => m.linkId !== linkId));
-      toast.success("Invite revoked. (demo only)");
-      return;
-    }
+    if (gate()) return;
     try {
       await revokeInvite({ linkId: linkId as Parameters<typeof revokeInvite>[0]["linkId"] });
-      toast.success("Invite revoked.");
+      toast.success(t("adult.toast_revoked"));
     } catch (err) {
-      toast.error(errMessage(err, "Failed to revoke."));
+      toast.error(errMessage(err, t("adult.toast_revoke_error")));
     }
   };
 
@@ -196,31 +178,29 @@ function AdultMembersSection({ householdName }: { householdName: string }) {
     <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-2.5">
         <Users className="w-5 h-5 text-primary" />
-        <h2 className="font-semibold text-primary">Adult family members</h2>
+        <h2 className="font-semibold text-primary">{t("adult.title")}</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Invite a spouse or adult child to share visa readiness with {householdName}. They control exactly which
-        checklist (if any) to link, and can disconnect at any time — you'll never see their financial answers,
-        risk score breakdown, or documents.
+        {t("adult.body", { name: householdName })}
       </p>
 
       <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
-        <Input type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input placeholder="Relationship (e.g. Spouse)" value={relationship} onChange={(e) => setRelationship(e.target.value)} />
+        <Input type="email" placeholder={t("adult.email_placeholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input placeholder={t("adult.rel_placeholder")} value={relationship} onChange={(e) => setRelationship(e.target.value)} />
         <Button
           onClick={() => void handleInvite()}
           disabled={inviting || !email.trim() || !relationship.trim()}
           className="cursor-pointer font-semibold disabled:opacity-60"
         >
-          <UserPlus className="w-4 h-4 mr-1.5" /> Invite
+          <UserPlus className="w-4 h-4 mr-1.5" /> {t("adult.invite")}
         </Button>
       </div>
 
       <div className="space-y-2">
         {visibleMembers === undefined ? (
-          <p className="text-xs text-muted-foreground/70 italic">Loading…</p>
+          <p className="text-xs text-muted-foreground/70 italic">{t("adult.loading")}</p>
         ) : visibleMembers.length === 0 ? (
-          <p className="text-xs text-muted-foreground/70 italic">No family members invited yet.</p>
+          <p className="text-xs text-muted-foreground/70 italic">{t("adult.empty")}</p>
         ) : (
           visibleMembers.map((m) => (
             <div key={m.linkId} className="flex items-center gap-3 border border-border rounded-xl p-3">
@@ -229,9 +209,9 @@ function AdultMembersSection({ householdName }: { householdName: string }) {
                 <div className="text-xs text-muted-foreground truncate">{m.relationship ?? "Family member"}</div>
               </div>
               {m.readinessPercent !== null && (
-                <span className="text-xs font-semibold text-accent shrink-0">{m.readinessPercent}% ready</span>
+                <span className="text-xs font-semibold text-accent shrink-0">{t("adult.ready", { n: m.readinessPercent })}</span>
               )}
-              {statusBadge(m.status)}
+              <StatusBadge status={m.status} />
               {m.status === "pending" && (
                 <button
                   onClick={() => void handleResend(m.linkId)}
@@ -254,12 +234,15 @@ function AdultMembersSection({ householdName }: { householdName: string }) {
           ))
         )}
       </div>
+      {GateModal}
     </div>
   );
 }
 
 function ManagedDependentsSection() {
+  const { t } = useTranslation("household");
   const { isDemoAuthenticated } = useDemoAuth();
+  const { gate, GateModal: DepGateModal } = useDemoGate();
   const dependents = useQuery(api.managedDependents.listMyDependents, isDemoAuthenticated ? "skip" : {});
   const addDependent = useMutation(api.managedDependents.addDependent);
   const updateDependent = useMutation(api.managedDependents.updateDependent);
@@ -276,65 +259,38 @@ function ManagedDependentsSection() {
   const [editRelationship, setEditRelationship] = useState("");
 
   const handleAdd = async () => {
-    if (isDemoAuthenticated) {
-      setDemoDependents((prev) => [
-        ...prev,
-        {
-          _id: `demo_dep_${Date.now()}` as Id<"managed_dependents">,
-          _creationTime: Date.now(),
-          parentUserId: "demo_user" as Id<"users">,
-          fullName: fullName.trim(),
-          relationship: relationship.trim(),
-          dateOfBirth: dateOfBirth || undefined,
-          createdAt: new Date().toISOString(),
-          checklistCount: 0,
-        },
-      ]);
-      toast.success(`${fullName.trim()} added. (demo only)`);
-      setFullName("");
-      setRelationship("");
-      setDateOfBirth("");
-      return;
-    }
+    if (gate()) return;
     setAdding(true);
     try {
       await addDependent({ fullName: fullName.trim(), relationship: relationship.trim(), dateOfBirth: dateOfBirth || undefined });
-      toast.success(`${fullName.trim()} added.`);
+      toast.success(t("dep.toast_added", { name: fullName.trim() }));
       setFullName("");
       setRelationship("");
       setDateOfBirth("");
     } catch (err) {
-      toast.error(errMessage(err, "Failed to add dependent."));
+      toast.error(errMessage(err, t("dep.toast_add_error")));
     } finally {
       setAdding(false);
     }
   };
 
   const handleSaveEdit = async (id: string) => {
-    if (isDemoAuthenticated) {
-      setDemoDependents((prev) => prev.map((d) => (d._id === id ? { ...d, fullName: editName.trim(), relationship: editRelationship.trim() } : d)));
-      setEditingId(null);
-      return;
-    }
+    if (gate()) { setEditingId(null); return; }
     try {
       await updateDependent({ id: id as Parameters<typeof updateDependent>[0]["id"], fullName: editName.trim(), relationship: editRelationship.trim() });
       setEditingId(null);
     } catch (err) {
-      toast.error(errMessage(err, "Failed to update."));
+      toast.error(errMessage(err, t("dep.toast_update_error")));
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (isDemoAuthenticated) {
-      setDemoDependents((prev) => prev.filter((d) => d._id !== id));
-      toast.success(`${name} removed. (demo only)`);
-      return;
-    }
+  const handleDelete = async (id: string, _name: string) => {
+    if (gate()) return;
     try {
       await deleteDependent({ id: id as Parameters<typeof deleteDependent>[0]["id"] });
-      toast.success(`${name} removed.`);
+      toast.success(t("dep.toast_removed", { name }));
     } catch (err) {
-      toast.error(errMessage(err, "Failed to remove dependent."));
+      toast.error(errMessage(err, t("dep.toast_remove_error")));
     }
   };
 
@@ -342,31 +298,30 @@ function ManagedDependentsSection() {
     <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
       <div className="flex items-center gap-2.5">
         <Baby className="w-5 h-5 text-primary" />
-        <h2 className="font-semibold text-primary">Dependents you manage directly</h2>
+        <h2 className="font-semibold text-primary">{t("dep.title")}</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        For a child or anyone with no VisaClear account of their own. No invite needed — you create and own their
-        record and any checklists you save on their behalf.
+        {t("dep.body")}
       </p>
 
       <div className="grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2">
-        <Input placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        <Input placeholder="Relationship (e.g. Son)" value={relationship} onChange={(e) => setRelationship(e.target.value)} />
+        <Input placeholder={t("dep.name_placeholder")} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <Input placeholder={t("dep.rel_placeholder")} value={relationship} onChange={(e) => setRelationship(e.target.value)} />
         <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="w-36" />
         <Button
           onClick={() => void handleAdd()}
           disabled={adding || !fullName.trim() || !relationship.trim()}
           className="cursor-pointer font-semibold disabled:opacity-60"
         >
-          <UserPlus className="w-4 h-4 mr-1.5" /> Add
+          <UserPlus className="w-4 h-4 mr-1.5" /> {t("dep.add")}
         </Button>
       </div>
 
       <div className="space-y-2">
         {visibleDependents === undefined ? (
-          <p className="text-xs text-muted-foreground/70 italic">Loading…</p>
+          <p className="text-xs text-muted-foreground/70 italic">{t("dep.loading")}</p>
         ) : visibleDependents.length === 0 ? (
-          <p className="text-xs text-muted-foreground/70 italic">No dependents added yet.</p>
+          <p className="text-xs text-muted-foreground/70 italic">{t("dep.empty")}</p>
         ) : (
           visibleDependents.map((dep) => (
             <div key={dep._id} className="flex items-center gap-3 border border-border rounded-xl p-3">
@@ -382,7 +337,7 @@ function ManagedDependentsSection() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">{dep.fullName}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {dep.relationship}{dep.checklistCount > 0 ? ` · ${dep.checklistCount} checklist${dep.checklistCount > 1 ? "s" : ""}` : ""}
+                      {dep.relationship}{dep.checklistCount > 0 ? ` · ${t(dep.checklistCount === 1 ? "dep.checklists_one" : "dep.checklists_other", { count: dep.checklistCount })}` : ""}
                     </div>
                   </div>
                   <button
@@ -405,11 +360,13 @@ function ManagedDependentsSection() {
           ))
         )}
       </div>
+      {DepGateModal}
     </div>
   );
 }
 
 function HouseholdContent() {
+  const { t } = useTranslation("household");
   const navigate = useNavigate();
   const { isDemoAuthenticated } = useDemoAuth();
   const myOrg = useQuery(api.organizations.getMyOrganization, isDemoAuthenticated ? "skip" : {});
@@ -430,13 +387,12 @@ function HouseholdContent() {
     return (
       <div className="text-center py-16 border border-dashed border-border rounded-2xl">
         <Mail className="w-10 h-10 text-muted-foreground/40 mx-auto mb-4" />
-        <h2 className="font-serif text-2xl font-semibold text-primary mb-2">You're linked to an employer organisation</h2>
+        <h2 className="font-serif text-2xl font-semibold text-primary mb-2">{t("employer_conflict.title")}</h2>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6 leading-relaxed">
-          Your account is already an admin of an employer organisation. Multi-membership isn't supported yet, so a
-          separate household can't be created from this account.
+          {t("employer_conflict.body")}
         </p>
         <Button variant="outline" className="cursor-pointer font-semibold" onClick={() => navigate("/business/dashboard")}>
-          Go to Employer Dashboard
+          {t("employer_conflict.cta")}
         </Button>
       </div>
     );
@@ -453,6 +409,7 @@ function HouseholdContent() {
 }
 
 export default function HouseholdPage() {
+  const { t } = useTranslation("household");
   useSeo({ title: "Family & Household — VisaClear", description: "Track visa readiness for your whole family in one place." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
@@ -490,21 +447,21 @@ export default function HouseholdPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <Users className="w-3.5 h-3.5 text-accent" /> Family & Household
+              <Users className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
             </div>
             {canAccess && (
               <>
-                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="My Dashboard">
+                <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.dashboard")}>
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">My Dashboard</span>
+                  <span className="hidden md:inline">{t("nav.dashboard")}</span>
                 </button>
-                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title="Settings">
+                <button onClick={() => navigate("/settings/profile")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20" title={t("nav.settings")}>
                   <Settings className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Settings</span>
+                  <span className="hidden md:inline">{t("nav.settings")}</span>
                 </button>
-                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title="Sign out">
+                <button onClick={() => void handleSignOut()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20" title={t("nav.sign_out")}>
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Sign Out</span>
+                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </>
             )}
@@ -518,9 +475,9 @@ export default function HouseholdPage() {
             <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
               <LogIn className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">Sign In to Continue</h2>
+            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
             <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto leading-relaxed">
-              Track visa readiness for your whole family in one place.
+              {t("signin.body")}
             </p>
             <div className="max-w-sm mx-auto">
               <AuthAccessPanel returnPath="/dashboard/household" />

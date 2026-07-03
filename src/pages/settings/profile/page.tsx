@@ -30,14 +30,16 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
-import { ALL_COUNTRIES } from "@/lib/countries.ts";
+import { CountrySelect } from "@/components/CountrySelect.tsx";
 
 type PayoutMethod = "bank" | "mobile_money" | "paypal";
 
 function ProfileSettingsInner() {
+  const { t } = useTranslation("profile");
   const navigate = useNavigate();
   const {
     isDemoAuthenticated,
@@ -136,16 +138,16 @@ function ProfileSettingsInner() {
         monthsGranted: prev.monthsGranted + prev.monthsRedeemable,
         monthsRedeemable: 0,
       }));
-      toast.success("1 free month of Pro unlocked! (demo only)");
+      toast.success(t("toast.demo_redeemed"));
       return;
     }
     setRedeemingReward(true);
     try {
       const result = await redeemReferralReward({});
-      toast.success(`${result.monthsGranted} free month${result.monthsGranted === 1 ? "" : "s"} of Pro unlocked!`);
+      toast.success(t(result.monthsGranted === 1 ? "toast.redeemed_one" : "toast.redeemed_other", { count: result.monthsGranted }));
     } catch (err) {
       if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Could not redeem your reward.");
+      else toast.error(t("toast.redeem_error"));
     } finally {
       setRedeemingReward(false);
     }
@@ -153,7 +155,7 @@ function ProfileSettingsInner() {
 
   const saveProfile = async () => {
     if (!name.trim()) {
-      toast.error("Enter your name.");
+      toast.error(t("toast.name_required"));
       return;
     }
 
@@ -166,7 +168,7 @@ function ProfileSettingsInner() {
           phone: phone || undefined,
           country: country || undefined,
         });
-        toast.success("Demo profile updated.");
+        toast.success(t("toast.demo_profile_updated"));
         return;
       }
 
@@ -175,9 +177,9 @@ function ProfileSettingsInner() {
         phone: phone || undefined,
         country: country || undefined,
       });
-      toast.success("Profile updated.");
+      toast.success(t("toast.profile_updated"));
     } catch {
-      toast.error("Could not update your profile.");
+      toast.error(t("toast.profile_error"));
     } finally {
       setSavingProfile(false);
     }
@@ -187,12 +189,12 @@ function ProfileSettingsInner() {
     setRequestingEmailChange(true);
     try {
       await requestEmailChange({ newEmail: newEmailInput.trim() });
-      toast.success("Confirmation link sent — check the new inbox.");
+      toast.success(t("toast.email_link_sent"));
       setNewEmailInput("");
       setShowEmailChangeForm(false);
     } catch (err) {
       if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Could not start the email change.");
+      else toast.error(t("toast.email_change_error"));
     } finally {
       setRequestingEmailChange(false);
     }
@@ -201,9 +203,9 @@ function ProfileSettingsInner() {
   const handleCancelEmailChange = async () => {
     try {
       await cancelEmailChange({});
-      toast.success("Pending email change cancelled.");
+      toast.success(t("toast.email_cancelled"));
     } catch {
-      toast.error("Could not cancel the pending change.");
+      toast.error(t("toast.email_cancel_error"));
     }
   };
 
@@ -231,7 +233,7 @@ function ProfileSettingsInner() {
         });
         setAccountNumber("");
         setMobileMoneyNumber("");
-        toast.success("Demo payout setup saved.");
+        toast.success(t("toast.demo_payout_saved"));
         return;
       }
 
@@ -247,10 +249,10 @@ function ProfileSettingsInner() {
       });
       setAccountNumber("");
       setMobileMoneyNumber("");
-      toast.success("Payout setup saved.");
+      toast.success(t("toast.payout_saved"));
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not save payout setup.";
+        error instanceof Error ? error.message : t("toast.payout_error");
       toast.error(message);
     } finally {
       setSavingPayout(false);
@@ -263,7 +265,7 @@ function ProfileSettingsInner() {
       if (isDemoAuthenticated) {
         signOut();
         localStorage.removeItem("vc_onboarded");
-        toast.success("Demo account cleared.");
+        toast.success(t("toast.demo_account_cleared"));
         navigate("/", { replace: true });
         return;
       }
@@ -271,13 +273,13 @@ function ProfileSettingsInner() {
       await deleteCurrentAccount({ confirmEmail: deleteEmail });
       if (!isDemoAuthenticated) await signOutReal();
       localStorage.removeItem("vc_onboarded");
-      toast.success("Your account has been deleted.");
+      toast.success(t("toast.account_deleted"));
       navigate("/", { replace: true });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Could not delete your account.";
+          : t("toast.delete_error");
       toast.error(message);
     } finally {
       setDeleting(false);
@@ -289,12 +291,12 @@ function ProfileSettingsInner() {
       <section className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-center gap-2 mb-5">
           <UserRound className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold text-primary">Personal details</h2>
+          <h2 className="font-semibold text-primary">{t("personal.title")}</h2>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Full name
+              {t("personal.name")}
             </label>
             <input
               value={name}
@@ -304,7 +306,7 @@ function ProfileSettingsInner() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Email
+              {t("personal.email")}
             </label>
             {isDemoAuthenticated ? (
               <input
@@ -324,21 +326,21 @@ function ProfileSettingsInner() {
                 {pendingEmailChange ? (
                   <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2">
                     <p className="text-[11px] text-foreground">
-                      Confirmation link sent to <span className="font-semibold">{pendingEmailChange.newEmail}</span>.
+                      {t("email.pending")} <span className="font-semibold">{pendingEmailChange.newEmail}</span>.
                     </p>
                     <button
                       type="button"
                       onClick={() => void handleCancelEmailChange()}
                       className="text-[11px] font-semibold text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
                     >
-                      Cancel
+                      {t("email.cancel")}
                     </button>
                   </div>
                 ) : showEmailChangeForm ? (
                   <div className="mt-2 flex gap-2">
                     <input
                       type="email"
-                      placeholder="New email address"
+                      placeholder={t("email.placeholder")}
                       value={newEmailInput}
                       onChange={(event) => setNewEmailInput(event.target.value)}
                       className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -349,7 +351,7 @@ function ProfileSettingsInner() {
                       onClick={() => void handleRequestEmailChange()}
                       className="cursor-pointer shrink-0 disabled:opacity-60"
                     >
-                      {requestingEmailChange ? "Sending…" : "Send link"}
+                      {requestingEmailChange ? t("email.sending") : t("email.send_link")}
                     </Button>
                   </div>
                 ) : (
@@ -358,7 +360,7 @@ function ProfileSettingsInner() {
                     onClick={() => setShowEmailChangeForm(true)}
                     className="mt-1.5 text-[11px] font-semibold text-primary hover:underline cursor-pointer"
                   >
-                    Change email
+                    {t("email.change")}
                   </button>
                 )}
               </>
@@ -366,7 +368,7 @@ function ProfileSettingsInner() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Phone
+              {t("personal.phone")}
             </label>
             <input
               value={phone}
@@ -376,21 +378,13 @@ function ProfileSettingsInner() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Country
+              {t("personal.country")}
             </label>
-            <select
+            <CountrySelect
               value={country}
-              onChange={(event) => setCountry(event.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Select a country</option>
-              {country && !ALL_COUNTRIES.includes(country) && (
-                <option value={country}>{country}</option>
-              )}
-              {ALL_COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={setCountry}
+              placeholder={t("personal.select_country")}
+            />
           </div>
         </div>
         <div className="flex justify-end mt-5">
@@ -401,7 +395,7 @@ function ProfileSettingsInner() {
               void saveProfile();
             }}
           >
-            {savingProfile ? "Saving..." : "Save details"}
+            {savingProfile ? t("personal.saving") : t("personal.save")}
           </Button>
         </div>
       </section>
@@ -410,7 +404,7 @@ function ProfileSettingsInner() {
         <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <GiftCodeIcon />
-            <h2 className="font-semibold text-primary">Referral code</h2>
+            <h2 className="font-semibold text-primary">{t("referral.title")}</h2>
           </div>
           <button
             type="button"
@@ -419,46 +413,45 @@ function ProfileSettingsInner() {
               if (!user.referralCode) return;
               navigator.clipboard.writeText(user.referralCode).then(() => {
                 setReferralCopied(true);
-                toast.success("Referral code copied.");
+                toast.success(t("referral.copied"));
                 setTimeout(() => setReferralCopied(false), 2000);
-              }).catch(() => toast.error("Failed to copy."));
+              }).catch(() => toast.error(t("referral.copy_failed")));
             }}
             className="flex items-center gap-2 font-mono text-lg font-semibold text-foreground tracking-wide cursor-pointer disabled:opacity-50"
           >
-            {user.referralCode ?? "Generating..."}
+            {user.referralCode ?? t("referral.generating")}
             {user.referralCode && (referralCopied ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted-foreground" />)}
           </button>
           <p className="text-xs text-muted-foreground mt-2">
-            Share this code with applicants. They get a discount at checkout.
+            {t("referral.share_hint")}
           </p>
           {(isDemoAuthenticated ? demoReferralStats : referralStats) && (() => {
             const stats = isDemoAuthenticated ? demoReferralStats : referralStats!;
             return (
               <div className="mt-3 space-y-2">
                 <p className="text-xs font-semibold text-primary">
-                  {stats.signupCount} signup{stats.signupCount === 1 ? "" : "s"} via your code
+                  {t(stats.signupCount === 1 ? "referral.signups_one" : "referral.signups_other", { count: stats.signupCount })}
                 </p>
                 {stats.monthsRedeemable > 0 ? (
                   <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
                     <p className="text-xs font-semibold text-foreground mb-2">
-                      You've earned {stats.monthsRedeemable} free month{stats.monthsRedeemable === 1 ? "" : "s"} of Pro!
+                      {t(stats.monthsRedeemable === 1 ? "referral.earned_one" : "referral.earned_other", { count: stats.monthsRedeemable })}
                     </p>
                     <button
                       disabled={redeemingReward}
                       onClick={() => void handleRedeemReward()}
                       className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60"
                     >
-                      {redeemingReward ? "Redeeming…" : "Redeem now"}
+                      {redeemingReward ? t("referral.redeeming") : t("referral.redeem")}
                     </button>
                   </div>
                 ) : stats.capReached ? (
                   <p className="text-[11px] text-muted-foreground">
-                    You've reached the maximum lifetime referral reward (12 months).
+                    {t("referral.cap")}
                   </p>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
-                    Refer {(stats.nextRewardAtSignups ?? 3) - stats.signupCount} more for a free month of Pro
-                    ({stats.signupCount % 3}/3)
+                    {t("referral.refer_more", { remaining: (stats.nextRewardAtSignups ?? 3) - stats.signupCount, progress: stats.signupCount % 3 })}
                   </p>
                 )}
               </div>
@@ -469,12 +462,12 @@ function ProfileSettingsInner() {
         <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <CreditCard className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-primary">Payment method</h2>
+            <h2 className="font-semibold text-primary">{t("payment.title")}</h2>
           </div>
           {user.paymentMethod ? (
             <div>
               <div className="text-sm font-semibold text-foreground">
-                {user.paymentMethod.brand ?? "Card"} ending{" "}
+                {user.paymentMethod.brand ?? "Card"} {t("payment.ending")}{" "}
                 {user.paymentMethod.last4}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
@@ -484,7 +477,7 @@ function ProfileSettingsInner() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No payment method saved.
+              {t("payment.none")}
             </p>
           )}
           <Button
@@ -497,7 +490,7 @@ function ProfileSettingsInner() {
               navigate(`/payment?plan=${plan}&billing=${billing}`);
             }}
           >
-            Update payment
+            {t("payment.update")}
           </Button>
         </div>
       </section>
@@ -505,14 +498,14 @@ function ProfileSettingsInner() {
       <section className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-center gap-2 mb-5">
           <Wallet className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold text-primary">Payout setup</h2>
+          <h2 className="font-semibold text-primary">{t("payout.title")}</h2>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-5">
           {[
-            { id: "bank", label: "Bank" },
-            { id: "mobile_money", label: "Mobile" },
-            { id: "paypal", label: "PayPal" },
+            { id: "bank", label: t("payout.bank") },
+            { id: "mobile_money", label: t("payout.mobile") },
+            { id: "paypal", label: t("payout.paypal") },
           ].map((option) => (
             <button
               key={option.id}
@@ -532,7 +525,7 @@ function ProfileSettingsInner() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Account name
+              {t("payout.account_name")}
             </label>
             <input
               value={accountName}
@@ -542,28 +535,20 @@ function ProfileSettingsInner() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Country
+              {t("payout.country")}
             </label>
-            <select
+            <CountrySelect
               value={payoutCountry}
-              onChange={(event) => setPayoutCountry(event.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Select a country</option>
-              {payoutCountry && !ALL_COUNTRIES.includes(payoutCountry) && (
-                <option value={payoutCountry}>{payoutCountry}</option>
-              )}
-              {ALL_COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={setPayoutCountry}
+              placeholder={t("personal.select_country")}
+            />
           </div>
 
           {method === "bank" && (
             <>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Bank name
+                  {t("payout.bank_name")}
                 </label>
                 <input
                   value={bankName}
@@ -573,7 +558,7 @@ function ProfileSettingsInner() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Account number
+                  {t("payout.account_number")}
                 </label>
                 <input
                   inputMode="numeric"
@@ -594,7 +579,7 @@ function ProfileSettingsInner() {
             <>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Provider
+                  {t("payout.provider")}
                 </label>
                 <input
                   value={mobileMoneyProvider}
@@ -606,7 +591,7 @@ function ProfileSettingsInner() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Mobile money number
+                  {t("payout.mobile_number")}
                 </label>
                 <input
                   inputMode="tel"
@@ -626,7 +611,7 @@ function ProfileSettingsInner() {
           {method === "paypal" && (
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-foreground mb-1.5">
-                PayPal email
+                {t("payout.paypal_email")}
               </label>
               <input
                 type="email"
@@ -646,7 +631,7 @@ function ProfileSettingsInner() {
               void savePayout();
             }}
           >
-            {savingPayout ? "Saving..." : "Save payout setup"}
+            {savingPayout ? t("payout.saving") : t("payout.save")}
           </Button>
         </div>
       </section>
@@ -654,18 +639,17 @@ function ProfileSettingsInner() {
       <section className="bg-destructive/5 border border-destructive/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Trash2 className="w-5 h-5 text-destructive" />
-          <h2 className="font-semibold text-destructive">Delete account</h2>
+          <h2 className="font-semibold text-destructive">{t("delete.title")}</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          This removes your profile, saved checklists, reminders, rejection
-          analyses, and agent profile.
+          {t("delete.body")}
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="email"
             value={deleteEmail}
             onChange={(event) => setDeleteEmail(event.target.value)}
-            placeholder={user.email ?? "Confirm your email"}
+            placeholder={user.email ?? t("delete.placeholder")}
             className="flex-1 px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <Button
@@ -676,7 +660,7 @@ function ProfileSettingsInner() {
               void deleteAccount();
             }}
           >
-            {deleting ? "Deleting..." : "Delete account"}
+            {deleting ? t("delete.deleting") : t("delete.cta")}
           </Button>
         </div>
       </section>
@@ -689,6 +673,7 @@ function GiftCodeIcon() {
 }
 
 export default function ProfileSettingsPage() {
+  const { t } = useTranslation("profile");
   useSeo({
     title: "Profile Settings",
     description:
@@ -729,17 +714,17 @@ export default function ProfileSettingsPage() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
               <Shield className="w-3.5 h-3.5 text-accent" />
-              Profile Settings
+              {t("header.badge")}
             </div>
             {isDemoAuthenticated && (
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => navigate("/dashboard")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
-                  title="My Dashboard"
+                  title={t("nav.dashboard")}
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">My Dashboard</span>
+                  <span className="hidden md:inline">{t("nav.dashboard")}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -747,10 +732,10 @@ export default function ProfileSettingsPage() {
                     navigate("/");
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
-                  title="Sign out"
+                  title={t("nav.sign_out")}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Sign Out</span>
+                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </div>
             )}
@@ -775,11 +760,10 @@ export default function ProfileSettingsPage() {
                 <LogIn className="w-7 h-7 text-primary" />
               </div>
               <h2 className="font-serif text-3xl font-semibold text-primary mb-3">
-                Sign In to Manage Your Profile
+                {t("signin.title")}
               </h2>
               <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto leading-relaxed">
-                Update your details, payout setup, payment method, and account
-                status.
+                {t("signin.body")}
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3">
                 <SignInButton

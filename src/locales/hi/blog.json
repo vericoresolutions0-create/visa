@@ -1,0 +1,21 @@
+{
+  "header.resources": "संसाधन",
+  "header.cta": "मुफ्त चेकलिस्ट पाएं",
+  "page.eyebrow": "संसाधन और गाइड",
+  "page.title": "VisaClear संसाधन केंद्र",
+  "page.subtitle": "व्यावहारिक गाइड, गंतव्य विश्लेषण, और दस्तावेज़ टिप्स विशेष रूप से अफ्रीकी, एशियाई और लैटिन अमेरिकी आवेदकों के लिए लिखे गए।",
+  "featured.read": "लेख पढ़ें",
+  "newsletter.title": "अपने इनबॉक्स में नई गाइड पाएं",
+  "newsletter.subtitle": "हम हर हफ्ते व्यावहारिक वीज़ा गाइड प्रकाशित करते हैं। कोई स्पैम नहीं, बस उपयोगी जानकारी।",
+  "newsletter.subscribe": "सदस्यता लें",
+  "newsletter.subscribing": "सदस्यता हो रही है…",
+  "toast.email_required": "कृपया अपना ईमेल पता दर्ज करें।",
+  "toast.already_subscribed": "आप पहले से सदस्य हैं।",
+  "toast.subscribed": "सदस्यता ली गई। अपना इनबॉक्स देखें।",
+  "toast.subscribe_failed": "सदस्यता विफल हुई। कृपया पुनः प्रयास करें।",
+  "article.not_found_title": "लेख नहीं मिला",
+  "article.back_to_blog": "ब्लॉग पर वापस जाएं",
+  "article.cta_title": "अपना आवेदन तैयार करने के लिए तैयार हैं?",
+  "article.cta_subtitle": "60 सेकंड में अपनी सटीक दस्तावेज़ चेकलिस्ट पाएं। शुरू करना मुफ़्त है।",
+  "article.cta_button": "मेरी मुफ्त चेकलिस्ट पाएं"
+}

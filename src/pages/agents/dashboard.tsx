@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
-import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
@@ -23,19 +25,21 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
   Clock3,
   Copy,
   CreditCard,
   FileText,
-  FolderOpen,
   Globe,
   LayoutDashboard,
   ListChecks,
   LockKeyhole,
   LogIn,
   LogOut,
+  Menu,
   MessageCircle,
   Send,
   Shield,
@@ -47,7 +51,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type IntakeStatus = "awaiting_documents" | "documents_received" | "in_review" | "complete";
+type Section = "overview" | "clients" | "pipeline" | "analytics" | "referrals" | "license";
 
 type IntakeDocument = {
   _id: string;
@@ -70,441 +77,15 @@ type Intake = {
   status: IntakeStatus;
   createdAt: string;
   claimedByEmail?: string;
+  sourceContactRequestId?: Id<"agent_contact_requests">;
   documents: IntakeDocument[];
 };
 
-const intakeStatusLabels: Record<IntakeStatus, string> = {
-  awaiting_documents: "Awaiting documents",
-  documents_received: "Documents received",
-  in_review: "In review",
-  complete: "Complete",
+type ConvertPayload = {
+  contactRequestId: Id<"agent_contact_requests">;
+  clientName?: string;
+  clientEmail?: string;
 };
-
-const intakeStatusStyles: Record<IntakeStatus, string> = {
-  awaiting_documents: "bg-secondary text-secondary-foreground",
-  documents_received: "bg-amber-100 text-amber-900",
-  in_review: "bg-primary/10 text-primary",
-  complete: "bg-accent/15 text-accent-foreground",
-};
-
-function daysSince(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function toWhatsAppNumber(phone: string): string {
-  return phone.replace(/[^\d]/g, "");
-}
-
-function visaTypeLabel(visaType: string): string {
-  return VISA_TYPES.find((v) => v.value === visaType)?.label ?? visaType;
-}
-
-function requiredDocCount(destination: string, visaType: string): number {
-  const checklist = getChecklist(destination, visaType as VisaType);
-  return checklist ? checklist.items.filter((i) => i.required).length : 0;
-}
-
-function SectionHeader({
-  eyebrow,
-  title,
-  description,
-  Icon,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-  Icon: LucideIcon;
-}) {
-  return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-          <Icon className="h-3.5 w-3.5" />
-          {eyebrow}
-        </div>
-        <h2 className="font-serif text-2xl font-semibold leading-tight text-primary md:text-3xl">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {description}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function KpiCard({ label, value, detail, Icon }: { label: string; value: string | number; detail: string; Icon: LucideIcon }) {
-  return (
-    <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/8 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="text-3xl font-semibold tracking-normal text-primary">{value}</div>
-      <p className="mt-1 text-sm font-medium text-foreground">{label}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
-    </article>
-  );
-}
-
-function NewClientForm({ onCreated }: { onCreated: (token: string) => void }) {
-  const createIntake = useMutation(api.clientIntakes.createIntake);
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [destination, setDestination] = useState("");
-  const [visaType, setVisaType] = useState<VisaType | "">("");
-  const [saving, setSaving] = useState(false);
-
-  const visaTypes = destination ? getAvailableVisaTypes(destination) : [];
-
-  const handleCreate = async () => {
-    if (!clientName || !destination || !visaType) {
-      toast.error("Please fill in client name, destination, and visa type.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const { token } = await createIntake({
-        clientName,
-        clientEmail: clientEmail || undefined,
-        clientPhone: clientPhone || undefined,
-        destination,
-        visaType,
-      });
-      toast.success("Client link created.");
-      onCreated(token);
-    } catch {
-      toast.error("Failed to create client link. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-background p-4 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input
-          value={clientName}
-          onChange={(e) => setClientName(e.target.value)}
-          placeholder="Client name *"
-          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
-        />
-        <input
-          value={clientPhone}
-          onChange={(e) => setClientPhone(e.target.value)}
-          placeholder="Client WhatsApp number (optional)"
-          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
-        />
-      </div>
-      <input
-        value={clientEmail}
-        onChange={(e) => setClientEmail(e.target.value)}
-        placeholder="Client email (optional)"
-        className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
-      />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <select
-          value={destination}
-          onChange={(e) => {
-            setDestination(e.target.value);
-            setVisaType("");
-          }}
-          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card"
-        >
-          <option value="">Destination *</option>
-          {AVAILABLE_DESTINATIONS.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <select
-          value={visaType}
-          onChange={(e) => setVisaType(e.target.value as VisaType)}
-          disabled={!destination}
-          className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-card disabled:opacity-50"
-        >
-          <option value="">Visa type *</option>
-          {visaTypes.map((vt) => (
-            <option key={vt} value={vt}>{VISA_TYPES.find((v) => v.value === vt)?.label ?? vt}</option>
-          ))}
-        </select>
-      </div>
-      <Button size="sm" className="w-full" disabled={saving} onClick={() => { void handleCreate(); }}>
-        {saving ? "Creating..." : "Create client link"}
-      </Button>
-    </div>
-  );
-}
-
-function SendLinkButtons({ token, clientName, clientPhone }: { token: string; clientName: string; clientPhone?: string }) {
-  const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}/client-portal/${token}`;
-  const message = `Hi ${clientName}, please use this secure link to upload your visa documents: ${link}`;
-  const whatsappHref = clientPhone
-    ? `https://wa.me/${toWhatsAppNumber(clientPhone)}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  return (
-    <div className="flex items-center gap-2 shrink-0">
-      <a
-        href={whatsappHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#25D366]/30 bg-[#25D366]/10 text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors cursor-pointer shrink-0"
-        title={clientPhone ? "Send to client on WhatsApp" : "Share via WhatsApp"}
-      >
-        <MessageCircle className="w-3.5 h-3.5" />
-        WhatsApp
-      </a>
-      <button
-        type="button"
-        onClick={() => {
-          navigator.clipboard.writeText(link).then(() => {
-            setCopied(true);
-            toast.success("Link copied to clipboard.");
-            setTimeout(() => setCopied(false), 2000);
-          }).catch(() => toast.error("Failed to copy link."));
-        }}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer shrink-0"
-      >
-        {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-        {copied ? "Copied" : "Copy link"}
-      </button>
-    </div>
-  );
-}
-
-function IntakeDetailRow({ intake }: { intake: Intake }) {
-  const [expanded, setExpanded] = useState(false);
-  const required = requiredDocCount(intake.destination, intake.visaType);
-
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full p-3 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-background/60 transition-colors"
-      >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-foreground truncate">{intake.clientName}</p>
-            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", intakeStatusStyles[intake.status])}>
-              {intakeStatusLabels[intake.status]}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>
-              {intake.destination} &middot; {visaTypeLabel(intake.visaType)} &middot; {intake.documents.length}{required > 0 ? `/${required}` : ""} document{intake.documents.length === 1 ? "" : "s"}
-              {intake.claimedByEmail ? ` · uploaded by ${intake.claimedByEmail}` : ""}
-            </span>
-            <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
-          </p>
-        </div>
-        <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
-      </button>
-      {expanded && (
-        <div className="border-t border-border p-3 bg-background/50 space-y-2">
-          {intake.documents.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">No documents uploaded yet.</p>
-          ) : (
-            intake.documents.map((doc) => (
-              <a
-                key={doc._id}
-                href={doc.url ?? undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-2.5 hover:border-primary/30 transition-colors"
-              >
-                <div className="min-w-0 flex items-center gap-2">
-                  <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
-                  <span className="text-xs font-medium text-foreground truncate">{doc.label}</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">
-                  {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </span>
-              </a>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function YourClientsInner() {
-  const intakes = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
-  const [showForm, setShowForm] = useState(false);
-  const [justCreatedToken, setJustCreatedToken] = useState<string | null>(null);
-  const justCreatedIntake = (intakes ?? []).find((i) => i.token === justCreatedToken);
-
-  return (
-    <section className="rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-            <Users className="h-3.5 w-3.5" />
-            Your clients
-          </div>
-          <h2 className="font-serif text-2xl font-semibold text-primary">
-            Real clients, real documents.
-          </h2>
-        </div>
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-          <UserPlus className="h-4 w-4" />
-          {showForm ? "Cancel" : "Add client"}
-        </Button>
-      </div>
-
-      {showForm && (
-        <div className="mb-4">
-          <NewClientForm
-            onCreated={(token) => {
-              setShowForm(false);
-              setJustCreatedToken(token);
-            }}
-          />
-        </div>
-      )}
-
-      {justCreatedToken && justCreatedIntake && (
-        <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-primary">Client link ready — send it now</p>
-            <p className="text-xs text-muted-foreground truncate">{`${window.location.origin}/client-portal/${justCreatedToken}`}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <SendLinkButtons token={justCreatedToken} clientName={justCreatedIntake.clientName} clientPhone={justCreatedIntake.clientPhone} />
-            <button type="button" onClick={() => setJustCreatedToken(null)} className="p-1.5 text-muted-foreground hover:text-primary">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {intakes === undefined && (
-        <div className="space-y-3">
-          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
-        </div>
-      )}
-
-      {intakes && intakes.length === 0 && !showForm && (
-        <p className="text-sm text-muted-foreground py-6 text-center">
-          No clients yet. Add a client to generate their document upload link.
-        </p>
-      )}
-
-      {intakes && intakes.length > 0 && (
-        <div className="space-y-2">
-          {intakes.map((intake) => <IntakeDetailRow key={intake._id} intake={intake} />)}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function YourClients() {
-  return (
-    <div id="your-clients">
-      <AuthLoading>
-        <Skeleton className="h-40 w-full rounded-lg" />
-      </AuthLoading>
-      <Unauthenticated>
-        <section className="rounded-lg border border-border bg-background p-6 shadow-sm">
-          <div className="text-center mb-5">
-            <LogIn className="h-7 w-7 text-primary mx-auto mb-3" />
-            <h2 className="font-serif text-xl font-semibold text-primary mb-2">Sign in to manage real clients</h2>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              Verified agent accounts only. Sign in with Google or your email and password to add clients and send them document upload links.
-            </p>
-          </div>
-          <div className="max-w-sm mx-auto">
-            <AuthAccessPanel returnPath="/agents/dashboard" hideDemoOption />
-          </div>
-        </section>
-      </Unauthenticated>
-      <Authenticated>
-        <YourClientsInner />
-      </Authenticated>
-    </div>
-  );
-}
-
-function PipelineBoard({ intakes }: { intakes: Intake[] }) {
-  const columns: { stage: IntakeStatus; label: string }[] = [
-    { stage: "awaiting_documents", label: "Awaiting Documents" },
-    { stage: "documents_received", label: "Documents Received" },
-    { stage: "in_review", label: "In Review" },
-    { stage: "complete", label: "Complete" },
-  ];
-
-  return (
-    <section className="rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            Pipeline board
-          </div>
-          <h2 className="font-serif text-2xl font-semibold text-primary">
-            Every real client, every real stage.
-          </h2>
-        </div>
-      </div>
-
-      {intakes.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">
-          Add your first client to see your pipeline build up here.
-        </p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {columns.map((column) => {
-            const colIntakes = intakes.filter((i) => i.status === column.stage);
-            return (
-              <div key={column.stage} className="space-y-3">
-                <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-                  <span className="text-xs font-semibold text-primary">{column.label}</span>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
-                    {colIntakes.length}
-                  </span>
-                </div>
-                {colIntakes.map((intake) => {
-                  const days = daysSince(intake.createdAt);
-                  const tone = days >= 7 ? "danger" : days >= 3 ? "warning" : "safe";
-                  return (
-                    <article
-                      key={intake._id}
-                      className={cn(
-                        "rounded-lg border p-3 shadow-sm",
-                        tone === "danger" ? "border-red-300 bg-red-50" : tone === "warning" ? "border-amber-300 bg-amber-50" : "border-border bg-card",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-semibold text-foreground">{intake.clientName}</h3>
-                          <p className="mt-1 text-xs text-muted-foreground">{intake.destination}</p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-primary/8 px-2 py-1 text-[10px] font-semibold text-primary">
-                          {days === 0 ? "Today" : `${days}d`}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-medium text-foreground">{visaTypeLabel(intake.visaType)}</span>
-                        <span className="text-muted-foreground">{intake.documents.length} docs</span>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
-}
 
 type ContactRequest = {
   _id: Id<"agent_contact_requests">;
@@ -515,378 +96,1191 @@ type ContactRequest = {
   read: boolean;
 };
 
-function TodayActions({ intakes, contactRequests }: { intakes: Intake[]; contactRequests: ContactRequest[] }) {
-  const navigate = useNavigate();
-  const markRead = useMutation(api.agents.markContactRequestRead);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  const actions = useMemo(() => {
-    const items: { key: string; title: string; detail: string; priority: string; Icon: LucideIcon; onClick?: () => void }[] = [];
+const NAV: { id: Section; labelKey: string; Icon: LucideIcon }[] = [
+  { id: "overview",  labelKey: "nav.overview",   Icon: LayoutDashboard },
+  { id: "clients",   labelKey: "nav.clients",    Icon: Users },
+  { id: "pipeline",  labelKey: "nav.pipeline",   Icon: ClipboardCheck },
+  { id: "analytics", labelKey: "nav.analytics",  Icon: BarChart3 },
+  { id: "referrals", labelKey: "nav.referrals",  Icon: CircleDollarSign },
+  { id: "license",   labelKey: "nav.license",    Icon: BadgeCheck },
+];
 
-    for (const req of contactRequests.filter((r) => !r.read).slice(0, 5)) {
-      items.push({
-        key: `req-${req._id}`,
-        title: `New enquiry from ${req.fromName || req.fromEmail || "an applicant"}`,
-        detail: req.message || "Sent via the VisaClear marketplace",
-        priority: "New",
-        Icon: Bell,
-        onClick: () => { void markRead({ id: req._id }); },
-      });
-    }
+const STATUS_STYLES: Record<IntakeStatus, { dot: string; badge: string }> = {
+  awaiting_documents: { dot: "bg-slate-400",  badge: "bg-slate-100 text-slate-700 border-slate-200" },
+  documents_received: { dot: "bg-amber-400",  badge: "bg-amber-50 text-amber-800 border-amber-200" },
+  in_review:          { dot: "bg-blue-400",   badge: "bg-blue-50 text-blue-800 border-blue-200" },
+  complete:           { dot: "bg-green-500",  badge: "bg-green-50 text-green-800 border-green-200" },
+};
 
-    for (const intake of intakes) {
-      const days = daysSince(intake.createdAt);
-      if (intake.status === "awaiting_documents" && days >= 3) {
-        items.push({
-          key: `chase-${intake._id}`,
-          title: `Chase ${intake.clientName}`,
-          detail: `Still no documents uploaded (${days}d)`,
-          priority: days >= 7 ? "Red" : "Amber",
-          Icon: Bell,
-        });
-      }
-      if (intake.status === "documents_received") {
-        items.push({
-          key: `review-${intake._id}`,
-          title: `Review ${intake.clientName}`,
-          detail: "Documents uploaded, ready for your review",
-          priority: "Ready",
-          Icon: ClipboardCheck,
-        });
-      }
-    }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-    return items.slice(0, 8);
-  }, [intakes, contactRequests, markRead]);
-
-  return (
-    <aside className="rounded-lg border border-border bg-card p-4 shadow-sm md:p-5">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-            <Clock3 className="h-3.5 w-3.5" />
-            Today
-          </div>
-          <h2 className="font-serif text-2xl font-semibold text-primary">Action list</h2>
-        </div>
-      </div>
-      {actions.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Nothing needs your attention right now.</p>
-      ) : (
-        <div className="space-y-3">
-          {actions.map((action) => (
-            <button
-              key={action.key}
-              onClick={action.onClick ?? (() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" }))}
-              className="w-full rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
-              type="button"
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-foreground">
-                  <action.Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold text-foreground">{action.title}</p>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{action.priority}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{action.detail}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-      <Button className="mt-4 w-full" size="sm" onClick={() => navigate("/agents/dashboard#your-clients")}>
-        Open your clients
-      </Button>
-    </aside>
-  );
+function daysSince(iso: string) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function ClientPortalPreview() {
-  const checklist = [
-    { label: "Passport bio page", done: true },
-    { label: "3 months bank statements", done: true },
-    { label: "Employment letter", done: false },
-    { label: "Travel itinerary", done: false },
-  ];
-  return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-        <div>
-          <SectionHeader
-            eyebrow="Client portal"
-            title="The feature that sells itself."
-            description="Send one branded link. Clients upload real documents, follow their real checklist, and track real status from their phone — this is live today, not a mockup."
-            Icon={UploadCloud}
-          />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {[
-              "Personal visa checklist",
-              "Labeled document uploads",
-              "Real progress tracker",
-              "WhatsApp delivery",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
-                <CheckCircle2 className="h-4 w-4 text-accent" />
-                {item}
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 rounded-lg border border-primary/15 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <Building2 className="h-4 w-4" />
-              Agency tier white-label
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              The portal can use the agency logo, colors, and domain so clients experience the agency brand from start to finish.
-            </p>
-          </div>
-        </div>
-
-        <div className="mx-auto w-full max-w-sm rounded-[2rem] border border-primary/20 bg-primary p-3 shadow-xl shadow-primary/10">
-          <div className="rounded-[1.5rem] bg-card p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Sample preview</p>
-                <h3 className="font-serif text-xl font-semibold text-primary">UK Visit Visa</h3>
-              </div>
-              <Shield className="h-5 w-5 text-accent" />
-            </div>
-            <div className="mb-4">
-              <div className="mb-2 flex items-center justify-between text-xs font-semibold">
-                <span className="text-muted-foreground">File progress</span>
-                <span className="text-primary">62%</span>
-              </div>
-              <div className="h-2 rounded-full bg-secondary">
-                <div className="h-full w-[62%] rounded-full bg-accent" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              {checklist.map((item) => (
-                <div key={item.label} className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="text-xs font-medium text-foreground">{item.label}</span>
-                  {item.done ? <CheckCircle2 className="h-4 w-4 text-accent" /> : <UploadCloud className="h-4 w-4 text-muted-foreground" />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+function toWhatsAppNumber(phone: string) {
+  return phone.replace(/[^\d]/g, "");
 }
 
-function TemplatesSection({ intakes }: { intakes: Intake[] }) {
-  const [showForm, setShowForm] = useState(false);
-
-  const topCombos = useMemo(() => {
-    const counts = new Map<string, { destination: string; visaType: string; count: number }>();
-    for (const intake of intakes) {
-      const key = `${intake.destination}|${intake.visaType}`;
-      const existing = counts.get(key);
-      if (existing) existing.count += 1;
-      else counts.set(key, { destination: intake.destination, visaType: intake.visaType, count: 1 });
-    }
-    return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 3);
-  }, [intakes]);
-
-  return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <SectionHeader
-          eyebrow="Your frequent routes"
-          title="Built from your own real client history."
-          description="The destination and visa type combinations you handle most, so the next matching client is one click to start."
-          Icon={ListChecks}
-        />
-      </div>
-      {topCombos.length === 0 ? (
-        <p className="mt-5 text-sm text-muted-foreground text-center py-6">
-          Add a few clients and your most common routes will show up here automatically.
-        </p>
-      ) : (
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {topCombos.map((combo) => (
-            <article key={`${combo.destination}-${combo.visaType}`} className="rounded-lg border border-border bg-background p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <FileText className="h-5 w-5 text-accent" />
-                <span className="rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                  {combo.count} client{combo.count === 1 ? "" : "s"}
-                </span>
-              </div>
-              <h3 className="text-base font-semibold text-primary">{combo.destination}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{visaTypeLabel(combo.visaType)}</p>
-              <Button className="mt-4 w-full" size="sm" variant="secondary" onClick={() => setShowForm(true)}>
-                Add a client for this route
-              </Button>
-            </article>
-          ))}
-        </div>
-      )}
-      {showForm && (
-        <div className="mt-4">
-          <NewClientForm onCreated={() => setShowForm(false)} />
-        </div>
-      )}
-    </section>
-  );
+function visaTypeLabel(visaType: string) {
+  return VISA_TYPES.find((v) => v.value === visaType)?.label ?? visaType;
 }
 
-function formatCents(cents: number): string {
+function requiredDocCount(destination: string, visaType: string) {
+  const list = getChecklist(destination, visaType as VisaType);
+  return list ? list.items.filter((i) => i.required).length : 0;
+}
+
+function formatCents(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function ReferralPanel() {
+// ─── Shared: send-link buttons ────────────────────────────────────────────────
+
+function SendLinkButtons({ token, clientName, clientPhone }: { token: string; clientName: string; clientPhone?: string }) {
+  const { t } = useTranslation("agent-dashboard");
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/client-portal/${token}`;
+  const msg = t("send.message", { name: clientName, link });
+  const waHref = clientPhone
+    ? `https://wa.me/${toWhatsAppNumber(clientPhone)}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <a
+        href={waHref} target="_blank" rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border border-[#25D366]/30 bg-[#25D366]/10 text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors"
+        title={t("send.whatsapp")}
+      >
+        <MessageCircle className="w-4 h-4" />
+        <span className="hidden sm:inline">{t("send.whatsapp")}</span>
+      </a>
+      <button
+        type="button"
+        onClick={() => navigator.clipboard.writeText(link).then(() => { setCopied(true); toast.success(t("send.toast_copied")); setTimeout(() => setCopied(false), 2000); }).catch(() => toast.error(t("send.toast_copy_failed")))}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+      >
+        {copied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+        <span className="hidden sm:inline">{copied ? t("send.copied") : t("send.copy_link")}</span>
+      </button>
+    </div>
+  );
+}
+
+// ─── New-client form ──────────────────────────────────────────────────────────
+
+function NewClientForm({
+  onCreated,
+  onCancel,
+  prefill,
+}: {
+  onCreated: (token: string) => void;
+  onCancel: () => void;
+  prefill?: ConvertPayload;
+}) {
+  const { t } = useTranslation("agent-dashboard");
+  const translateCountry = useCountryName();
+  const createIntake = useMutation(api.clientIntakes.createIntake);
+  const [clientName, setClientName] = useState(prefill?.clientName ?? "");
+  const [clientEmail, setClientEmail] = useState(prefill?.clientEmail ?? "");
+  const [clientPhone, setClientPhone] = useState("");
+  const [destination, setDestination] = useState("");
+  const [visaType, setVisaType] = useState<VisaType | "">("");
+  const [saving, setSaving] = useState(false);
+  const visaTypes = destination ? getAvailableVisaTypes(destination) : [];
+
+  const handleCreate = async () => {
+    if (!clientName || !destination || !visaType) { toast.error(t("form.toast_required")); return; }
+    setSaving(true);
+    try {
+      const { token } = await createIntake({
+        clientName,
+        clientEmail: clientEmail || undefined,
+        clientPhone: clientPhone || undefined,
+        destination,
+        visaType,
+        sourceContactRequestId: prefill?.contactRequestId,
+      });
+      toast.success(t("form.toast_created"));
+      onCreated(token);
+    } catch { toast.error(t("form.toast_create_error")); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold text-lg text-primary">{t("form.heading") || "Add New Client"}</h3>
+        <button type="button" onClick={onCancel} className="p-1.5 text-muted-foreground hover:text-primary cursor-pointer"><X className="w-5 h-5" /></button>
+      </div>
+      {prefill && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-[#d4a726]/30 bg-[#d4a726]/8 px-4 py-3">
+          <Globe className="w-4 h-4 text-[#d4a726] shrink-0" />
+          <p className="text-sm font-semibold text-[#0f2040]">This client came through VisaClear — attribution will be recorded automatically.</p>
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-foreground">{t("form.name_placeholder") || "Client name"}</label>
+          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Sarah Okonkwo" className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-foreground">{t("form.phone_placeholder") || "Phone number (optional)"}</label>
+          <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="+234 xxx xxx xxxx" className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-sm font-semibold text-foreground">{t("form.email_placeholder") || "Email address (optional)"}</label>
+        <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@email.com" className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-foreground">{t("form.destination_placeholder") || "Destination country"}</label>
+          <select value={destination} onChange={(e) => { setDestination(e.target.value); setVisaType(""); }} className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">Select country...</option>
+            {AVAILABLE_DESTINATIONS.map((d) => <option key={d} value={d}>{DESTINATION_FLAGS[d] ?? "🌍"} {translateCountry(d)}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-foreground">{t("form.visa_type_placeholder") || "Visa type"}</label>
+          <select value={visaType} onChange={(e) => setVisaType(e.target.value as VisaType)} disabled={!destination} className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">Select visa type...</option>
+            {visaTypes.map((vt) => <option key={vt} value={vt}>{VISA_TYPES.find((v) => v.value === vt)?.label ?? vt}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <Button variant="secondary" className="flex-1 cursor-pointer" onClick={onCancel}>Cancel</Button>
+        <Button className="flex-1 cursor-pointer" disabled={saving} onClick={() => { void handleCreate(); }}>
+          {saving ? t("form.creating") : t("form.create")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Client row (table row with expand) ──────────────────────────────────────
+
+// ─── Mobile client card ───────────────────────────────────────────────────────
+
+function ClientCard({ intake }: { intake: Intake }) {
+  const { t } = useTranslation("agent-dashboard");
+  const translateCountry = useCountryName();
+  const [expanded, setExpanded] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
+  const required = requiredDocCount(intake.destination, intake.visaType);
+  const days = daysSince(intake.createdAt);
+  const s = STATUS_STYLES[intake.status];
+
+  const STATUS_LABELS: Record<IntakeStatus, string> = {
+    awaiting_documents: t("status.awaiting_documents"),
+    documents_received: t("status.documents_received"),
+    in_review: t("status.in_review"),
+    complete: t("status.complete"),
+  };
+
+  const handleStatus = async (newStatus: IntakeStatus) => {
+    if (newStatus === intake.status) return;
+    setUpdatingStatus(true);
+    try { await updateStatus({ token: intake.token, status: newStatus }); toast.success(`Moved to "${STATUS_LABELS[newStatus]}"`); }
+    catch { toast.error("Status update failed."); }
+    finally { setUpdatingStatus(false); }
+  };
+
+  return (
+    <div className={cn("rounded-2xl border bg-card p-4 space-y-3", days >= 7 && intake.status === "awaiting_documents" ? "border-red-200" : "border-border")}>
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 font-bold text-primary text-base font-serif">
+            {intake.clientName.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-base text-foreground leading-tight">{intake.clientName}</p>
+              {intake.sourceContactRequestId && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#d4a726]/15 text-[#0f2040] border border-[#d4a726]/30">
+                  <Globe className="w-2.5 h-2.5" /> Via VisaClear
+                </span>
+              )}
+            </div>
+            {intake.clientEmail && <p className="text-xs text-muted-foreground mt-0.5 truncate">{intake.clientEmail}</p>}
+          </div>
+        </div>
+        <button type="button" onClick={() => setExpanded(v => !v)} className="p-2 text-muted-foreground hover:text-primary cursor-pointer shrink-0">
+          <ChevronDown className={cn("w-5 h-5 transition-transform", expanded && "rotate-180")} />
+        </button>
+      </div>
+
+      {/* Info row */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-muted/40 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Destination</p>
+          <p className="text-sm font-medium text-foreground">{DESTINATION_FLAGS[intake.destination] ?? "🌍"} {translateCountry(intake.destination)}</p>
+          <p className="text-xs text-muted-foreground">{visaTypeLabel(intake.visaType)}</p>
+        </div>
+        <div className="rounded-xl bg-muted/40 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Status</p>
+          <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border", s.badge)}>
+            <span className={cn("w-1.5 h-1.5 rounded-full", s.dot)} />
+            {STATUS_LABELS[intake.status]}
+          </span>
+        </div>
+        <div className="rounded-xl bg-muted/40 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Documents</p>
+          <p className={cn("text-sm font-semibold", intake.documents.length >= required && required > 0 ? "text-green-600" : "text-foreground")}>
+            {intake.documents.length}{required > 0 ? `/${required}` : ""} uploaded
+          </p>
+        </div>
+        <div className="rounded-xl bg-muted/40 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Age</p>
+          <p className={cn("text-sm font-semibold", days >= 7 ? "text-red-600" : days >= 3 ? "text-amber-600" : "text-muted-foreground")}>
+            {days === 0 ? "Today" : `${days} days`}
+          </p>
+        </div>
+      </div>
+
+      {/* Send link */}
+      <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
+
+      {/* Expanded: stage control + docs */}
+      {expanded && (
+        <div className="space-y-3 pt-1 border-t border-border">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Move to stage</p>
+            <div className="flex flex-wrap gap-2">
+              {(["awaiting_documents", "documents_received", "in_review", "complete"] as IntakeStatus[]).map((st) => (
+                <button key={st} type="button" disabled={updatingStatus || st === intake.status}
+                  onClick={() => { void handleStatus(st); }}
+                  className={cn("px-3 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed",
+                    st === intake.status
+                      ? cn(STATUS_STYLES[st].badge, "ring-1 ring-offset-1 ring-primary/20")
+                      : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 disabled:opacity-40"
+                  )}>{STATUS_LABELS[st]}</button>
+              ))}
+            </div>
+          </div>
+          {intake.documents.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Documents</p>
+              {intake.documents.map((doc) => (
+                <a key={doc._id} href={doc.url ?? undefined} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-accent shrink-0" />
+                    <span className="text-sm font-medium text-foreground truncate">{doc.label}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
+          <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Desktop client table row ─────────────────────────────────────────────────
+
+function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
+  const { t } = useTranslation("agent-dashboard");
+  const translateCountry = useCountryName();
+  const [expanded, setExpanded] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
+  const required = requiredDocCount(intake.destination, intake.visaType);
+  const days = daysSince(intake.createdAt);
+  const s = STATUS_STYLES[intake.status];
+
+  const STATUS_LABELS: Record<IntakeStatus, string> = {
+    awaiting_documents: t("status.awaiting_documents"),
+    documents_received: t("status.documents_received"),
+    in_review: t("status.in_review"),
+    complete: t("status.complete"),
+  };
+
+  const handleStatus = async (newStatus: IntakeStatus) => {
+    if (newStatus === intake.status) return;
+    setUpdatingStatus(true);
+    try { await updateStatus({ token: intake.token, status: newStatus }); toast.success(`Moved to "${STATUS_LABELS[newStatus]}"`); }
+    catch { toast.error("Status update failed."); }
+    finally { setUpdatingStatus(false); }
+  };
+
+  return (
+    <>
+      <tr
+        className={cn("hover:bg-muted/30 transition-colors cursor-pointer", !isLast && "border-b border-border", expanded && "bg-muted/20")}
+        onClick={() => setExpanded(v => !v)}
+      >
+        {/* Name */}
+        <td className="px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 font-bold text-primary text-base font-serif">
+              {intake.clientName.charAt(0)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-base text-foreground leading-tight">{intake.clientName}</p>
+                {intake.sourceContactRequestId && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#d4a726]/15 text-[#0f2040] border border-[#d4a726]/30 shrink-0">
+                    <Globe className="w-2.5 h-2.5" /> Via VisaClear
+                  </span>
+                )}
+              </div>
+              {intake.clientEmail && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{intake.clientEmail}</p>}
+            </div>
+          </div>
+        </td>
+        {/* Destination */}
+        <td className="px-4 py-4 hidden md:table-cell">
+          <p className="text-sm font-medium text-foreground">{DESTINATION_FLAGS[intake.destination] ?? "🌍"} {translateCountry(intake.destination)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{visaTypeLabel(intake.visaType)}</p>
+        </td>
+        {/* Status */}
+        <td className="px-4 py-4">
+          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border", s.badge)}>
+            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", s.dot)} />
+            {STATUS_LABELS[intake.status]}
+          </span>
+        </td>
+        {/* Docs */}
+        <td className="px-4 py-4 hidden sm:table-cell text-center">
+          <span className={cn("text-sm font-semibold", intake.documents.length >= required && required > 0 ? "text-green-600" : "text-foreground")}>
+            {intake.documents.length}{required > 0 ? `/${required}` : ""}
+          </span>
+        </td>
+        {/* Age */}
+        <td className="px-4 py-4 hidden lg:table-cell">
+          <span className={cn("text-sm font-medium", days >= 7 ? "text-red-600" : days >= 3 ? "text-amber-600" : "text-muted-foreground")}>
+            {days === 0 ? "Today" : `${days}d`}
+          </span>
+        </td>
+        {/* Actions */}
+        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+          <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
+        </td>
+        {/* Expand toggle */}
+        <td className="px-4 py-4 w-8">
+          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+        </td>
+      </tr>
+
+      {expanded && (
+        <tr className={cn(!isLast && "border-b border-border")}>
+          <td colSpan={7} className="px-5 pb-5 pt-0 bg-muted/10">
+            <div className="pt-4 space-y-4">
+              {/* Status control */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Move to stage</p>
+                <div className="flex flex-wrap gap-2">
+                  {(["awaiting_documents", "documents_received", "in_review", "complete"] as IntakeStatus[]).map((st) => (
+                    <button
+                      key={st} type="button"
+                      disabled={updatingStatus || st === intake.status}
+                      onClick={() => { void handleStatus(st); }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed",
+                        st === intake.status
+                          ? cn(STATUS_STYLES[st].badge, "ring-1 ring-offset-1 ring-primary/20")
+                          : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 disabled:opacity-40"
+                      )}
+                    >{STATUS_LABELS[st]}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Documents */}
+              {intake.documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-1">{t("intake.empty")}</p>
+              ) : (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Documents received</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {intake.documents.map((doc) => (
+                      <a key={doc._id} href={doc.url ?? undefined} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:border-primary/30 transition-colors">
+                        <div className="min-w-0 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-accent shrink-0" />
+                          <span className="text-sm font-medium text-foreground truncate">{doc.label}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Wait time */}
+              <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ─── Section: Clients ─────────────────────────────────────────────────────────
+
+function ClientsSection({
+  intakes,
+  convertPayload,
+  onConvertHandled,
+}: {
+  intakes: Intake[];
+  convertPayload?: ConvertPayload;
+  onConvertHandled?: () => void;
+}) {
+  const { t } = useTranslation("agent-dashboard");
+  const [showForm, setShowForm] = useState(!!convertPayload);
+  const [activePrefill, setActivePrefill] = useState<ConvertPayload | undefined>(convertPayload);
+  const [justCreatedToken, setJustCreatedToken] = useState<string | null>(null);
+  const justCreatedIntake = intakes.find((i) => i.token === justCreatedToken);
+
+  // If a new convertPayload arrives (user clicked Convert from Overview), open form
+  useEffect(() => {
+    if (convertPayload) {
+      setActivePrefill(convertPayload);
+      setShowForm(true);
+    }
+  }, [convertPayload]);
+
+  const handleClose = () => {
+    setShowForm(false);
+    setActivePrefill(undefined);
+    onConvertHandled?.();
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-primary">My Clients</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{intakes.length} {intakes.length === 1 ? "client" : "clients"} total</p>
+        </div>
+        <Button size="lg" className="cursor-pointer gap-2" onClick={() => { setActivePrefill(undefined); setShowForm(true); setJustCreatedToken(null); }}>
+          <UserPlus className="w-5 h-5" /> {t("clients.add")}
+        </Button>
+      </div>
+
+      {showForm && (
+        <NewClientForm
+          prefill={activePrefill}
+          onCreated={(token) => { setShowForm(false); setActivePrefill(undefined); setJustCreatedToken(token); onConvertHandled?.(); }}
+          onCancel={handleClose}
+        />
+      )}
+
+      {justCreatedToken && justCreatedIntake && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-green-800">Client link ready — send it to {justCreatedIntake.clientName}</p>
+            <p className="text-xs text-green-600 truncate mt-0.5">{`${window.location.origin}/client-portal/${justCreatedToken}`}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <SendLinkButtons token={justCreatedToken} clientName={justCreatedIntake.clientName} clientPhone={justCreatedIntake.clientPhone} />
+            <button type="button" onClick={() => setJustCreatedToken(null)} className="p-1.5 text-green-600 hover:text-green-800 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {intakes.length === 0 && !showForm ? (
+        <div className="rounded-2xl border-2 border-dashed border-border p-16 text-center">
+          <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-semibold text-lg text-foreground mb-2">No clients yet</h3>
+          <p className="text-sm text-muted-foreground mb-5">Add your first client to generate a secure document upload link.</p>
+          <Button size="lg" className="cursor-pointer" onClick={() => setShowForm(true)}>
+            <UserPlus className="w-5 h-5 mr-2" /> Add First Client
+          </Button>
+        </div>
+      ) : intakes.length > 0 ? (
+        <>
+          {/* Mobile: card stack */}
+          <div className="md:hidden space-y-3">
+            {intakes.map((intake) => <ClientCard key={intake._id} intake={intake} />)}
+          </div>
+          {/* Desktop: table */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">Client</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden md:table-cell">Destination</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</th>
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Docs</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden lg:table-cell">Age</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">Send Link</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {intakes.map((intake, i) => (
+                    <ClientRow key={intake._id} intake={intake} isLast={i === intakes.length - 1} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Section: Pipeline ────────────────────────────────────────────────────────
+
+function PipelineSection({ intakes }: { intakes: Intake[] }) {
+  const { t } = useTranslation("agent-dashboard");
+  const translateCountry = useCountryName();
+  const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
+
+  const STATUS_LABELS: Record<IntakeStatus, string> = {
+    awaiting_documents: t("column.awaiting_documents"),
+    documents_received: t("column.documents_received"),
+    in_review: t("column.in_review"),
+    complete: t("column.complete"),
+  };
+
+  const columns: IntakeStatus[] = ["awaiting_documents", "documents_received", "in_review", "complete"];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-serif text-2xl font-semibold text-primary">Pipeline</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Drag clients between stages to update their status</p>
+      </div>
+
+      {intakes.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-border p-16 text-center">
+          <ClipboardCheck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground">No clients in the pipeline yet. Add a client to get started.</p>
+        </div>
+      ) : (
+        <div className="-mx-4 sm:mx-0 overflow-x-auto pb-2 sm:pb-0">
+        <div className="flex gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4 min-w-[640px] sm:min-w-0 px-4 sm:px-0">
+          {columns.map((stage) => {
+            const colIntakes = intakes.filter((i) => i.status === stage);
+            const s = STATUS_STYLES[stage];
+            return (
+              <div key={stage} className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
+                    <span className="text-sm font-semibold text-primary">{STATUS_LABELS[stage]}</span>
+                  </div>
+                  <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">{colIntakes.length}</span>
+                </div>
+                {colIntakes.map((intake) => {
+                  const days = daysSince(intake.createdAt);
+                  const urgent = days >= 7;
+                  const warning = days >= 3 && days < 7;
+                  return (
+                    <article
+                      key={intake._id}
+                      className={cn("rounded-xl border p-4 shadow-sm",
+                        urgent ? "border-red-200 bg-red-50" : warning ? "border-amber-200 bg-amber-50" : "border-border bg-card")}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-base text-foreground leading-tight truncate">{intake.clientName}</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">{DESTINATION_FLAGS[intake.destination] ?? "🌍"} {translateCountry(intake.destination)}</p>
+                        </div>
+                        <span className={cn("shrink-0 text-xs font-bold px-2 py-0.5 rounded-full", urgent ? "text-red-700 bg-red-100" : warning ? "text-amber-700 bg-amber-100" : "text-muted-foreground bg-secondary")}>
+                          {days === 0 ? "Today" : `${days}d`}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">{visaTypeLabel(intake.visaType)} · {intake.documents.length}{requiredDocCount(intake.destination, intake.visaType) > 0 ? `/${requiredDocCount(intake.destination, intake.visaType)}` : ""} docs</p>
+                      {/* Quick status buttons */}
+                      <div className="flex flex-wrap gap-1">
+                        {columns.filter(st => st !== stage).map(st => (
+                          <button key={st} type="button"
+                            onClick={() => { void updateStatus({ token: intake.token, status: st }).catch(() => toast.error("Update failed.")); }}
+                            className="text-xs px-2 py-1 rounded-lg border border-border text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-colors cursor-pointer"
+                          >→ {STATUS_LABELS[st]}</button>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section: Analytics ───────────────────────────────────────────────────────
+
+function AnalyticsSection({ intakes, unreadEnquiries }: { intakes: Intake[]; unreadEnquiries: number }) {
+  const { t } = useTranslation("agent-dashboard");
+  const translateCountry = useCountryName();
+
+  const topDestination = useMemo(() => {
+    if (intakes.length === 0) return null;
+    const counts: Record<string, number> = {};
+    for (const i of intakes) counts[i.destination] = (counts[i.destination] ?? 0) + 1;
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    return top ?? null;
+  }, [intakes]);
+
+  const completionRate = intakes.length > 0
+    ? Math.round((intakes.filter(i => i.status === "complete").length / intakes.length) * 100)
+    : 0;
+
+  const stats = [
+    { label: t("analytics.total_clients"), value: String(intakes.length), sub: "All-time clients" },
+    { label: t("analytics.completion_rate"), value: intakes.length > 0 ? `${completionRate}%` : "—", sub: "Applications completed" },
+    { label: t("analytics.top_destination"), value: topDestination ? `${DESTINATION_FLAGS[topDestination] ?? "🌍"} ${translateCountry(topDestination)}` : "—", sub: "Most common destination" },
+    { label: "New Enquiries", value: String(unreadEnquiries), sub: "Waiting for your response" },
+    { label: "Awaiting Docs", value: String(intakes.filter(i => i.status === "awaiting_documents").length), sub: "Clients to chase" },
+    { label: "Ready to Review", value: String(intakes.filter(i => i.status === "documents_received").length), sub: "Documents received" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-serif text-2xl font-semibold text-primary">Analytics</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Your practice at a glance</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-border bg-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{stat.label}</p>
+            <p className="text-3xl font-semibold text-primary">{stat.value}</p>
+            <p className="text-sm text-muted-foreground mt-1">{stat.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Security section */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+            <LockKeyhole className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg text-primary">{t("security.title")}</h3>
+            <p className="text-sm text-muted-foreground">{t("security.description")}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[
+            [t("security.item1_title"), t("security.item1_body")],
+            [t("security.item2_title"), t("security.item2_body")],
+            [t("security.item3_title"), t("security.item3_body")],
+          ].map(([title, detail]) => (
+            <div key={title} className="flex items-start gap-3 p-4 rounded-xl border border-border bg-background">
+              <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-base text-foreground">{title}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section: Referrals ───────────────────────────────────────────────────────
+
+function ReferralsSection() {
+  const { t } = useTranslation("agent-dashboard");
   const stats = useQuery(api.agentReferralCommissions.getMyReferralCommissionStatus, {});
   const ledger = useQuery(api.agentReferralCommissions.getMyReferralCommissionLedger, {});
   const [copied, setCopied] = useState(false);
 
   return (
-    <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-      <SectionHeader
-        eyebrow="Referrals"
-        title="Real signups, tracked honestly."
-        description="Every signup via your code is counted here. When a referred client pays for Pro, you earn 15% of that payment — 20% if they pay for Expert. Commission payouts will activate once a real billing connection is in place; this shows the true number today, not a placeholder."
-        Icon={CreditCard}
-      />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Signups via your code</p>
-          <p className="mt-1 text-2xl font-semibold text-primary">{stats?.referredSignupCount ?? "—"}</p>
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-serif text-2xl font-semibold text-primary">{t("referral.title")}</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("referral.description")}</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("referral.signups_label")}</p>
+          <p className="text-3xl font-semibold text-primary">{stats?.referredSignupCount ?? "—"}</p>
         </div>
-        <div className="rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your referral code</p>
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("referral.code_label")}</p>
           <button
-            type="button"
-            disabled={!stats?.referralCode}
+            type="button" disabled={!stats?.referralCode}
             onClick={() => {
               if (!stats?.referralCode) return;
-              navigator.clipboard.writeText(stats.referralCode).then(() => {
-                setCopied(true);
-                toast.success("Referral code copied.");
-                setTimeout(() => setCopied(false), 2000);
-              }).catch(() => toast.error("Failed to copy."));
+              navigator.clipboard.writeText(stats.referralCode).then(() => { setCopied(true); toast.success(t("referral.toast_copied")); setTimeout(() => setCopied(false), 2000); }).catch(() => toast.error(t("referral.toast_copy_failed")));
             }}
-            className="mt-1 flex items-center gap-2 text-lg font-semibold text-primary cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-3 mt-1 cursor-pointer disabled:opacity-50 group"
           >
-            {stats?.referralCode ?? "Sign in to see your code"}
-            {stats?.referralCode && (copied ? <CheckCircle2 className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4 text-muted-foreground" />)}
+            <span className="text-2xl font-semibold text-primary font-mono">{stats?.referralCode ?? "—"}</span>
+            {stats?.referralCode && (copied ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />)}
           </button>
+          <p className="text-sm text-muted-foreground mt-2">Click to copy your referral code</p>
         </div>
       </div>
+
       {stats && (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-border bg-background p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Paying clients referred</p>
-            <p className="mt-1 text-2xl font-semibold text-primary">{stats.payingClientCount}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("referral.paying_clients")}</p>
+            <p className="text-3xl font-semibold text-primary">{stats.payingClientCount}</p>
           </div>
-          <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Commission earned</p>
-            <p className="mt-1 text-2xl font-semibold text-accent">{formatCents(stats.totalCommissionCents)}</p>
+          <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("referral.commission_earned")}</p>
+            <p className="text-3xl font-semibold text-accent">{formatCents(stats.totalCommissionCents)}</p>
           </div>
         </div>
       )}
+
       {ledger && ledger.length > 0 && (
-        <div className="mt-3 rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Recent commissions</p>
-          <div className="space-y-1.5">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("referral.recent_commissions")}</p>
+          <div className="space-y-3">
             {ledger.slice(0, 5).map((c) => (
-              <div key={c._id} className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-muted-foreground">
-                  {c.plan === "expert" ? "Expert" : "Pro"} referral &middot; {c.commissionRatePercent}% &middot;{" "}
-                  {new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              <div key={c._id} className="flex items-center justify-between gap-3 py-2 border-b border-border last:border-0">
+                <span className="text-sm text-muted-foreground">
+                  {t("referral.ledger_line", {
+                    plan: c.plan === "expert" ? t("referral.plan_expert") : t("referral.plan_pro"),
+                    rate: c.commissionRatePercent,
+                    date: new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+                  })}
                 </span>
-                <span className="font-semibold text-foreground">{formatCents(c.commissionCents)}</span>
+                <span className="font-semibold text-base text-foreground">{formatCents(c.commissionCents)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-    </article>
+    </div>
   );
 }
 
-const TIER_LABELS: Record<string, string> = {
-  agent_listing: "Agent Listing",
-  agent_featured: "Agent Featured",
-  agency_white_label: "Agency White-Label",
-};
+// ─── Section: License ─────────────────────────────────────────────────────────
 
-function LicenseRedemptionPanel() {
+function LicenseSection() {
+  const { t } = useTranslation("agent-dashboard");
+  const TIER_LABELS: Record<string, string> = {
+    agent_listing: t("tier.agent_listing"),
+    agent_featured: t("tier.agent_featured"),
+    agency_white_label: t("tier.agency_white_label"),
+  };
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const redeemCode = useMutation(api.licenseCodes.redeemLicenseCode);
   const [code, setCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const navigate = useNavigate();
 
   const handleRedeem = async () => {
-    if (!code.trim()) {
-      toast.error("Please enter a license code.");
-      return;
-    }
+    if (!code.trim()) { toast.error(t("license.toast_need_code")); return; }
     setRedeeming(true);
     try {
       const result = await redeemCode({ code });
-      toast.success(`License activated: ${TIER_LABELS[result.plan] ?? result.plan}`);
+      toast.success(t("license.toast_activated", { plan: TIER_LABELS[result.plan] ?? result.plan }));
       setCode("");
     } catch (err) {
       if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Failed to redeem code.");
-    } finally {
-      setRedeeming(false);
-    }
+      else toast.error(t("license.toast_error"));
+    } finally { setRedeeming(false); }
   };
 
   return (
-    <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-      <SectionHeader
-        eyebrow="License"
-        title="Redeem a license code."
-        description="If you were issued an activation code (e.g. after a white-label application), enter it here to unlock your plan — no payment needed."
-        Icon={BadgeCheck}
-      />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Plan</p>
-          <p className="mt-1 text-lg font-semibold text-primary">{myProfile?.tier ? TIER_LABELS[myProfile.tier] ?? myProfile.tier : "Free"}</p>
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-serif text-2xl font-semibold text-primary">{t("license.title")}</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("license.description")}</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("license.current_plan")}</p>
+          <p className="text-2xl font-semibold text-primary">{myProfile?.tier ? TIER_LABELS[myProfile.tier] ?? myProfile.tier : t("license.free")}</p>
+          {myProfile?.verified && (
+            <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Verified agent
+            </span>
+          )}
         </div>
-        <div className="rounded-lg border border-border bg-background p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">License Code</p>
-          <div className="flex gap-2">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("license.code_label")}</p>
+          <div className="flex gap-3">
             <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="XXXX-XXXX-XXXX"
-              disabled={redeeming}
-              className="flex-1 h-9 rounded-md border border-border bg-background px-2.5 text-sm font-mono disabled:opacity-60"
+              value={code} onChange={(e) => setCode(e.target.value)}
+              placeholder={t("license.placeholder")} disabled={redeeming}
+              className="flex-1 px-4 py-3 text-base rounded-xl border border-input bg-background font-mono disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <button
-              disabled={redeeming}
-              onClick={() => { void handleRedeem(); }}
-              className="text-xs font-semibold text-accent hover:underline cursor-pointer disabled:opacity-60 whitespace-nowrap"
-            >
-              {redeeming ? "Redeeming…" : "Redeem"}
-            </button>
+            <Button disabled={redeeming} onClick={() => { void handleRedeem(); }} className="cursor-pointer">
+              {redeeming ? t("license.redeeming") : t("license.redeem")}
+            </Button>
           </div>
         </div>
       </div>
-    </article>
+
+      <div className="rounded-2xl border border-primary/20 bg-primary p-6 text-primary-foreground">
+        <h3 className="font-serif text-xl font-semibold mb-2">{t("firstmin.h2")}</h3>
+        <p className="text-sm text-primary-foreground/70 mb-5">{t("firstmin.subtitle")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ["1", t("firstmin.step1_title"), t("firstmin.step1_body")],
+            ["2", t("firstmin.step2_title"), t("firstmin.step2_body")],
+            ["3", t("firstmin.step3_title"), t("firstmin.step3_body")],
+            ["4", t("firstmin.step4_title"), t("firstmin.step4_body")],
+          ].map(([step, title, detail]) => (
+            <div key={step} className="rounded-xl border border-white/15 bg-white/10 p-4">
+              <div className="w-8 h-8 rounded-md bg-accent text-accent-foreground text-sm font-bold flex items-center justify-center mb-3">{step}</div>
+              <h4 className="font-semibold text-base">{title}</h4>
+              <p className="text-sm text-primary-foreground/70 mt-1">{detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
-export default function AgentDashboardPreviewPage() {
-  useSeo({
-    title: "Agent Operating System",
-    description: "VisaClear agent dashboard: real client pipeline, document portal, and follow-up tools for visa agencies.",
-  });
+// ─── Section: Overview ────────────────────────────────────────────────────────
 
+function greetingWord() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function OverviewSection({
+  intakes,
+  contactRequests,
+  kpis,
+  newUploads,
+  agentName,
+  onConvertToClient,
+}: {
+  intakes: Intake[];
+  contactRequests: ContactRequest[];
+  kpis: { label: string; value: string | number; detail: string; Icon: LucideIcon }[];
+  newUploads: number;
+  agentName?: string;
+  onConvertToClient: (payload: ConvertPayload) => void;
+}) {
+  const { t } = useTranslation("agent-dashboard");
+  const markRead = useMutation(api.agents.markContactRequestRead);
+
+  const actions = useMemo(() => {
+    const items: { key: string; title: string; detail: string; priority: string; urgent: boolean }[] = [];
+    for (const req of contactRequests.filter((r) => !r.read).slice(0, 5)) {
+      items.push({
+        key: `req-${req._id}`,
+        title: t("actions.new_enquiry", { name: req.fromName || req.fromEmail || t("actions.an_applicant") }),
+        detail: req.message || t("actions.sent_via_marketplace"),
+        priority: "New",
+        urgent: true,
+      });
+    }
+    for (const intake of intakes) {
+      const days = daysSince(intake.createdAt);
+      if (intake.status === "awaiting_documents" && days >= 3) {
+        items.push({ key: `chase-${intake._id}`, title: `Chase ${intake.clientName}`, detail: `${days} days — still no documents uploaded`, priority: days >= 7 ? "Urgent" : "Overdue", urgent: days >= 7 });
+      }
+      if (intake.status === "documents_received") {
+        items.push({ key: `review-${intake._id}`, title: `Review ${intake.clientName}`, detail: "Documents received — ready for your review", priority: "Ready", urgent: false });
+      }
+    }
+    return items.slice(0, 8);
+  }, [intakes, contactRequests, t]);
+
+  const totalUrgent = actions.filter(a => a.urgent).length;
+  const allClear = actions.length === 0 && newUploads === 0;
+  const firstName = agentName?.split(" ")[0];
+
+  return (
+    <div className="space-y-6">
+      {/* Daily greeting */}
+      <div className="rounded-2xl bg-[#0f2040] text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-white/50 text-sm font-medium mb-1">
+            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+          <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white leading-snug">
+            {greetingWord()}{firstName ? `, ${firstName}` : ""}.
+          </h2>
+          <p className="text-white/60 text-base mt-1">
+            {allClear
+              ? "Everything is under control — no actions needed right now."
+              : totalUrgent > 0
+              ? `${totalUrgent} matter${totalUrgent > 1 ? "s" : ""} need your attention today.`
+              : `${actions.length} task${actions.length > 1 ? "s" : ""} waiting for you.`}
+          </p>
+        </div>
+        <div className="flex items-center gap-4 sm:gap-6 shrink-0 flex-wrap">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-[#d4a726]">{intakes.length}</p>
+            <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">Clients</p>
+          </div>
+          <div className="w-px h-10 bg-white/15" />
+          <div className="text-center">
+            <p className="text-3xl font-bold text-white">{intakes.filter(i => i.status === "complete").length}</p>
+            <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">Complete</p>
+          </div>
+          {newUploads > 0 && (
+            <>
+              <div className="w-px h-10 bg-white/15" />
+              <div className="text-center">
+                <p className="text-3xl font-bold text-blue-300">{newUploads}</p>
+                <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">New docs</p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-11 h-11 rounded-xl bg-primary/8 flex items-center justify-center">
+                <kpi.Icon className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+            <p className="text-4xl font-bold text-primary mb-1">{kpi.value}</p>
+            <p className="text-base font-semibold text-foreground">{kpi.label}</p>
+            <p className="text-sm text-muted-foreground mt-1">{kpi.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Today's actions */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+            <Clock3 className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg text-primary">{t("actions.heading")}</h3>
+            <p className="text-sm text-muted-foreground">Tasks that need attention today</p>
+          </div>
+        </div>
+
+        {actions.length === 0 ? (
+          <div className="text-center py-8">
+            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+            <p className="font-semibold text-base text-foreground">All caught up</p>
+            <p className="text-sm text-muted-foreground mt-1">No actions needed right now.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {actions.map((action) => {
+              const isEnquiry = action.key.startsWith("req-");
+              const req = isEnquiry ? contactRequests.find(r => `req-${r._id}` === action.key) : undefined;
+              return (
+                <div
+                  key={action.key}
+                  className={cn(
+                    "rounded-xl border p-4",
+                    action.urgent
+                      ? "border-red-200 bg-red-50"
+                      : "border-border bg-background"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-base text-foreground leading-tight">{action.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{action.detail}</p>
+                    </div>
+                    <span className={cn(
+                      "shrink-0 text-xs font-bold px-2.5 py-1 rounded-full",
+                      action.priority === "Urgent" ? "bg-red-100 text-red-700" :
+                      action.priority === "New"    ? "bg-blue-100 text-blue-700" :
+                      action.priority === "Overdue"? "bg-amber-100 text-amber-700" :
+                      "bg-green-100 text-green-700"
+                    )}>
+                      {action.priority}
+                    </span>
+                  </div>
+                  {isEnquiry && req && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onConvertToClient({
+                            contactRequestId: req._id,
+                            clientName: req.fromName,
+                            clientEmail: req.fromEmail,
+                          });
+                          void markRead({ id: req._id });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#0f2040] text-white hover:bg-[#1a3060] transition-colors cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" /> Convert to Client
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void markRead({ id: req._id })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground border border-border hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+                      >
+                        Mark read
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Client portal preview */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-2">{t("portal.eyebrow")}</p>
+            <h3 className="font-serif text-xl font-semibold text-primary mb-2">{t("portal.title")}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{t("portal.description")}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[t("portal.feature1"), t("portal.feature2"), t("portal.feature3"), t("portal.feature4")].map((f) => (
+                <div key={f} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground">
+                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" /> {f}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-xs rounded-[2rem] border border-primary/20 bg-primary p-3 shadow-xl">
+            <div className="rounded-[1.4rem] bg-card p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-1">Document Upload</p>
+              <h4 className="font-serif text-lg font-semibold text-primary mb-3">UK Visitor Visa</h4>
+              <div className="h-2 rounded-full bg-secondary mb-3 overflow-hidden">
+                <div className="h-full w-[62%] rounded-full bg-accent" />
+              </div>
+              <div className="space-y-2">
+                {[{ label: "Passport (bio page)", done: true }, { label: "Bank statements", done: true }, { label: "Cover letter", done: false }].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
+                    <span className="text-xs font-medium text-foreground">{item.label}</span>
+                    {item.done ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <UploadCloud className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+
+function Sidebar({
+  section,
+  setSection,
+  unread,
+  onClose,
+  onSignOut,
+}: {
+  section: Section;
+  setSection: (s: Section) => void;
+  unread: number;
+  onClose?: () => void;
+  onSignOut: () => void;
+}) {
+  const { t } = useTranslation("agent-dashboard");
   const navigate = useNavigate();
-  const goBack = useSmartBack("/agents");
+
+  return (
+    <div className="flex flex-col h-full bg-[#0f2040] text-white">
+      {/* Logo */}
+      <div className="px-5 py-6 border-b border-white/10">
+        <button onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+            <Globe className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-serif font-semibold text-white text-base leading-none">VisaClear</p>
+            <p className="text-[10px] text-white/50 tracking-widest uppercase mt-0.5">Agent Portal</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {NAV.map(({ id, labelKey, Icon }) => {
+          const active = section === id;
+          const badge = id === "overview" && unread > 0 ? unread : null;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { setSection(id); onClose?.(); }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer group",
+                active
+                  ? "bg-white/15 text-white"
+                  : "text-white/60 hover:bg-white/8 hover:text-white"
+              )}
+            >
+              <Icon className={cn("w-5 h-5 shrink-0", active ? "text-[#d4a726]" : "text-white/50 group-hover:text-white/80")} />
+              <span className="font-semibold text-[15px] leading-none">{t(labelKey) || id}</span>
+              {badge && (
+                <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold shrink-0">{badge}</span>
+              )}
+              {active && <div className="ml-auto w-1 h-5 rounded-full bg-[#d4a726] shrink-0" />}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-3 py-4 border-t border-white/10 space-y-1">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium">Back to site</span>
+        </button>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium">{t("header.sign_out")}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inner dashboard (requires Convex auth) ───────────────────────────────────
+
+function DashboardInner() {
+  const { t } = useTranslation("agent-dashboard");
+  const navigate = useNavigate();
   const { signOut } = useAuth();
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+  const [section, setSection] = useState<Section>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [convertPayload, setConvertPayload] = useState<ConvertPayload | undefined>(undefined);
+
+  const handleConvertToClient = (payload: ConvertPayload) => {
+    setConvertPayload(payload);
+    setSection("clients");
   };
+
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
@@ -894,7 +1288,7 @@ export default function AgentDashboardPreviewPage() {
   const markDashboardViewed = useMutation(api.agents.markDashboardViewed);
 
   const lastViewedAt = myProfile?.lastDashboardViewAt;
-  const newUploadsSinceLastVisit = useMemo(() => {
+  const newUploads = useMemo(() => {
     if (!lastViewedAt) return 0;
     let count = 0;
     for (const intake of intakes) {
@@ -906,194 +1300,199 @@ export default function AgentDashboardPreviewPage() {
   }, [intakes, lastViewedAt]);
 
   useEffect(() => {
-    if (myProfile) {
-      void markDashboardViewed({}).catch(() => {});
-    }
-    // Only fire once per real profile load, not on every intake re-fetch.
+    if (myProfile) void markDashboardViewed({}).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myProfile?._id]);
 
   const unreadEnquiries = contactRequests.filter((r) => !r.read).length;
+
   const kpis: { label: string; value: string | number; detail: string; Icon: LucideIcon }[] = [
-    {
-      label: "Total clients",
-      value: intakes.length,
-      detail: `${intakes.filter((i) => i.status === "complete").length} completed`,
-      Icon: Users,
-    },
-    {
-      label: "Awaiting documents",
-      value: intakes.filter((i) => i.status === "awaiting_documents").length,
-      detail: "Clients who haven't uploaded yet",
-      Icon: ClipboardCheck,
-    },
-    {
-      label: "Ready for your review",
-      value: intakes.filter((i) => i.status === "documents_received").length,
-      detail: "Documents uploaded, awaiting you",
-      Icon: BadgeCheck,
-    },
-    {
-      label: "New enquiries",
-      value: unreadEnquiries,
-      detail: newUploadsSinceLastVisit > 0 ? `${newUploadsSinceLastVisit} new upload${newUploadsSinceLastVisit === 1 ? "" : "s"} since last visit` : "From the marketplace",
-      Icon: CircleDollarSign,
-    },
+    { label: t("kpi.total_clients"), value: intakes.length, detail: t("kpi.total_clients_detail", { count: intakes.filter(i => i.status === "complete").length }), Icon: Users },
+    { label: t("kpi.awaiting"), value: intakes.filter(i => i.status === "awaiting_documents").length, detail: t("kpi.awaiting_detail"), Icon: ClipboardCheck },
+    { label: t("kpi.ready"), value: intakes.filter(i => i.status === "documents_received").length, detail: t("kpi.ready_detail"), Icon: BadgeCheck },
+    { label: t("kpi.enquiries"), value: unreadEnquiries, detail: newUploads > 0 ? `${newUploads} new upload${newUploads > 1 ? "s" : ""} since last visit` : t("kpi.enquiries_detail_marketplace"), Icon: CircleDollarSign },
   ];
 
+  const handleSignOut = async () => { await signOut(); navigate("/"); };
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <button aria-label="Go back" className="-ml-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary" onClick={goBack} type="button">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <button className="flex min-w-0 items-center gap-2.5 text-left" onClick={() => navigate("/")} type="button">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary">
-                <Globe className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-serif text-lg font-semibold leading-none text-primary">VisaClear</span>
-                  <span className="hidden rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-foreground sm:inline">Agent OS</span>
-                </div>
-                <p className="truncate text-[11px] text-muted-foreground">Operating system for visa agencies</p>
-              </div>
-            </button>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" onClick={() => document.getElementById("your-clients")?.scrollIntoView({ behavior: "smooth" })}>
-              <UserPlus className="h-4 w-4" />
-              Add client
-            </Button>
-            <button
-              onClick={() => void handleSignOut()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
-              title="Sign out"
-              type="button"
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex lg:w-64 xl:w-72 shrink-0 sticky top-0 h-screen">
+        <Sidebar section={section} setSection={setSection} unread={unreadEnquiries + newUploads} onSignOut={() => { void handleSignOut(); }} />
+      </aside>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              key="drawer"
+              initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
+              transition={{ type: "tween", duration: 0.22 }}
+              className="fixed inset-y-0 left-0 w-72 z-50 lg:hidden"
             >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
+              <Sidebar section={section} setSection={setSection} unread={unreadEnquiries + newUploads} onClose={() => setSidebarOpen(false)} onSignOut={() => { void handleSignOut(); }} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-white/95 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="lg:hidden p-2 rounded-xl text-muted-foreground hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="font-serif text-xl font-semibold text-primary capitalize">{NAV.find(n => n.id === section)?.id || "Overview"}</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Agent Operating System</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {unreadEnquiries > 0 && (
+                <button type="button" onClick={() => setSection("overview")}
+                  className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-primary hover:bg-secondary transition-colors cursor-pointer">
+                  <Bell className="w-4 h-4" />
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadEnquiries}</span>
+                </button>
+              )}
+              <Button size="default" className="cursor-pointer gap-2" onClick={() => setSection("clients")}>
+                <UserPlus className="w-4 h-4" />
+                <span className="hidden sm:inline">{t("header.add_client")}</span>
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={section}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} />}
+              {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
+              {section === "pipeline"  && <PipelineSection intakes={intakes} />}
+              {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} />}
+              {section === "referrals" && <ReferralsSection />}
+              {section === "license"   && <LicenseSection />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page export ──────────────────────────────────────────────────────────────
+
+export default function AgentDashboardPreviewPage() {
+  const navigate = useNavigate();
+  useSeo({
+    title: "Agent Dashboard",
+    description: "VisaClear agent operating system: manage clients, track documents, and grow your visa consultancy.",
+  });
+
+  return (
+    <>
+      <AuthLoading>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="space-y-4 w-full max-w-sm px-6">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-2xl" />)}
           </div>
         </div>
-      </header>
+      </AuthLoading>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:py-8">
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+      <Unauthenticated>
+        <div className="min-h-screen bg-background flex flex-col md:flex-row">
+          <div className="hidden md:flex md:w-80 lg:w-96 bg-[#0f2040] flex-col justify-between p-10 shrink-0">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-                <Shield className="h-3.5 w-3.5" />
-                Agent platform
-              </div>
-              <h1 className="max-w-4xl font-serif text-3xl font-semibold leading-tight text-primary md:text-5xl">
-                Your real business, in one place.
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                Every number below comes from your own real clients and documents — nothing here is a demo.
-              </p>
-            </div>
-          </div>
-        </motion.section>
-
-        <YourClients />
-
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
-        </section>
-
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <PipelineBoard intakes={intakes} />
-          <TodayActions intakes={intakes} contactRequests={contactRequests} />
-        </section>
-
-        <ClientPortalPreview />
-
-        <TemplatesSection intakes={intakes} />
-
-        <section className="grid gap-5 lg:grid-cols-2">
-          <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-            <SectionHeader
-              eyebrow="Agent analytics"
-              title="Business intelligence from your real pipeline."
-              description="Computed live from your own clients."
-              Icon={BarChart3}
-            />
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {[
-                ["Total clients", String(intakes.length)],
-                ["Completion rate", intakes.length > 0 ? `${Math.round((intakes.filter((i) => i.status === "complete").length / intakes.length) * 100)}%` : "—"],
-                ["Top destination", intakes.length > 0 ? (Object.entries(intakes.reduce((acc, i) => { acc[i.destination] = (acc[i.destination] ?? 0) + 1; return acc; }, {} as Record<string, number>)).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—") : "—"],
-                ["New enquiries", String(unreadEnquiries)],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-border bg-background p-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-2xl font-semibold text-primary">{value}</p>
+              <div className="flex items-center gap-3 mb-10">
+                <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-white" />
                 </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-            <SectionHeader
-              eyebrow="Security and privacy"
-              title="Real, account-scoped privacy."
-              description="What's actually true today — not a roadmap promise."
-              Icon={LockKeyhole}
-            />
-            <div className="mt-5 space-y-3">
-              {[
-                ["Account-scoped access", "Only you can see your clients and their documents — enforced on every request, not just in the UI."],
-                ["Document history", "Every upload keeps its real upload date and label."],
-                ["Secure links", "Each client gets a unique, unguessable upload token instead of a shared inbox."],
-              ].map(([title, detail]) => (
-                <div key={title} className="flex items-start gap-3 rounded-lg border border-border bg-background p-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+                <span className="font-serif text-xl font-semibold text-white">VisaClear</span>
+              </div>
+              <h2 className="font-serif text-3xl font-semibold text-white leading-snug mb-4">Agent Operating System</h2>
+              <p className="text-white/60 text-sm leading-relaxed mb-8">Manage your clients, track documents, and grow your consultancy — all in one place.</p>
+              <div className="space-y-4">
+                {[
+                  { icon: Users, text: "Secure client document portals" },
+                  { icon: ClipboardCheck, text: "Pipeline tracking by stage" },
+                  { icon: CircleDollarSign, text: "Referral commissions" },
+                  { icon: Shield, text: "CISA-certified privacy model" },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-[#d4a726]" />
+                    </div>
+                    <p className="text-white/70 text-sm">{text}</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
-
-        <ReferralPanel />
-
-        <LicenseRedemptionPanel />
-
-        <section className="rounded-lg border border-border bg-primary p-5 text-primary-foreground shadow-sm md:p-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">
-                <UserPlus className="h-3.5 w-3.5" />
-                First 10 minutes
+                ))}
               </div>
-              <h2 className="font-serif text-3xl font-semibold leading-tight">Feel the magic with one real client.</h2>
-              <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
-                One real client, one real portal link, one real upload notification.
-              </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                ["1", "Add your first client", "Name, WhatsApp number, destination in 60 seconds"],
-                ["2", "Send the link on WhatsApp", "One tap, the client gets it where they already are"],
-                ["3", "They upload a document", "Your dashboard updates live — no refresh needed"],
-                ["4", "You review and move them forward", "The pipeline reflects reality, not a demo"],
-              ].map(([step, title, detail]) => (
-                <div key={step} className="rounded-lg border border-white/15 bg-white/10 p-4">
-                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-foreground">{step}</div>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="mt-1 text-sm text-primary-foreground/70">{detail}</p>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => navigate("/agents")}
+                className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors cursor-pointer text-sm"
+              >
+                <ArrowLeft className="w-4 h-4" /> Browse agent marketplace
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors cursor-pointer text-sm"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to VisaClear
+              </button>
+              <p className="text-white/20 text-xs pt-2">© {new Date().getFullYear()} Vericore Ltd.</p>
             </div>
           </div>
-        </section>
-      </main>
-    </div>
+          <div className="flex-1 flex flex-col px-6 py-8 bg-gray-50">
+            {/* Mobile back link — left panel is hidden on small screens */}
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="md:hidden flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-8 cursor-pointer self-start"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to VisaClear
+            </button>
+            <div className="w-full max-w-sm mx-auto flex-1 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <LogIn className="w-7 h-7 text-primary" />
+                </div>
+                <h2 className="font-serif text-2xl font-semibold text-primary mb-2">Sign In</h2>
+                <p className="text-sm text-muted-foreground">Access your agent dashboard</p>
+              </div>
+              <AuthAccessPanel returnPath="/agents/dashboard" hideDemoOption />
+            </div>
+          </div>
+        </div>
+      </Unauthenticated>
+
+      <Authenticated>
+        <DashboardInner />
+      </Authenticated>
+    </>
   );
 }

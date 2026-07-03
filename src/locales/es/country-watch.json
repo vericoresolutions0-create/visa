@@ -1,0 +1,22 @@
+{
+  "header.badge": "Vigilancia de países",
+  "nav.dashboard": "Mi panel",
+  "nav.settings": "Configuración",
+  "nav.sign_out": "Cerrar sesión",
+  "signin.title": "Inicia sesión para continuar",
+  "signin.body": "Vigila los países donde solicitas y recibe notificaciones cuando cambie una regla.",
+  "upgrade.title": "No pierdas ningún cambio de regla",
+  "upgrade.body": "La vigilancia de países es una función Pro. Vigila hasta 5 países (10 en Expert) y te avisaremos cuando se publique un cambio real de política.",
+  "upgrade.cta": "Mejorar a Pro",
+  "watching.title": "Vigilando ({{count}}/{{limit}})",
+  "watching.empty": "No estás vigilando ningún país todavía.",
+  "watching.placeholder": "Selecciona un país para vigilar…",
+  "watching.add": "Agregar",
+  "updates.title": "Actualizaciones recientes",
+  "updates.empty": "Sin actualizaciones para tus países vigilados. Te avisaremos cuando algo cambie.",
+  "toast.added": "Ahora vigilando {{country}}.",
+  "toast.limit": "Tu plan {{plan}} puede vigilar hasta {{limit}} países. Elimina uno para agregar otro.",
+  "toast.removed": "Eliminado.",
+  "toast.add_error": "No se pudo agregar este país. Inténtalo de nuevo.",
+  "toast.remove_error": "No se pudo eliminar este país."
+}

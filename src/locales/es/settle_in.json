@@ -1,0 +1,11 @@
+{
+  "title": "Kit de instalación",
+  "coming_soon": "¡Felicidades por tu aprobación! Una guía de instalación para {{destination}} llegará pronto — no queremos mostrarte consejos genéricos que podrían no ser adecuados para este destino.",
+  "complete_pct": "{{progress}}% completado",
+  "intro": "Felicidades por la aprobación de tu visa para {{destination}}. Esto es lo que debes resolver al llegar.",
+  "where": "Dónde: {{where}}",
+  "save": "Guardar progreso",
+  "saving": "Guardando…",
+  "toast.saved": "Progreso de instalación guardado.",
+  "toast.save_failed": "No se pudo guardar tu progreso."
+}

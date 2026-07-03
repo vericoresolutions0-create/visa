@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Globe,
   CheckCircle2,
@@ -14,68 +15,14 @@ import { Button } from "@/components/ui/button.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { cn } from "@/lib/utils.ts";
 
-const STEPS = [
-  {
-    icon: <Globe className="w-8 h-8" />,
-    title: "Welcome to VisaClear",
-    subtitle: "by Vericore",
-    heading: "Your visa approval starts here.",
-    body: "We generate precise, personalised document checklists in 60 seconds, built specifically for African, Asian, and LatAm applicants who deserve more than vague agency advice.",
-    cta: "Get Started",
-    bg: "bg-primary",
-    accent: "oklch(0.72 0.13 80)",
-  },
-  {
-    icon: <FileText className="w-8 h-8" />,
-    title: "How It Works",
-    subtitle: null,
-    heading: "Three steps to a stronger application.",
-    body: null,
-    points: [
-      {
-        icon: "1",
-        label: "Choose your route",
-        desc: "Select your home country and destination. We know the exact requirements for your corridor.",
-      },
-      {
-        icon: "2",
-        label: "Get your checklist",
-        desc: "Every document named precisely — what it is, where to get it, and what embassies actually look for.",
-      },
-      {
-        icon: "3",
-        label: "Apply with confidence",
-        desc: "Use insider approval tips, track your progress, and set deadline reminders so nothing slips.",
-      },
-    ],
-    cta: "Understood, continue",
-    bg: "bg-background",
-    accent: "oklch(0.28 0.07 255)",
-  },
-  {
-    icon: <Lock className="w-8 h-8" />,
-    title: "Your Privacy Matters",
-    subtitle: null,
-    heading: "It's all about Privacy.",
-    body: "Your data is never sold. Never shared with third parties. Built to GDPR and NDPA standards by a CISA-certified compliance professional. Your refusal letter text and personal documents are processed securely and stay yours.",
-    badges: [
-      "GDPR-Aligned",
-      "NDPA-Aligned",
-      "CISA Certified",
-      "End-to-end encrypted",
-    ],
-    cta: "Continue to account setup",
-    bg: "bg-background",
-    accent: "oklch(0.72 0.13 80)",
-  },
-];
+const STEP_COUNT = 3;
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("onboarding");
   const [step, setStep] = useState(0);
 
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const isLast = step === STEP_COUNT - 1;
 
   const handleComplete = () => {
     localStorage.setItem("vc_onboarded", "1");
@@ -94,11 +41,24 @@ export default function OnboardingPage() {
     }
   };
 
+  const POINTS = [
+    { icon: "1", label: t("step1.p1.label"), desc: t("step1.p1.desc") },
+    { icon: "2", label: t("step1.p2.label"), desc: t("step1.p2.desc") },
+    { icon: "3", label: t("step1.p3.label"), desc: t("step1.p3.desc") },
+  ];
+
+  const BADGES = [
+    t("step2.badge1"),
+    t("step2.badge2"),
+    t("step2.badge3"),
+    t("step2.badge4"),
+  ];
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-12">
       {/* Progress dots */}
       <div className="flex gap-2 mb-10">
-        {STEPS.map((_, i) => (
+        {Array.from({ length: STEP_COUNT }).map((_, i) => (
           <div
             key={i}
             className={cn(
@@ -128,22 +88,22 @@ export default function OnboardingPage() {
                 className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-6"
                 style={{ color: "oklch(0.72 0.13 80)" }}
               >
-                {current.icon}
+                <Globe className="w-8 h-8" />
               </div>
               <div
                 className="text-[10px] tracking-widest uppercase font-semibold mb-2"
                 style={{ color: "oklch(0.72 0.13 80)" }}
               >
-                {current.subtitle}
+                {t("step0.subtitle")}
               </div>
               <h1 className="font-serif text-3xl font-semibold mb-1">
-                {current.title}
+                {t("step0.title")}
               </h1>
               <h2 className="font-serif text-xl font-light text-primary-foreground/70 mb-6">
-                {current.heading}
+                {t("step0.heading")}
               </h2>
               <p className="text-primary-foreground/70 leading-relaxed text-sm mb-8">
-                {current.body}
+                {t("step0.body")}
               </p>
               <Button
                 size="lg"
@@ -154,7 +114,7 @@ export default function OnboardingPage() {
                 }}
                 onClick={handleNext}
               >
-                {current.cta} <ArrowRight className="w-4 h-4 ml-1.5" />
+                {t("step0.cta")} <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
           )}
@@ -162,13 +122,13 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="text-center">
               <div className="w-14 h-14 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-6 text-primary">
-                {current.icon}
+                <FileText className="w-8 h-8" />
               </div>
               <h2 className="font-serif text-3xl font-semibold text-primary mb-2">
-                {current.heading}
+                {t("step1.heading")}
               </h2>
               <div className="space-y-3 mt-6 text-left">
-                {current.points?.map((p) => (
+                {POINTS.map((p) => (
                   <div
                     key={p.icon}
                     className="flex gap-4 p-4 bg-card border border-border rounded-xl"
@@ -198,7 +158,7 @@ export default function OnboardingPage() {
                 className="w-full mt-6 cursor-pointer font-semibold py-6"
                 onClick={handleNext}
               >
-                {current.cta} <ArrowRight className="w-4 h-4 ml-1.5" />
+                {t("step1.cta")} <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
           )}
@@ -206,16 +166,16 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="text-center">
               <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-6 text-accent">
-                {current.icon}
+                <Lock className="w-8 h-8" />
               </div>
               <h2 className="font-serif text-3xl font-semibold text-primary mb-4">
-                {current.heading}
+                {t("step2.heading")}
               </h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                {current.body}
+                {t("step2.body")}
               </p>
               <div className="flex flex-wrap gap-2 justify-center mb-8">
-                {current.badges?.map((b) => (
+                {BADGES.map((b) => (
                   <div
                     key={b}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-semibold text-primary"
@@ -228,7 +188,7 @@ export default function OnboardingPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="w-4 h-4 text-accent" />
                   <span className="font-semibold text-sm text-primary">
-                    By continuing, you agree to our
+                    {t("step2.terms_prefix")}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -236,16 +196,16 @@ export default function OnboardingPage() {
                     onClick={() => navigate("/terms")}
                     className="text-primary underline cursor-pointer"
                   >
-                    Terms of Service
+                    {t("step2.terms_link")}
                   </button>{" "}
-                  and{" "}
+                  {t("step2.terms_and")}{" "}
                   <button
                     onClick={() => navigate("/privacy")}
                     className="text-primary underline cursor-pointer"
                   >
-                    Privacy Policy
+                    {t("step2.privacy_link")}
                   </button>
-                  . VisaClear is a guidance tool, not legal advice.
+                  {". "}{t("step2.disclaimer")}
                 </p>
               </div>
 
@@ -260,7 +220,7 @@ export default function OnboardingPage() {
                 className="w-full cursor-pointer font-semibold py-6 mt-4"
                 onClick={handleNext}
               >
-                {current.cta} <Zap className="w-4 h-4 ml-1.5" />
+                {t("step2.cta")} <Zap className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
           )}
@@ -271,7 +231,7 @@ export default function OnboardingPage() {
         onClick={handleComplete}
         className="mt-6 text-xs text-muted-foreground hover:text-primary cursor-pointer underline"
       >
-        Skip introduction
+        {t("skip")}
       </button>
     </div>
   );

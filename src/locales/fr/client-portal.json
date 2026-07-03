@@ -1,0 +1,23 @@
+{
+  "header.tag": "Téléversement de documents",
+  "no_checklist": "Nous n'avons pas trouvé de liste de documents pour ce type de visa. Veuillez contacter votre agent.",
+  "toast.too_large": "Le fichier doit faire moins de 10 Mo.",
+  "toast.bad_type": "Veuillez téléverser un fichier JPG, PNG, WEBP ou PDF.",
+  "toast.uploaded": "{{label}} téléversé.",
+  "toast.upload_failed": "Échec du téléversement de {{label}}. Veuillez réessayer.",
+  "there": "là",
+  "greeting": "Bonjour {{name}}",
+  "title": "Téléversez vos documents",
+  "subtitle": "{{destination}} · {{visaType}}. Votre agent sera notifié dès que vous téléverserez chaque document.",
+  "required_docs": "Documents requis",
+  "item.required": "Requis",
+  "upload.uploading": "Téléversement...",
+  "upload.replace": "Remplacer",
+  "upload.upload": "Téléverser",
+  "link_not_found.title": "Lien introuvable",
+  "link_not_found.body": "Ce lien de téléversement est invalide ou a expiré. Veuillez demander à votre agent de vous en envoyer un nouveau.",
+  "signin.title": "Connectez-vous pour téléverser",
+  "signin.body": "Pour votre sécurité, connectez-vous avant de téléverser vos documents de visa.",
+  "signin.cta": "Se connecter pour continuer",
+  "signin.footer": "Vos documents ne sont visibles que par votre agent."
+}

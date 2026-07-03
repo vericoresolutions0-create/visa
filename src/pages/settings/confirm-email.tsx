@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
+import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -11,6 +12,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { Globe, LogIn, ShieldCheck, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 
 function ConfirmFlow({ token }: { token: string }) {
+  const { t } = useTranslation("confirm-email");
   const confirmEmailChange = useMutation(api.emailChange.confirmEmailChange);
   const [state, setState] = useState<"idle" | "confirming" | "done" | "error">("idle");
   const [resultEmail, setResultEmail] = useState("");
@@ -24,7 +26,7 @@ function ConfirmFlow({ token }: { token: string }) {
       setState("done");
     } catch (err) {
       setErrorMessage(
-        err instanceof ConvexError ? (err.data as { message: string }).message : "Could not confirm this email change.",
+        err instanceof ConvexError ? (err.data as { message: string }).message : t("error.fallback"),
       );
       setState("error");
     }
@@ -34,9 +36,9 @@ function ConfirmFlow({ token }: { token: string }) {
     return (
       <div className="bg-card border border-border rounded-2xl p-8 space-y-4 text-center">
         <CheckCircle2 className="w-10 h-10 text-accent mx-auto" />
-        <h2 className="font-serif text-2xl font-semibold text-primary">Email Confirmed</h2>
+        <h2 className="font-serif text-2xl font-semibold text-primary">{t("confirmed.title")}</h2>
         <p className="text-sm text-muted-foreground">
-          Your account email is now <span className="font-semibold text-foreground">{resultEmail}</span>.
+          {t("confirmed.body", { email: resultEmail })}
         </p>
       </div>
     );
@@ -46,7 +48,7 @@ function ConfirmFlow({ token }: { token: string }) {
     return (
       <div className="bg-card border border-border rounded-2xl p-8 space-y-4 text-center">
         <XCircle className="w-10 h-10 text-destructive mx-auto" />
-        <h2 className="font-serif text-2xl font-semibold text-primary">Couldn&apos;t Confirm</h2>
+        <h2 className="font-serif text-2xl font-semibold text-primary">{t("error.title")}</h2>
         <p className="text-sm text-muted-foreground">{errorMessage}</p>
       </div>
     );
@@ -55,12 +57,12 @@ function ConfirmFlow({ token }: { token: string }) {
   return (
     <div className="bg-card border border-border rounded-2xl p-8 space-y-5 text-center">
       <ShieldCheck className="w-10 h-10 text-accent mx-auto" />
-      <h2 className="font-serif text-2xl font-semibold text-primary">Confirm Your New Email</h2>
+      <h2 className="font-serif text-2xl font-semibold text-primary">{t("idle.title")}</h2>
       <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-        Click below to confirm this address as your new VisaClear account email.
+        {t("idle.body")}
       </p>
       <Button disabled={state === "confirming"} onClick={() => void handleConfirm()} className="cursor-pointer font-semibold disabled:opacity-60">
-        {state === "confirming" ? "Confirming…" : "Confirm This Email"}
+        {state === "confirming" ? t("idle.confirming") : t("idle.cta")}
       </Button>
     </div>
   );
@@ -68,6 +70,7 @@ function ConfirmFlow({ token }: { token: string }) {
 
 export default function ConfirmEmailPage() {
   const { token } = useParams<{ token: string }>();
+  const { t } = useTranslation("confirm-email");
   useSeo({ title: "Confirm Email", description: "Confirm a pending email change for your VisaClear account." });
   const goBack = useSmartBack("/settings/profile");
 
@@ -93,11 +96,11 @@ export default function ConfirmEmailPage() {
                 <div className="w-14 h-14 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
                   <LogIn className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="font-serif text-2xl font-semibold text-primary mb-3">Sign In to Confirm</h2>
+                <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
                 <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
-                  Sign in to the account that requested this email change to confirm it.
+                  {t("signin.body")}
                 </p>
-                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText="Sign In to Continue" />
+                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("signin.cta")} />
               </div>
             </Unauthenticated>
             <Authenticated>

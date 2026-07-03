@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Globe, ArrowLeft, TrendingUp, TrendingDown, Share2, Copy,
   AlertTriangle, CheckCircle2, ArrowRight,
@@ -22,17 +23,18 @@ function scoreColor(score: number): string {
   return "text-red-600";
 }
 
-function scoreLabel(score: number): string {
-  if (score >= 65) return "Strong";
-  if (score >= 40) return "Moderate";
-  return "At risk";
-}
-
 export default function RiskScoreResultPage() {
   const { resultId } = useParams<{ resultId: string }>();
   const navigate = useNavigate();
   const goBack = useSmartBack("/risk-score");
+  const { t } = useTranslation("risk-score");
   const [linkCopied, setLinkCopied] = useState(false);
+
+  function scoreLabel(score: number): string {
+    if (score >= 65) return t("result.strong");
+    if (score >= 40) return t("result.moderate");
+    return t("result.at_risk");
+  }
 
   const result = useQuery(
     api.riskScore.getRiskScoreResult,
@@ -50,9 +52,9 @@ export default function RiskScoreResultPage() {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setLinkCopied(true);
       trackEvent("share_link_copied", { feature: "risk_score" });
-      toast.success("Link copied! Share it with anyone.");
+      toast.success(t("result.copy_success"));
       setTimeout(() => setLinkCopied(false), 3000);
-    }).catch(() => toast.error("Failed to copy link."));
+    }).catch(() => toast.error(t("result.copy_error")));
   };
 
   const handleNativeShare = async () => {
@@ -90,8 +92,8 @@ export default function RiskScoreResultPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-6 text-center">
         <div>
-          <p className="text-lg font-semibold text-primary mb-2">This result no longer exists.</p>
-          <Button onClick={() => navigate("/risk-score")} className="cursor-pointer">Take the quiz</Button>
+          <p className="text-lg font-semibold text-primary mb-2">{t("result.not_found")}</p>
+          <Button onClick={() => navigate("/risk-score")} className="cursor-pointer">{t("result.take_quiz")}</Button>
         </div>
       </div>
     );
@@ -124,26 +126,25 @@ export default function RiskScoreResultPage() {
             {result.displayScore}%
           </p>
           <p className={cn("text-sm font-semibold mt-2", scoreColor(result.displayScore))}>
-            {scoreLabel(result.displayScore)} approval likelihood
+            {scoreLabel(result.displayScore)} {t("result.likelihood")}
           </p>
           <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
-            This is a guidance estimate based on common approval factors — not an official prediction,
-            guarantee, or embassy decision.
+            {t("result.disclaimer")}
           </p>
         </motion.div>
 
         <div className="flex gap-2 mt-5">
           <Button variant="outline" className="flex-1 cursor-pointer" onClick={() => { void handleNativeShare(); }}>
-            <Share2 className="w-4 h-4" /> Share
+            <Share2 className="w-4 h-4" /> {t("result.share")}
           </Button>
           <Button variant="outline" className="flex-1 cursor-pointer" onClick={handleCopyLink}>
-            <Copy className="w-4 h-4" /> {linkCopied ? "Copied!" : "Copy Link"}
+            <Copy className="w-4 h-4" /> {linkCopied ? t("result.copied") : t("result.copy")}
           </Button>
         </div>
 
         <div className="mt-8">
           <h2 className="font-serif text-xl font-semibold text-primary mb-4">
-            Top factors affecting your score
+            {t("result.factors_title")}
           </h2>
           <div className="space-y-3">
             {result.topWeakFactors.map((factor) => {
@@ -171,16 +172,16 @@ export default function RiskScoreResultPage() {
         <div className="mt-8 bg-accent/8 border border-accent/20 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-accent" />
-            <p className="text-sm font-semibold text-primary">Improve your odds before you apply</p>
+            <p className="text-sm font-semibold text-primary">{t("result.cta_title")}</p>
           </div>
           <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-            Get your exact, destination-specific document checklist — built to address common rejection reasons.
+            {t("result.cta_subtitle")}
           </p>
           <Button
             className="w-full cursor-pointer font-semibold"
             onClick={() => navigate(`/checklist?to=${encodeURIComponent(result.destination)}&type=${result.visaType}`)}
           >
-            Get my checklist <ArrowRight className="w-4 h-4" />
+            {t("result.cta_button")} <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
 
@@ -188,7 +189,7 @@ export default function RiskScoreResultPage() {
           onClick={() => navigate("/risk-score")}
           className="block mx-auto mt-6 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          Take the quiz again
+          {t("result.retake")}
         </button>
       </main>
     </div>

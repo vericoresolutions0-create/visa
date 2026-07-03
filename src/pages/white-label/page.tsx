@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -19,101 +20,6 @@ import {
   Palette, Link2, LayoutDashboard, Zap, ChevronRight,
   Mail, Phone, Lock, TrendingUp, Award,
 } from "lucide-react";
-
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    title: "Apply for a Licence",
-    desc: "Fill in the short form below with your agency name, website, and expected monthly client volume.",
-  },
-  {
-    step: "02",
-    title: "We Configure Your Brand",
-    desc: "We apply your logo, brand colours, and custom domain. Turnaround is 2-3 business days.",
-  },
-  {
-    step: "03",
-    title: "Launch to Your Clients",
-    desc: "Share your branded URL with clients. They use the full VisaClear engine under your name.",
-  },
-];
-
-const FEATURES = [
-  { icon: Palette, title: "Your Logo, Your Colours", desc: "Full brand replacement. Your clients never see VisaClear or Vericore branding." },
-  { icon: Link2, title: "Custom Domain", desc: "Deploy on your own domain, e.g. visas.youragency.com or tools.yourfirm.co." },
-  { icon: LayoutDashboard, title: "Agent Dashboard", desc: "Track all your clients, their checklist progress, and document status from one place." },
-  { icon: Users, title: "Unlimited Client Accounts", desc: "Add as many clients as you need. No per-seat charges for your end users." },
-  { icon: Shield, title: "Built with GDPR & NDPA Principles", desc: "Full compliance documentation included. Safe for UK, EU, and African applicants." },
-  { icon: Zap, title: "All Pro Features Included", desc: "AI assistant, PDF exports, rejection analyser, passport photo checker, and reminders." },
-];
-
-const PLANS = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 99,
-    desc: "Perfect for boutique agencies with up to 50 clients per month.",
-    features: [
-      "Up to 50 clients/month",
-      "Custom logo and colours",
-      "Subdomain (agency.visaclear.vercel.app)",
-      "Basic agent dashboard",
-      "Email support",
-    ],
-    highlight: false,
-    badge: null,
-    cta: "Apply for Starter",
-  },
-  {
-    id: "agency",
-    name: "Agency",
-    price: 149,
-    desc: "For established agencies handling high volumes across multiple destinations.",
-    features: [
-      "Unlimited clients",
-      "Custom domain (your own URL)",
-      "Full white-label (zero VisaClear branding)",
-      "Advanced agent dashboard",
-      "Rejection analyser for your clients",
-      "Priority support from Vericore team",
-    ],
-    highlight: true,
-    badge: "Most Popular",
-    cta: "Apply for Agency",
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: null,
-    desc: "For banks, universities, and large organisations with custom requirements.",
-    features: [
-      "Everything in Agency",
-      "Custom AI training on your country list",
-      "Data licensing agreement",
-      "Dedicated account manager",
-      "SLA and uptime guarantee",
-      "API access for system integration",
-    ],
-    highlight: false,
-    badge: null,
-    cta: "Contact Us",
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "Adaeze O.",
-    role: "Director, Prime Visa Consult, Lagos",
-    quote: "We went from spending 3 hours per client on document prep to 20 minutes. Our approval rate went up significantly in the first quarter.",
-    stars: 5,
-  },
-  {
-    name: "James K.",
-    role: "Founder, ClearPath Immigration, Nairobi",
-    quote: "The white-label setup took three days. Clients think we built this ourselves. It has completely changed how we present our services.",
-    stars: 5,
-  },
-];
 
 type FormState = {
   agencyName: string;
@@ -141,10 +47,72 @@ export default function WhiteLabelPage() {
   useSeo({ title: "White-Label Solutions", description: "Launch your own visa preparation platform under your brand. VisaClear's white-label solution for immigration agencies and consultants." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
+  const { t } = useTranslation("white-label");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submitApplication = useMutation(api.whitelabel.submit);
+
+  const HOW_IT_WORKS = [
+    { step: "01", title: t("how.s1.title"), desc: t("how.s1.desc") },
+    { step: "02", title: t("how.s2.title"), desc: t("how.s2.desc") },
+    { step: "03", title: t("how.s3.title"), desc: t("how.s3.desc") },
+  ];
+
+  const FEATURES = [
+    { icon: Palette, title: t("features.f1.title"), desc: t("features.f1.desc") },
+    { icon: Link2, title: t("features.f2.title"), desc: t("features.f2.desc") },
+    { icon: LayoutDashboard, title: t("features.f3.title"), desc: t("features.f3.desc") },
+    { icon: Users, title: t("features.f4.title"), desc: t("features.f4.desc") },
+    { icon: Shield, title: t("features.f5.title"), desc: t("features.f5.desc") },
+    { icon: Zap, title: t("features.f6.title"), desc: t("features.f6.desc") },
+  ];
+
+  const PLANS = [
+    {
+      id: "starter",
+      name: t("plans.starter.name"),
+      price: 99,
+      desc: t("plans.starter.desc"),
+      features: [t("plans.starter.f1"), t("plans.starter.f2"), t("plans.starter.f3"), t("plans.starter.f4"), t("plans.starter.f5")],
+      highlight: false,
+      badge: null as string | null,
+      cta: t("plans.starter.cta"),
+    },
+    {
+      id: "agency",
+      name: t("plans.agency.name"),
+      price: 149,
+      desc: t("plans.agency.desc"),
+      features: [t("plans.agency.f1"), t("plans.agency.f2"), t("plans.agency.f3"), t("plans.agency.f4"), t("plans.agency.f5"), t("plans.agency.f6")],
+      highlight: true,
+      badge: t("plans.agency.badge") as string | null,
+      cta: t("plans.agency.cta"),
+    },
+    {
+      id: "enterprise",
+      name: t("plans.enterprise.name"),
+      price: null as number | null,
+      desc: t("plans.enterprise.desc"),
+      features: [t("plans.enterprise.f1"), t("plans.enterprise.f2"), t("plans.enterprise.f3"), t("plans.enterprise.f4"), t("plans.enterprise.f5"), t("plans.enterprise.f6")],
+      highlight: false,
+      badge: null as string | null,
+      cta: t("plans.enterprise.cta"),
+    },
+  ];
+
+  const TESTIMONIALS = [
+    { name: t("testimonials.t1.name"), role: t("testimonials.t1.role"), quote: t("testimonials.t1.quote"), stars: 5 },
+    { name: t("testimonials.t2.name"), role: t("testimonials.t2.role"), quote: t("testimonials.t2.quote"), stars: 5 },
+  ];
+
+  const FAQ = [
+    { q: t("faq.q1.q"), a: t("faq.q1.a") },
+    { q: t("faq.q2.q"), a: t("faq.q2.a") },
+    { q: t("faq.q3.q"), a: t("faq.q3.a") },
+    { q: t("faq.q4.q"), a: t("faq.q4.a") },
+    { q: t("faq.q5.q"), a: t("faq.q5.a") },
+  ];
 
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -153,7 +121,7 @@ export default function WhiteLabelPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.agencyName || !form.email || !form.plan) {
-      toast.error("Please fill in your agency name, email, and preferred plan.");
+      toast.error(t("form.error_required"));
       return;
     }
     setSubmitting(true);
@@ -169,12 +137,12 @@ export default function WhiteLabelPage() {
         message: form.message || undefined,
       });
       setSubmitted(true);
-      toast.success("Application received. We will contact you within 24 hours.");
+      toast.success(t("form.success_toast"));
     } catch (err) {
       if (err instanceof ConvexError) {
         toast.error((err.data as { message: string }).message);
       } else {
-        toast.error("Failed to submit application. Please try again.");
+        toast.error(t("form.error_toast"));
       }
     } finally {
       setSubmitting(false);
@@ -196,12 +164,12 @@ export default function WhiteLabelPage() {
           </button>
         </div>
         <Button size="sm" onClick={() => document.getElementById("apply-form")?.scrollIntoView({ behavior: "smooth" })} className="cursor-pointer">
-          Apply Now
+          {t("nav.apply_now")}
         </Button>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden py-24 px-6">
+      <section className="relative overflow-hidden py-16 md:py-24 px-4 sm:px-6">
         <div
           className="absolute inset-0 opacity-5"
           style={{
@@ -212,13 +180,13 @@ export default function WhiteLabelPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-4 py-1.5 mb-6">
               <Building2 className="w-3.5 h-3.5 text-accent" />
-              <span className="text-xs font-semibold text-accent tracking-widest uppercase">For Agencies and Institutions</span>
+              <span className="text-xs font-semibold text-accent tracking-widest uppercase">{t("hero.badge")}</span>
             </div>
-            <h1 className="font-serif text-5xl md:text-6xl font-semibold text-primary leading-tight mb-6">
-              Power Your Agency<br />with VisaClear, Invisibly
+            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-semibold text-primary leading-tight mb-6 whitespace-pre-line">
+              {t("hero.title")}
             </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-              Give your clients a premium AI-powered visa toolkit under your own brand, your own domain, and your own name. No coding. No infrastructure. Just results.
+            <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+              {t("hero.subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
@@ -226,7 +194,7 @@ export default function WhiteLabelPage() {
                 className="cursor-pointer font-semibold px-8"
                 onClick={() => document.getElementById("apply-form")?.scrollIntoView({ behavior: "smooth" })}
               >
-                Apply for a Licence
+                {t("hero.cta1")}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
               <Button
@@ -235,7 +203,7 @@ export default function WhiteLabelPage() {
                 className="cursor-pointer border border-border"
                 onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
               >
-                See How It Works
+                {t("hero.cta2")}
               </Button>
             </div>
           </motion.div>
@@ -246,19 +214,19 @@ export default function WhiteLabelPage() {
         padding="py-10"
         valueSize="text-3xl"
         stats={[
-          { value: "24+", label: "Destination countries" },
-          { value: "5 visa types", label: "Per destination" },
-          { value: "2-3 days", label: "Site live after approval" },
-          { value: "100%", label: "Your branding" },
+          { value: t("stats.s1.value"), label: t("stats.s1.label") },
+          { value: t("stats.s2.value"), label: t("stats.s2.label") },
+          { value: t("stats.s3.value"), label: t("stats.s3.label") },
+          { value: t("stats.s4.value"), label: t("stats.s4.label") },
         ]}
       />
 
       {/* How it works */}
-      <section id="how-it-works" className="py-20 px-6">
+      <section id="how-it-works" className="py-14 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Simple Process</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">From application to live in 3 steps</h2>
+          <div className="text-center mb-10 sm:mb-14">
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("how.eyebrow")}</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("how.title")}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {HOW_IT_WORKS.map((step) => (
@@ -279,11 +247,11 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-6 bg-muted/30">
+      <section className="py-14 sm:py-20 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Everything Included</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">What your licence gives you</h2>
+          <div className="text-center mb-10 sm:mb-14">
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("features.eyebrow")}</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("features.title")}</h2>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
@@ -306,12 +274,12 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-20 px-6">
+      <section className="py-14 sm:py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Licence Pricing</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">Straightforward monthly licences</h2>
-            <p className="text-muted-foreground mt-3">No setup fees. Cancel anytime. Billed monthly.</p>
+          <div className="text-center mb-10 sm:mb-14">
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("pricing.eyebrow")}</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("pricing.title")}</h2>
+            <p className="text-muted-foreground mt-3">{t("pricing.subtitle")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {PLANS.map((plan) => (
@@ -321,7 +289,7 @@ export default function WhiteLabelPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 className={cn(
-                  "rounded-2xl p-8 border relative flex flex-col",
+                  "rounded-2xl p-6 sm:p-8 border relative flex flex-col",
                   plan.highlight
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-background border-border/50"
@@ -342,11 +310,11 @@ export default function WhiteLabelPage() {
                         <span className={cn("font-serif text-5xl font-semibold", plan.highlight ? "text-primary-foreground" : "text-primary")}>
                           ${plan.price}
                         </span>
-                        <span className={cn("text-sm mb-2", plan.highlight ? "text-primary-foreground/60" : "text-muted-foreground")}>/month</span>
+                        <span className={cn("text-sm mb-2", plan.highlight ? "text-primary-foreground/60" : "text-muted-foreground")}>{t("pricing.per_month")}</span>
                       </>
                     ) : (
                       <span className={cn("font-serif text-4xl font-semibold", plan.highlight ? "text-primary-foreground" : "text-primary")}>
-                        Custom
+                        {t("pricing.custom")}
                       </span>
                     )}
                   </div>
@@ -379,25 +347,25 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-6 bg-muted/30">
+      <section className="py-14 sm:py-20 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Illustrative Examples</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">What an agency's experience can look like</h2>
+          <div className="text-center mb-10 sm:mb-12">
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("testimonials.eyebrow")}</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("testimonials.title")}</h2>
             <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-3">
-              Sample scenarios based on common agency situations — not verified customer quotes.
+              {t("testimonials.subtitle")}
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-background rounded-2xl p-8 border border-border/50">
+            {TESTIMONIALS.map((item) => (
+              <div key={item.name} className="bg-background rounded-2xl p-6 sm:p-8 border border-border/50">
                 <div className="mb-4">
-                  <StarRating count={t.stars} />
+                  <StarRating count={item.stars} />
                 </div>
-                <p className="text-foreground leading-relaxed mb-6 italic">"{t.quote}"</p>
+                <p className="text-foreground leading-relaxed mb-6 italic">"{item.quote}"</p>
                 <div>
-                  <div className="font-semibold text-primary text-sm">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">{t.role}</div>
+                  <div className="font-semibold text-primary text-sm">{item.name}</div>
+                  <div className="text-xs text-muted-foreground">{item.role}</div>
                 </div>
               </div>
             ))}
@@ -406,53 +374,53 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Apply Form */}
-      <section id="apply-form" className="py-20 px-6">
+      <section id="apply-form" className="py-14 sm:py-20 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">Get Started</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">Apply for Your Licence</h2>
-            <p className="text-muted-foreground mt-3 text-sm">We review every application personally. You will hear from us within 24 hours.</p>
+          <div className="text-center mb-10 sm:mb-12">
+            <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("form.eyebrow")}</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("form.title")}</h2>
+            <p className="text-muted-foreground mt-3 text-sm">{t("form.subtitle")}</p>
           </div>
 
           {submitted ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-primary rounded-2xl p-12 text-center text-primary-foreground"
+              className="bg-primary rounded-2xl p-8 sm:p-12 text-center text-primary-foreground"
             >
               <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="w-8 h-8 text-accent" />
               </div>
-              <h3 className="font-serif text-2xl font-semibold mb-3">Application Received</h3>
+              <h3 className="font-serif text-2xl font-semibold mb-3">{t("submitted.title")}</h3>
               <p className="text-primary-foreground/70 mb-6">
-                Thank you. A member of the Vericore team will review your application and contact you at {form.email} within 24 hours.
+                {t("submitted.body", { email: form.email })}
               </p>
               <Button
                 variant="secondary"
                 className="bg-white text-primary hover:bg-white/90 cursor-pointer"
                 onClick={() => navigate("/")}
               >
-                Back to VisaClear
+                {t("submitted.back")}
               </Button>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="bg-background border border-border/50 rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="bg-background border border-border/50 rounded-2xl p-5 sm:p-8 space-y-5">
               <div className="grid sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="agencyName">Agency / Company Name *</Label>
+                  <Label htmlFor="agencyName">{t("form.agency_label")}</Label>
                   <Input
                     id="agencyName"
-                    placeholder="Prime Visa Consult"
+                    placeholder={t("form.agency_placeholder")}
                     value={form.agencyName}
                     onChange={(e) => handleChange("agencyName", e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="website">Website URL</Label>
+                  <Label htmlFor="website">{t("form.website_label")}</Label>
                   <Input
                     id="website"
-                    placeholder="https://youragency.com"
+                    placeholder={t("form.website_placeholder")}
                     value={form.website}
                     onChange={(e) => handleChange("website", e.target.value)}
                   />
@@ -461,13 +429,13 @@ export default function WhiteLabelPage() {
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Business Email *</Label>
+                  <Label htmlFor="email">{t("form.email_label")}</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="email"
                       type="email"
-                      placeholder="director@youragency.com"
+                      placeholder={t("form.email_placeholder")}
                       className="pl-9"
                       value={form.email}
                       onChange={(e) => handleChange("email", e.target.value)}
@@ -476,12 +444,12 @@ export default function WhiteLabelPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="phone">Phone / WhatsApp</Label>
+                  <Label htmlFor="phone">{t("form.phone_label")}</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="phone"
-                      placeholder="+234 800 000 0000"
+                      placeholder={t("form.phone_placeholder")}
                       className="pl-9"
                       value={form.phone}
                       onChange={(e) => handleChange("phone", e.target.value)}
@@ -492,19 +460,19 @@ export default function WhiteLabelPage() {
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="country">Country of Operation</Label>
+                  <Label htmlFor="country">{t("form.country_label")}</Label>
                   <Input
                     id="country"
-                    placeholder="Nigeria, Kenya, Ghana..."
+                    placeholder={t("form.country_placeholder")}
                     value={form.country}
                     onChange={(e) => handleChange("country", e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="volume">Estimated Clients per Month</Label>
+                  <Label htmlFor="volume">{t("form.volume_label")}</Label>
                   <Input
                     id="volume"
-                    placeholder="e.g. 30-50"
+                    placeholder={t("form.volume_placeholder")}
                     value={form.volume}
                     onChange={(e) => handleChange("volume", e.target.value)}
                   />
@@ -512,7 +480,7 @@ export default function WhiteLabelPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Preferred Plan *</Label>
+                <Label>{t("form.plan_label")}</Label>
                 <div className="grid grid-cols-3 gap-3">
                   {PLANS.map((plan) => (
                     <button
@@ -530,7 +498,7 @@ export default function WhiteLabelPage() {
                       {plan.price ? (
                         <div className="text-xs font-normal mt-0.5">${plan.price}/mo</div>
                       ) : (
-                        <div className="text-xs font-normal mt-0.5">Custom</div>
+                        <div className="text-xs font-normal mt-0.5">{t("pricing.custom")}</div>
                       )}
                     </button>
                   ))}
@@ -538,10 +506,10 @@ export default function WhiteLabelPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="message">Anything else we should know?</Label>
+                <Label htmlFor="message">{t("form.message_label")}</Label>
                 <Textarea
                   id="message"
-                  placeholder="Tell us about your agency, the countries you focus on, or any special requirements..."
+                  placeholder={t("form.message_placeholder")}
                   rows={4}
                   value={form.message}
                   onChange={(e) => handleChange("message", e.target.value)}
@@ -550,13 +518,11 @@ export default function WhiteLabelPage() {
 
               <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-xl text-xs text-muted-foreground">
                 <Lock className="w-4 h-4 shrink-0 mt-0.5 text-accent" />
-                <span>
-                  Your information is kept strictly confidential and will only be used to process your licence application. We will never share your details with third parties. Handled in line with GDPR and NDPA principles.
-                </span>
+                <span>{t("form.privacy")}</span>
               </div>
 
               <Button type="submit" size="lg" disabled={submitting} className="w-full cursor-pointer font-semibold disabled:opacity-60">
-                {submitting ? "Submitting…" : "Submit Application"}
+                {submitting ? t("form.submitting") : t("form.submit")}
                 {!submitting && <ChevronRight className="w-4 h-4 ml-1" />}
               </Button>
             </form>
@@ -565,32 +531,11 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 px-6 bg-muted/30">
+      <section className="py-12 sm:py-16 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-3xl mx-auto">
-          <h2 className="font-serif text-3xl font-semibold text-primary text-center mb-10">Common Questions</h2>
+          <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-primary text-center mb-8 sm:mb-10">{t("faq.title")}</h2>
           <div className="space-y-4">
-            {[
-              {
-                q: "Do my clients know this is built on VisaClear?",
-                a: "No. On the Agency and Enterprise plans, all VisaClear and Vericore branding is removed. Your clients see only your brand.",
-              },
-              {
-                q: "How does the custom domain work?",
-                a: "You point a DNS record from your domain to our servers. We handle the SSL certificate and routing. Typical setup time is under an hour once your licence is active.",
-              },
-              {
-                q: "Can I add more destination countries?",
-                a: "Yes. Enterprise plans include custom country requests. Starter and Agency plans use the full 24+ destination library already built into VisaClear.",
-              },
-              {
-                q: "What happens if I cancel?",
-                a: "You can cancel at any time. Your branded instance stays live until the end of the billing period. No penalties.",
-              },
-              {
-                q: "Do you offer a trial?",
-                a: "We offer a 7-day free trial for the Agency plan. Apply using the form above and mention this in your message.",
-              },
-            ].map((faq) => (
+            {FAQ.map((faq) => (
               <div key={faq.q} className="bg-background rounded-xl p-6 border border-border/50">
                 <h3 className="font-semibold text-primary mb-2">{faq.q}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
@@ -601,13 +546,13 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Footer CTA */}
-      <section className="py-16 px-6">
+      <section className="py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-primary rounded-2xl p-12 text-center text-primary-foreground">
+          <div className="bg-primary rounded-2xl p-8 sm:p-12 text-center text-primary-foreground">
             <Award className="w-10 h-10 text-accent mx-auto mb-4" />
-            <h2 className="font-serif text-3xl font-semibold mb-3">Ready to upgrade your agency?</h2>
+            <h2 className="font-serif text-2xl sm:text-3xl font-semibold mb-3">{t("cta.title")}</h2>
             <p className="text-primary-foreground/70 mb-8 max-w-md mx-auto">
-              One agency at $149/month. Better than chasing 18 individual subscribers.
+              {t("cta.subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
@@ -615,7 +560,7 @@ export default function WhiteLabelPage() {
                 className="bg-white text-primary hover:bg-white/90 cursor-pointer font-semibold"
                 onClick={() => document.getElementById("apply-form")?.scrollIntoView({ behavior: "smooth" })}
               >
-                Apply for a Licence
+                {t("cta.apply")}
               </Button>
               <Button
                 size="lg"
@@ -623,7 +568,7 @@ export default function WhiteLabelPage() {
                 className="text-primary-foreground border border-primary-foreground/30 hover:bg-primary-foreground/10 cursor-pointer"
                 onClick={() => navigate("/contact")}
               >
-                Talk to Us First
+                {t("cta.talk")}
               </Button>
             </div>
           </div>
@@ -631,12 +576,12 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Bottom trust bar */}
-      <div className="border-t border-border/40 px-6 py-6">
-        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> GDPR & NDPA Principles</div>
-          <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> 256-bit Encrypted</div>
-          <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> 24+ Destination Countries</div>
-          <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Built by Vericore</div>
+      <div className="border-t border-border/40 px-4 sm:px-6 py-6">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> {t("trust.gdpr")}</div>
+          <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> {t("trust.encrypted")}</div>
+          <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> {t("trust.destinations")}</div>
+          <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> {t("trust.by")}</div>
         </div>
       </div>
     </div>

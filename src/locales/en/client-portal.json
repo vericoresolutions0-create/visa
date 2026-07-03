@@ -1,0 +1,23 @@
+{
+  "header.tag": "Document Upload",
+  "no_checklist": "We couldn't find a document checklist for this visa type. Please contact your agent.",
+  "toast.too_large": "File must be under 10MB.",
+  "toast.bad_type": "Please upload a JPG, PNG, WEBP, or PDF file.",
+  "toast.uploaded": "{{label}} uploaded.",
+  "toast.upload_failed": "Failed to upload {{label}}. Please try again.",
+  "there": "there",
+  "greeting": "Hi {{name}}",
+  "title": "Upload your documents",
+  "subtitle": "{{destination}} · {{visaType}}. Your agent will be notified as soon as you upload each document.",
+  "required_docs": "Required documents",
+  "item.required": "Required",
+  "upload.uploading": "Uploading...",
+  "upload.replace": "Replace",
+  "upload.upload": "Upload",
+  "link_not_found.title": "Link not found",
+  "link_not_found.body": "This upload link is invalid or has expired. Please ask your agent to send you a new one.",
+  "signin.title": "Sign In to Upload",
+  "signin.body": "For your security, sign in before uploading your visa documents.",
+  "signin.cta": "Sign In to Continue",
+  "signin.footer": "Your documents are only visible to your agent."
+}

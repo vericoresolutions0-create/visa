@@ -10,6 +10,9 @@ const VAULT_CATEGORIES = [
   "travel",
   "education",
   "photo",
+  "legal",
+  "medical",
+  "other",
 ] as const;
 
 function requirePlan(plan: string | undefined) {

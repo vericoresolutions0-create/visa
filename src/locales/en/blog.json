@@ -1,0 +1,21 @@
+{
+  "header.resources": "Resources",
+  "header.cta": "Get Free Checklist",
+  "page.eyebrow": "Resources and Guides",
+  "page.title": "VisaClear Resource Centre",
+  "page.subtitle": "Practical guides, destination breakdowns, and document tips written specifically for African, Asian, and LatAm applicants.",
+  "featured.read": "Read Article",
+  "newsletter.title": "Get new guides in your inbox",
+  "newsletter.subtitle": "We publish practical visa guides every week. No spam, just useful information.",
+  "newsletter.subscribe": "Subscribe",
+  "newsletter.subscribing": "Subscribing…",
+  "toast.email_required": "Please enter your email address.",
+  "toast.already_subscribed": "You're already subscribed.",
+  "toast.subscribed": "Subscribed. Watch your inbox.",
+  "toast.subscribe_failed": "Failed to subscribe. Please try again.",
+  "article.not_found_title": "Article not found",
+  "article.back_to_blog": "Back to Blog",
+  "article.cta_title": "Ready to prepare your application?",
+  "article.cta_subtitle": "Get your exact document checklist in 60 seconds. Free to start.",
+  "article.cta_button": "Get My Free Checklist"
+}

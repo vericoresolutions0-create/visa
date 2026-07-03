@@ -1,0 +1,21 @@
+{
+  "header.resources": "الموارد",
+  "header.cta": "الحصول على القائمة المجانية",
+  "page.eyebrow": "الموارد والأدلة",
+  "page.title": "مركز موارد VisaClear",
+  "page.subtitle": "أدلة عملية وتحليلات وجهات ونصائح وثائق مكتوبة خصيصاً للمتقدمين من أفريقيا وآسيا وأمريكا اللاتينية.",
+  "featured.read": "قراءة المقال",
+  "newsletter.title": "احصل على أدلة جديدة في بريدك الوارد",
+  "newsletter.subtitle": "ننشر أدلة عملية حول التأشيرات كل أسبوع. لا بريد عشوائي، فقط معلومات مفيدة.",
+  "newsletter.subscribe": "اشتراك",
+  "newsletter.subscribing": "جارٍ الاشتراك…",
+  "toast.email_required": "يرجى إدخال عنوان بريدك الإلكتروني.",
+  "toast.already_subscribed": "أنت مشترك بالفعل.",
+  "toast.subscribed": "تم الاشتراك. راقب بريدك الوارد.",
+  "toast.subscribe_failed": "فشل الاشتراك. يرجى المحاولة مجدداً.",
+  "article.not_found_title": "المقال غير موجود",
+  "article.back_to_blog": "العودة إلى المدونة",
+  "article.cta_title": "هل أنت مستعد لتحضير طلبك؟",
+  "article.cta_subtitle": "احصل على قائمة المستندات الدقيقة خاصتك في 60 ثانية. مجاني للبدء.",
+  "article.cta_button": "احصل على قائمتي المجانية"
+}

@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { canUseMultiTripManager, canUseSuccessProbabilityScore, canUseDocumentVault } from "@/lib/plan-gates.ts";
-import { getChecklist, type VisaType } from "@/lib/visa-data.ts";
+import { type VisaType } from "@/lib/visa-data.ts";
+import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
 import { SettleInToolkit } from "@/pages/dashboard/trips/settle-in-toolkit.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
+import { useCountryName } from "@/hooks/use-country-name.ts";
+import { useTranslation } from "react-i18next";
 import {
   Globe,
   ArrowLeft,
@@ -42,6 +45,7 @@ import {
   Award,
   Home,
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
@@ -749,6 +753,11 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 path: "/checklist",
               },
               {
+                icon: <Globe className="w-4 h-4" />,
+                label: "Immigration Status",
+                path: "/dashboard/immigration-status",
+              },
+              {
                 icon: <StickyNote className="w-4 h-4" />,
                 label: "Document Vault",
                 path: "/dashboard/vault",
@@ -826,7 +835,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
             </button>
           </div>
           {tripsByUrgency.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:overflow-x-auto sm:pb-1 sm:-mx-1 sm:px-1 sm:snap-x">
               {tripsByUrgency.map((cl) => {
                 const needsAttention = cl.progress < 100;
                 return (
@@ -834,7 +843,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                     key={cl._id}
                     onClick={() => navigate(`/dashboard/trips/${cl._id}`)}
                     className={cn(
-                      "snap-start shrink-0 w-60 text-left rounded-2xl border p-4 shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer bg-card",
+                      "sm:snap-start sm:shrink-0 sm:w-60 w-full text-left rounded-2xl border p-4 shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer bg-card",
                       needsAttention ? "border-accent/40 shadow-accent/10" : "border-border",
                     )}
                   >
@@ -1262,13 +1271,16 @@ function DashboardShell({
 }) {
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
-  const { isDemoAuthenticated, signOut } = useDemoAuth();
+  const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
   const { isAuthenticated, signOut: signOutReal } = useAuth();
   // Real, Convex-authenticated users must be able to reach their own
   // dashboard, not just demo-mode sessions — this gate previously checked
   // isDemoAuthenticated only, which would have locked every real signed-in
   // user out of their own account.
   const canAccessDashboard = isDemoAuthenticated || isAuthenticated;
+  const shellUser = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
+  const shellPlan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (shellUser?.plan ?? "free");
+  const showNotificationBell = shellPlan === "pro" || shellPlan === "expert";
 
   const handleSignOut = async () => {
     if (isAuthenticated) {
@@ -1306,30 +1318,29 @@ function DashboardShell({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary">
               <Shield className="w-3.5 h-3.5 text-accent" />
               {title}
             </div>
             {canAccessDashboard ? (
               <>
+                {showNotificationBell && <NotificationBell />}
                 <button
                   onClick={() => navigate("/settings/profile")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
                   title="Profile settings"
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  Settings
+                  <span className="hidden sm:inline">Settings</span>
                 </button>
                 <button
-                  onClick={() => {
-                    void handleSignOut();
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
+                  onClick={() => { void handleSignOut(); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
                   title="Sign out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  Sign Out
+                  <span className="hidden sm:inline">Sign Out</span>
                 </button>
               </>
             ) : null}
@@ -1392,6 +1403,8 @@ function TripWorkspace() {
     api.checklists.getTrip,
     !isDemoAuthenticated && id ? { id } : "skip",
   );
+  const translateCountry = useCountryName();
+  const { i18n } = useTranslation();
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
   const reminders = useQuery(api.reminders.getReminders, isDemoAuthenticated ? "skip" : {});
   const updateTripDetails = useMutation(api.checklists.updateTripDetails);
@@ -1519,7 +1532,7 @@ function TripWorkspace() {
         return;
       }
 
-      const fullChecklist = getChecklist(trip.destination, trip.visaType as VisaType);
+      const fullChecklist = getLocalizedChecklist(trip.destination, trip.visaType as VisaType, i18n.language);
       const checkedSet = new Set(trip.checkedItems);
       const missingRequiredItems = (fullChecklist?.items ?? [])
         .filter((item) => item.required && !checkedSet.has(item.id))
@@ -1531,6 +1544,7 @@ function TripWorkspace() {
         visaType: trip.visaType,
         completionPercent: trip.progress,
         missingRequiredItems,
+        language: i18n.language,
       });
       setScoreResult(result);
     } catch (err) {
@@ -1551,7 +1565,7 @@ function TripWorkspace() {
           <span className="text-2xl shrink-0">{DEST_FLAGS[trip.destination] ?? "🌍"}</span>
           <div className="flex-1 min-w-0">
             <div className="text-xs text-muted-foreground capitalize">
-              {trip.origin} → {trip.destination} · {trip.visaType}
+              {translateCountry(trip.origin)} → {translateCountry(trip.destination)} · {trip.visaType}
             </div>
             <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden max-w-xs">
               <div className="h-full rounded-full bg-accent" style={{ width: `${trip.progress}%` }} />

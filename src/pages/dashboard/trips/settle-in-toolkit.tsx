@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, PartyPopper } from "lucide-react";
 import type { Doc } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
-import { getSettleInGuide } from "@/lib/settle-in-data.ts";
+import { getLocalizedSettleInGuide } from "@/lib/settle-in-data-i18n.ts";
 
 export function SettleInToolkit({
   trip,
@@ -13,7 +14,8 @@ export function SettleInToolkit({
   trip: Doc<"saved_checklists">;
   onSave: (checkedItems: string[], progress: number) => void | Promise<void>;
 }) {
-  const guide = getSettleInGuide(trip.destination);
+  const { t, i18n } = useTranslation("settle_in");
+  const guide = getLocalizedSettleInGuide(trip.destination, i18n.language);
   const [checkedItems, setCheckedItems] = useState<string[]>(trip.settleInCheckedItems ?? []);
   const [saving, setSaving] = useState(false);
 
@@ -26,11 +28,10 @@ export function SettleInToolkit({
       <div className="bg-card border border-border rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-1">
           <PartyPopper className="w-4 h-4 text-accent" />
-          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Settle-In Toolkit</h3>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("title")}</h3>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Congratulations on your approval! A Settle-In guide for {trip.destination} is coming soon — we don't
-          want to show you generic advice that might not actually be right for this destination.
+          {t("coming_soon", { destination: trip.destination })}
         </p>
       </div>
     );
@@ -49,9 +50,9 @@ export function SettleInToolkit({
     setSaving(true);
     try {
       await onSave(checkedItems, progress);
-      toast.success("Settle-in progress saved.");
+      toast.success(t("toast.saved"));
     } catch {
-      toast.error("Could not save your progress.");
+      toast.error(t("toast.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -62,12 +63,12 @@ export function SettleInToolkit({
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <PartyPopper className="w-4 h-4 text-accent" />
-          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">Settle-In Toolkit</h3>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{t("title")}</h3>
         </div>
-        <span className="text-xs font-semibold text-accent">{progress}% complete</span>
+        <span className="text-xs font-semibold text-accent">{t("complete_pct", { progress })}</span>
       </div>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
-        Congratulations on your {trip.destination} visa approval. Here's what to sort out once you arrive.
+        {t("intro", { destination: trip.destination })}
       </p>
 
       <div className="space-y-4">
@@ -93,7 +94,7 @@ export function SettleInToolkit({
                         {item.title}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
-                      <p className="text-[11px] text-muted-foreground/70 mt-1">Where: {item.where}</p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-1">{t("where", { where: item.where })}</p>
                     </div>
                   </label>
                 );
@@ -104,8 +105,8 @@ export function SettleInToolkit({
       </div>
 
       <Button size="sm" disabled={saving} className="cursor-pointer mt-4" onClick={() => void handleSave()}>
-        {saving ? "Saving…" : (
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Save progress</span>
+        {saving ? t("saving") : (
+          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> {t("save")}</span>
         )}
       </Button>
     </div>

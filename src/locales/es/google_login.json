@@ -1,0 +1,8 @@
+{
+  "eyebrow": "Inicio de sesión con Google",
+  "title": "Aún no configurado",
+  "description": "El inicio de sesión con Google aún no está conectado en este despliegue. Usa email y contraseña para iniciar sesión o crear una cuenta en su lugar.",
+  "continue_email": "Continuar con email/contraseña",
+  "auto_note": "El inicio de sesión con Google aparecerá automáticamente una vez configurado.",
+  "go_back": "Volver"
+}

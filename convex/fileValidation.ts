@@ -2,13 +2,16 @@ import { ConvexError } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
-export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15MB
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50MB
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
+  "image/jpg",   // non-standard but reported by some Windows/older systems
   "image/png",
   "image/webp",
+  "image/heic",  // iPhone camera photos
+  "image/heif",
 ]);
 
 // Validates the actual stored blob (size + content type Convex recorded at
@@ -30,14 +33,14 @@ export async function validateUploadedFile(
     await ctx.storage.delete(storageId);
     throw new ConvexError({
       code: "FILE_TOO_LARGE",
-      message: "Files must be under 15MB.",
+      message: "Files must be under 50MB.",
     });
   }
   if (!meta.contentType || !ALLOWED_UPLOAD_MIME_TYPES.has(meta.contentType)) {
     await ctx.storage.delete(storageId);
     throw new ConvexError({
       code: "INVALID_FILE_TYPE",
-      message: "Only PDF, JPEG, PNG, or WEBP files are allowed.",
+      message: "Only PDF, JPEG, JPG, PNG, WEBP, or HEIC files are allowed.",
     });
   }
 }

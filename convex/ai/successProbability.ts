@@ -4,6 +4,7 @@ import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import OpenAI from "openai";
 import { api } from "../_generated/api.js";
+import { languageInstruction } from "./_languageNames.ts";
 
 type SuccessProbabilityResult = {
   probability: number;
@@ -24,6 +25,7 @@ export const estimateSuccessProbability = action({
     visaType: v.string(),
     completionPercent: v.number(),
     missingRequiredItems: v.array(v.string()),
+    language: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<SuccessProbabilityResult> => {
     const user = await ctx.runQuery(api.users.getCurrentUser, {});
@@ -32,6 +34,22 @@ export const estimateSuccessProbability = action({
     }
     if (user.plan !== "expert") {
       throw new ConvexError({ code: "FORBIDDEN", message: "The Success Probability Score is an Expert feature. Upgrade at /pricing." });
+    }
+
+    // Input caps.
+    if (args.destination.length > 100 || args.visaType.length > 100 || args.origin.length > 100) {
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Input fields contain unexpectedly long values." });
+    }
+    if (args.completionPercent < 0 || args.completionPercent > 100) {
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Completion percent must be between 0 and 100." });
+    }
+    if (args.missingRequiredItems.length > 50) {
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Too many missing items provided." });
+    }
+    for (const item of args.missingRequiredItems) {
+      if (item.length > 200) {
+        throw new ConvexError({ code: "INVALID_INPUT", message: "A missing item description is too long." });
+      }
     }
 
     if (!process.env.OPENAI_API_KEY) {
@@ -59,7 +77,8 @@ Return ONLY valid JSON in this exact format:
   "probability": <number 0-100>,
   "reasoning": "<2-3 sentence plain-English explanation tied to their specific completion and missing items>",
   "recommendations": ["<specific next step>", "<specific next step>"]
-}`;
+}
+Keep the JSON keys exactly as shown above, in English. Only the text VALUES should be translated.${languageInstruction(args.language)}`;
 
     try {
       const response = await openai.chat.completions.create({
