@@ -1,4 +1,4 @@
-const CACHE_NAME = "visaclear-v2";
+const CACHE_NAME = "visaclear-v3";
 const urlsToCache = ["/", "/icon/icon-192.png", "/icon/icon-512.png"];
 
 self.addEventListener("install", (event) => {
