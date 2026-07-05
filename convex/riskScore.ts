@@ -17,6 +17,15 @@ export const submitRiskScore = mutation({
   handler: async (ctx, args) => {
     await ctx.runMutation(internal.rateLimits.checkAndIncrementRiskScoreUsage, {});
 
+    if (args.destination.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Destination is too long." });
+    if (args.visaType.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Visa type is too long." });
+    const answerValues = Object.values(args.answers);
+    if (answerValues.length > 50 || answerValues.some((v) => v.length > 200)) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid answers." });
+    }
+
     const user = await getCurrentUser(ctx);
 
     const { rawScore, displayScore } = computeRiskScore(args.answers);

@@ -125,13 +125,13 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside space-y-1 text-muted-foreground">
               <li>Access the personal data we hold about you</li>
               <li>Correct inaccurate or incomplete data</li>
-              <li>Request deletion of your data ("right to be forgotten")</li>
+              <li>Request deletion of your data ("right to be forgotten") — available directly in <a href="/settings/profile" className="text-primary underline">Settings</a></li>
               <li>Object to or restrict processing</li>
-              <li>Data portability (receive your data in a machine-readable format)</li>
+              <li>Data portability (receive your data in a machine-readable format) — use the "Download my data" button in <a href="/settings/profile" className="text-primary underline">Settings → Profile</a> for an instant JSON export of everything we hold</li>
               <li>Withdraw consent at any time</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
-              To exercise these rights, contact <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>. We will respond within 30 days.
+              For rights that cannot be exercised directly in-app (access requests, objections, restrictions), contact <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>. We will respond within 30 days.
             </p>
           </section>
 
