@@ -113,10 +113,13 @@ const AGENT_PLAN_DETAILS: Record<AgentPlanId, CheckoutPlan> = {
   },
 };
 
-const BUILT_IN_REFERRALS: Record<string, number> = {
-  VERICORE20: 20,
-  VISACLEAR20: 20,
-};
+function detectBrand(digits: string): string {
+  if (digits.startsWith("4")) return "Visa";
+  if (/^5[1-5]/.test(digits) || /^2(2[2-9]|[3-6]\d|7[01])/.test(digits)) return "Mastercard";
+  if (/^3[47]/.test(digits)) return "Amex";
+  if (/^6(011|22|4[4-9]|5)/.test(digits)) return "Discover";
+  return "Card";
+}
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -147,20 +150,11 @@ function getDemoReferralResult(code: string, ownCode?: string): ReferralResult {
     };
   }
 
-  const discountPercent = BUILT_IN_REFERRALS[normalizedCode];
-  if (!discountPercent) {
-    return {
-      valid: false,
-      discountPercent: 0,
-      message: "Referral code not found.",
-    };
-  }
-
   return {
     valid: true,
-    discountPercent,
+    discountPercent: 15,
     code: normalizedCode,
-    message: `${discountPercent}% discount applied.`,
+    message: "15% discount applied.",
   };
 }
 
@@ -379,7 +373,8 @@ export default function PaymentPage() {
       }
 
       const paymentMethod = {
-        cardNumber,
+        last4: cardDigits.slice(-4),
+        brand: detectBrand(cardDigits),
         nameOnCard,
         expiryMonth,
         expiryYear,

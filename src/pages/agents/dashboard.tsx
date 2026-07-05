@@ -678,12 +678,12 @@ function PipelineSection({ intakes }: { intakes: Intake[] }) {
             const s = STATUS_STYLES[stage];
             return (
               <div key={stage} className="space-y-3">
-                <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+                <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
                   <div className="flex items-center gap-2">
-                    <span className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
+                    <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", s.dot)} />
                     <span className="text-sm font-semibold text-primary">{STATUS_LABELS[stage]}</span>
                   </div>
-                  <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">{colIntakes.length}</span>
+                  <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", s.badge)}>{colIntakes.length}</span>
                 </div>
                 {colIntakes.map((intake) => {
                   const days = daysSince(intake.createdAt);
@@ -692,8 +692,8 @@ function PipelineSection({ intakes }: { intakes: Intake[] }) {
                   return (
                     <article
                       key={intake._id}
-                      className={cn("rounded-xl border p-4 shadow-sm",
-                        urgent ? "border-red-200 bg-red-50" : warning ? "border-amber-200 bg-amber-50" : "border-border bg-card")}
+                      className={cn("rounded-xl border-2 border-l-4 p-4 shadow-sm transition-shadow hover:shadow-md",
+                        urgent ? "border-red-200 border-l-red-500 bg-red-50/60" : warning ? "border-amber-200 border-l-amber-400 bg-amber-50/60" : "border-border border-l-transparent bg-card")}
                     >
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="min-w-0">
@@ -754,17 +754,56 @@ function AnalyticsSection({ intakes, unreadEnquiries }: { intakes: Intake[]; unr
     { label: "Ready to Review", value: String(intakes.filter(i => i.status === "documents_received").length), sub: "Documents received" },
   ];
 
+  const stageData = [
+    { stage: "awaiting_documents" as IntakeStatus, label: "Awaiting Docs", count: intakes.filter(i => i.status === "awaiting_documents").length, color: "bg-slate-400" },
+    { stage: "documents_received" as IntakeStatus, label: "Docs Received", count: intakes.filter(i => i.status === "documents_received").length, color: "bg-amber-400" },
+    { stage: "in_review" as IntakeStatus, label: "In Review", count: intakes.filter(i => i.status === "in_review").length, color: "bg-blue-500" },
+    { stage: "complete" as IntakeStatus, label: "Complete", count: intakes.filter(i => i.status === "complete").length, color: "bg-emerald-500" },
+  ];
+  const total = intakes.length;
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="font-serif text-2xl font-semibold text-primary">Analytics</h2>
         <p className="text-sm text-muted-foreground mt-0.5">Your practice at a glance</p>
       </div>
+
+      {/* Pipeline distribution */}
+      {total > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Pipeline Distribution</p>
+          {/* Stacked bar */}
+          <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-4">
+            {stageData.map((s) => s.count > 0 && (
+              <div
+                key={s.stage}
+                className={cn("transition-all", s.color)}
+                style={{ width: `${(s.count / total) * 100}%` }}
+                title={`${s.label}: ${s.count}`}
+              />
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {stageData.map((s) => (
+              <div key={s.stage} className="flex items-center gap-2">
+                <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", s.color)} />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">{s.label}</p>
+                  <p className="text-lg font-bold text-primary tabular-nums">{s.count}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-border bg-card p-6">
+          <div key={stat.label} className="rounded-2xl border border-border bg-card p-6 hover:shadow-sm transition-shadow">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{stat.label}</p>
-            <p className="text-3xl font-semibold text-primary">{stat.value}</p>
+            <p className="text-3xl font-semibold text-primary tabular-nums">{stat.value}</p>
             <p className="text-sm text-muted-foreground mt-1">{stat.sub}</p>
           </div>
         ))}
@@ -1053,18 +1092,28 @@ function OverviewSection({
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-11 h-11 rounded-xl bg-primary/8 flex items-center justify-center">
-                <kpi.Icon className="w-5 h-5 text-primary" />
+        {kpis.map((kpi, i) => {
+          const palettes = [
+            { bar: "bg-blue-500",   icon: "bg-blue-50 text-blue-600",   border: "border-t-blue-500" },
+            { bar: "bg-amber-500",  icon: "bg-amber-50 text-amber-600",  border: "border-t-amber-500" },
+            { bar: "bg-emerald-500",icon: "bg-emerald-50 text-emerald-600", border: "border-t-emerald-500" },
+            { bar: "bg-violet-500", icon: "bg-violet-50 text-violet-600",border: "border-t-violet-500" },
+          ];
+          const p = palettes[i % palettes.length];
+          return (
+            <div key={kpi.label} className={cn("rounded-2xl border-2 border-t-4 border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow", p.border)}>
+              <div className="flex items-start justify-between mb-4">
+                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", p.icon)}>
+                  <kpi.Icon className="w-5 h-5" />
+                </div>
+                <div className={cn("w-2 h-2 rounded-full mt-1.5", p.bar)} />
               </div>
+              <p className="text-4xl font-bold text-primary mb-1 tabular-nums">{kpi.value}</p>
+              <p className="text-base font-semibold text-foreground">{kpi.label}</p>
+              <p className="text-sm text-muted-foreground mt-1">{kpi.detail}</p>
             </div>
-            <p className="text-4xl font-bold text-primary mb-1">{kpi.value}</p>
-            <p className="text-base font-semibold text-foreground">{kpi.label}</p>
-            <p className="text-sm text-muted-foreground mt-1">{kpi.detail}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Today's actions */}
@@ -1146,6 +1195,50 @@ function OverviewSection({
           </div>
         )}
       </div>
+
+      {/* Recent activity */}
+      {(() => {
+        const recentDocs = intakes
+          .flatMap((i) => i.documents.map((d) => ({ ...d, clientName: i.clientName, intakeId: i._id })))
+          .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+          .slice(0, 5);
+        if (recentDocs.length === 0) return null;
+        return (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <UploadCloud className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg text-primary">Recent Activity</h3>
+                <p className="text-sm text-muted-foreground">Latest document uploads</p>
+              </div>
+            </div>
+            <ol className="space-y-0">
+              {recentDocs.map((doc, idx) => {
+                const hoursAgo = Math.floor((Date.now() - new Date(doc.uploadedAt).getTime()) / 3_600_000);
+                const timeStr = hoursAgo === 0 ? "Just now" : hoursAgo < 24 ? `${hoursAgo}h ago` : `${Math.floor(hoursAgo / 24)}d ago`;
+                return (
+                  <li key={doc._id} className={cn("flex items-start gap-4 py-3.5", idx < recentDocs.length - 1 && "border-b border-border")}>
+                    <div className="relative mt-0.5 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center">
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground leading-snug truncate">
+                        {doc.clientName} <span className="font-normal text-muted-foreground">uploaded</span> {doc.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{doc.fileName}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0 tabular-nums pt-0.5">{timeStr}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        );
+      })()}
 
       {/* Client portal preview */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">

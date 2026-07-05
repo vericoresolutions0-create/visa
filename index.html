@@ -87,14 +87,13 @@
       }
     </script>
 
-    <!-- Fonts -->
+    <!-- Fonts: only the two faces actually used (Inter + Cormorant Garamond).
+         The CSS @import in index.css fetches these; preconnect hints cut the
+         first-connection latency on mobile. The old 7-family URL that included
+         Fira Code, Geist, Geist Mono, JetBrains Mono, Montserrat, and Noto
+         Serif was loading ~5 font families the app never used. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap"
-      rel="stylesheet"
-      crossorigin
-    />
 
     <!-- Detect dark mode preference and set the class before next-themes loads. This avoids a flash of unstyled content (FOUC) when the page loads. -->
     <script>

@@ -45,7 +45,9 @@ export const listMyIntakes = query({
   args: {},
   handler: async (ctx) => {
     const agent = await getCurrentUser(ctx);
-    if (!agent) return [];
+    // Require an active agent plan — a lapsed plan means the agent is no
+    // longer entitled to access client documents.
+    if (!agent || !agent.agentPlan) return [];
 
     const intakes = await ctx.db
       .query("client_intakes")
@@ -128,8 +130,10 @@ export const getIntakeByToken = query({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
     if (!intake) return null;
+    // clientName is PII — never returned to an unauthenticated caller.
+    // The client already knows their own name; the portal only needs to
+    // confirm the visa route so they know they're in the right place.
     return {
-      clientName: intake.clientName,
       destination: intake.destination,
       visaType: intake.visaType,
       status: intake.status,

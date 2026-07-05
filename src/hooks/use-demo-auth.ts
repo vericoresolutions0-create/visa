@@ -44,7 +44,7 @@ let cachedDemoUser: DemoUser | null = null;
 
 const defaultDemoUser: DemoUser = {
   name: "Demo User",
-  email: "demo@visaclear.local",
+  email: "demo@visaclear.app",
   phone: "+1 555 0100",
   plan: "expert",
   role: "user",
@@ -57,7 +57,7 @@ const defaultDemoUser: DemoUser = {
     last4: "4242",
     nameOnMethod: "Demo User",
     expiresAt: "12/30",
-    billingEmail: "demo@visaclear.local",
+    billingEmail: "demo@visaclear.app",
     updatedAt: new Date().toISOString(),
   },
 };

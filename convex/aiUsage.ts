@@ -1,5 +1,5 @@
 import { ConvexError } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // Pro: 10 AI Visa Assistant questions/month. Expert: unlimited. Free: none.
@@ -28,7 +28,7 @@ export const getMyUsage = query({
 // ─── Check the caller's plan + monthly quota, then record one use ───────────
 // Called from the AI Visa Assistant action before it spends any real money on
 // an OpenAI call, so the limit is actually enforced rather than advisory.
-export const checkAndIncrementUsage = mutation({
+export const checkAndIncrementUsage = internalMutation({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);

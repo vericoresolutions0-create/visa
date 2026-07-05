@@ -1,9 +1,8 @@
 import { ConvexError } from "convex/values";
 import { v } from "convex/values";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel.js";
-import { getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // Generous ceiling — sized to absorb real legitimate traffic while still
 // stopping an unattended script from running unbounded OpenAI spend on an
@@ -124,16 +123,15 @@ export const checkAndIncrementWhitelabelUsage = internalMutation({
 // backstop in case an Expert account is compromised or scripts are run.
 const REJECTION_ANALYSER_MONTHLY_LIMIT = 20;
 
-export const checkAndIncrementRejectionAnalyserUsage = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx);
+export const checkAndIncrementRejectionAnalyserUsage = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
     const yearMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
     const existing = await ctx.db
       .query("rejection_analyser_usage")
       .withIndex("by_user_month", (q) =>
-        q.eq("userId", user._id).eq("yearMonth", yearMonth)
+        q.eq("userId", args.userId).eq("yearMonth", yearMonth)
       )
       .unique();
 
@@ -147,7 +145,7 @@ export const checkAndIncrementRejectionAnalyserUsage = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, { count: existing.count + 1 });
     } else {
-      await ctx.db.insert("rejection_analyser_usage", { userId: user._id, yearMonth, count: 1 });
+      await ctx.db.insert("rejection_analyser_usage", { userId: args.userId, yearMonth, count: 1 });
     }
   },
 });

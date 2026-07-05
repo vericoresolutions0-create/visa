@@ -78,14 +78,6 @@ export const getReferralDiscountForCheckout = internalQuery({
   },
 });
 
-function detectCardBrand(cardNumber: string) {
-  const digits = cardNumber.replace(/\D/g, "");
-  if (digits.startsWith("4")) return "Visa";
-  if (/^5[1-5]/.test(digits) || /^2(2[2-9]|[3-6]|7[01]|720)/.test(digits))
-    return "Mastercard";
-  if (/^3[47]/.test(digits)) return "Amex";
-  return "Card";
-}
 
 export const updateCurrentUser = mutation({
   args: {},
@@ -290,14 +282,20 @@ export const validateReferralCode = query({
   },
 });
 
+const PLAN_TIER: Record<string, number> = { free: 0, pro: 1, expert: 2 };
+const CYCLE_DAYS_CHECKOUT = { monthly: 30, yearly: 365 } as const;
+
 export const completeCheckout = mutation({
   args: {
     plan: v.union(v.literal("pro"), v.literal("expert")),
     billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
     referralCode: v.optional(v.string()),
     expectedAmountCents: v.number(),
+    // Raw card numbers (PANs) must never reach the server — PCI DSS scope.
+    // The frontend extracts last4 and brand client-side and sends only those.
     paymentMethod: v.object({
-      cardNumber: v.string(),
+      last4: v.string(),
+      brand: v.string(),
       nameOnCard: v.string(),
       expiryMonth: v.string(),
       expiryYear: v.string(),
@@ -305,7 +303,28 @@ export const completeCheckout = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    // This simulated path is only valid when Stripe is not configured.
+    // When Stripe IS live every real payment flows through its webhook into
+    // applyCheckoutCompleted — calling this mutation directly would bypass
+    // that verification entirely.
+    if (process.env.STRIPE_SECRET_KEY) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Checkout is handled via Stripe. Please use the Stripe checkout flow.",
+      });
+    }
+
     const user = await getCurrentUserOrThrow(ctx);
+
+    // Prevent downgrade via checkout (e.g. Expert → Pro). Cancellation +
+    // re-subscribe is the correct path for a real downgrade.
+    if ((PLAN_TIER[user.plan ?? "free"] ?? 0) > (PLAN_TIER[args.plan] ?? 0)) {
+      throw new ConvexError({
+        code: "INVALID_PLAN",
+        message: "To switch to a lower-tier plan, cancel your current subscription and resubscribe.",
+      });
+    }
+
     const baseAmountCents = PLAN_PRICES_CENTS[args.plan][args.billingCycle];
     const { discountPercent, normalizedCode } = await getReferralDiscount(
       ctx,
@@ -323,8 +342,7 @@ export const completeCheckout = mutation({
       });
     }
 
-    const cardDigits = args.paymentMethod.cardNumber.replace(/\D/g, "");
-    if (cardDigits.length < 12 || cardDigits.length > 19) {
+    if (!/^\d{4}$/.test(args.paymentMethod.last4)) {
       throw new ConvexError({
         code: "INVALID_PAYMENT_METHOD",
         message: "Enter a valid card number.",
@@ -343,6 +361,12 @@ export const completeCheckout = mutation({
       });
     }
 
+    // Lock in the referral code at first subscription only — never overwrite
+    // an existing one (prevents commission-stealing by passing a different
+    // code on a renewal or plan-change call).
+    const effectiveReferredByCode = user.referredByCode ?? normalizedCode;
+    const isFirstSubscription = !user.subscriptionStartedAt;
+
     const now = new Date().toISOString();
     await bumpPlanCounters(ctx, user.plan, args.plan);
     await ctx.db.patch(user._id, {
@@ -351,11 +375,11 @@ export const completeCheckout = mutation({
       subscriptionAmountCents: finalAmountCents,
       subscriptionStartedAt: user.subscriptionStartedAt ?? now,
       lastPaymentAt: now,
-      referredByCode: normalizedCode ?? user.referredByCode,
+      referredByCode: effectiveReferredByCode,
       paymentMethod: {
         type: "card",
-        brand: detectCardBrand(cardDigits),
-        last4: cardDigits.slice(-4),
+        brand: args.paymentMethod.brand,
+        last4: args.paymentMethod.last4,
         nameOnMethod: args.paymentMethod.nameOnCard.trim(),
         expiresAt: `${args.paymentMethod.expiryMonth.padStart(2, "0")}/${args.paymentMethod.expiryYear}`,
         billingEmail: args.paymentMethod.billingEmail.trim(),
@@ -363,13 +387,31 @@ export const completeCheckout = mutation({
       },
     });
 
-    await creditAgentReferralCommission(
-      ctx,
-      { ...user, referredByCode: normalizedCode ?? user.referredByCode },
-      args.plan,
-      args.billingCycle,
-      finalAmountCents,
-    );
+    // Upsert an expiry row so the daily cron actually lapses this plan when
+    // the billing period ends — without this the simulated-payment path
+    // grants the plan indefinitely.
+    const expiresAt = new Date(Date.now() + CYCLE_DAYS_CHECKOUT[args.billingCycle] * 24 * 60 * 60 * 1000).toISOString();
+    const existingExpiration = await ctx.db
+      .query("one_time_plan_expirations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (existingExpiration) {
+      await ctx.db.patch(existingExpiration._id, { expiresAt });
+    } else {
+      await ctx.db.insert("one_time_plan_expirations", { userId: user._id, expiresAt });
+    }
+
+    // Commission only on first-time subscriptions — re-calling this mutation
+    // for renewals or upgrades must not inflate commission counts.
+    if (isFirstSubscription) {
+      await creditAgentReferralCommission(
+        ctx,
+        { ...user, referredByCode: effectiveReferredByCode },
+        args.plan,
+        args.billingCycle,
+        finalAmountCents,
+      );
+    }
 
     return {
       plan: args.plan,
@@ -391,7 +433,8 @@ export const completeAgentCheckout = mutation({
     referralCode: v.optional(v.string()),
     expectedAmountCents: v.number(),
     paymentMethod: v.object({
-      cardNumber: v.string(),
+      last4: v.string(),
+      brand: v.string(),
       nameOnCard: v.string(),
       expiryMonth: v.string(),
       expiryYear: v.string(),
@@ -399,6 +442,13 @@ export const completeAgentCheckout = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    if (process.env.STRIPE_SECRET_KEY) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Checkout is handled via Stripe. Please use the Stripe checkout flow.",
+      });
+    }
+
     const user = await getCurrentUserOrThrow(ctx);
     const baseAmountCents =
       AGENT_PLAN_PRICES_CENTS[args.plan][args.billingCycle];
@@ -418,8 +468,7 @@ export const completeAgentCheckout = mutation({
       });
     }
 
-    const cardDigits = args.paymentMethod.cardNumber.replace(/\D/g, "");
-    if (cardDigits.length < 12 || cardDigits.length > 19) {
+    if (!/^\d{4}$/.test(args.paymentMethod.last4)) {
       throw new ConvexError({
         code: "INVALID_PAYMENT_METHOD",
         message: "Enter a valid card number.",
@@ -445,11 +494,11 @@ export const completeAgentCheckout = mutation({
       agentSubscriptionAmountCents: finalAmountCents,
       agentSubscriptionStartedAt: user.agentSubscriptionStartedAt ?? now,
       lastAgentPaymentAt: now,
-      referredByCode: normalizedCode ?? user.referredByCode,
+      referredByCode: user.referredByCode ?? normalizedCode,
       paymentMethod: {
         type: "card",
-        brand: detectCardBrand(cardDigits),
-        last4: cardDigits.slice(-4),
+        brand: args.paymentMethod.brand,
+        last4: args.paymentMethod.last4,
         nameOnMethod: args.paymentMethod.nameOnCard.trim(),
         expiresAt: `${args.paymentMethod.expiryMonth.padStart(2, "0")}/${args.paymentMethod.expiryYear}`,
         billingEmail: args.paymentMethod.billingEmail.trim(),
@@ -491,44 +540,73 @@ export const deleteCurrentAccount = mutation({
       });
     }
 
-    const checklists = await ctx.db
-      .query("saved_checklists")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const reminders = await ctx.db
-      .query("reminders")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const analyses = await ctx.db
-      .query("rejection_analyses")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const agentProfiles = await ctx.db
-      .query("agent_profiles")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const vaultDocs = await ctx.db
-      .query("vault_documents")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const countryWatches = await ctx.db
-      .query("country_watches")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const aiUsageRows = await ctx.db
-      .query("ai_assistant_usage")
-      .withIndex("by_user_month", (q) => q.eq("userId", user._id))
-      .collect();
+    // Collect every owned record in parallel — one await per table is safe
+    // here because each query is bounded by the user's own data.
+    const [
+      checklists,
+      reminders,
+      analyses,
+      agentProfiles,
+      vaultDocs,
+      countryWatches,
+      aiUsageRows,
+      communityPosts,
+      wallOfFameStories,
+      waitTimeReports,
+      clientIntakes,
+      planExpirations,
+      pendingEmailChanges,
+      rejectionAnalyserUsage,
+      inAppNotifications,
+      orgMembers,
+      visaStatuses,
+      travelTrips,
+      managedDependents,
+      checklistAudits,
+      userDailyUsage,
+    ] = await Promise.all([
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("ai_assistant_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
+      ctx.db.query("wait_time_reports").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
+      ctx.db.query("client_intakes").withIndex("by_agent", (q) => q.eq("agentId", user._id)).collect(),
+      ctx.db.query("one_time_plan_expirations").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("pending_email_changes").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("rejection_analyser_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("org_members").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).collect(),
+      ctx.db.query("checklist_audits").withIndex("by_user_route", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("user_daily_usage").withIndex("by_user_resource_date", (q) => q.eq("userId", user._id)).collect(),
+    ]);
 
-    // Vault documents also own a real uploaded file in Convex storage —
-    // deleting the row without deleting the file would leave it behind
-    // forever, which is a real privacy problem for a product that promises
-    // GDPR compliance in its own emails.
+    // Vault documents own real storage blobs — must be deleted first.
     for (const doc of vaultDocs) {
       await ctx.storage.delete(doc.storageId);
     }
 
-    for (const doc of [
+    // Client intakes own client_documents which in turn own storage blobs.
+    for (const intake of clientIntakes) {
+      const documents = await ctx.db
+        .query("client_documents")
+        .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
+        .collect();
+      for (const doc of documents) {
+        await ctx.storage.delete(doc.storageId);
+        await ctx.db.delete(doc._id);
+      }
+    }
+
+    // Delete all owned rows in one sweep.
+    for (const row of [
       ...checklists,
       ...reminders,
       ...analyses,
@@ -536,8 +614,22 @@ export const deleteCurrentAccount = mutation({
       ...vaultDocs,
       ...countryWatches,
       ...aiUsageRows,
+      ...communityPosts,
+      ...wallOfFameStories,
+      ...waitTimeReports,
+      ...clientIntakes,
+      ...planExpirations,
+      ...pendingEmailChanges,
+      ...rejectionAnalyserUsage,
+      ...inAppNotifications,
+      ...orgMembers,
+      ...visaStatuses,
+      ...travelTrips,
+      ...managedDependents,
+      ...checklistAudits,
+      ...userDailyUsage,
     ]) {
-      await ctx.db.delete(doc._id);
+      await ctx.db.delete(row._id);
     }
     await ctx.db.delete(user._id);
 
@@ -570,11 +662,28 @@ export const startTrial = mutation({
     if (user.trialStartedAt !== undefined) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You have already used your free trial." });
     }
+    const trialEndAt = new Date();
+    trialEndAt.setDate(trialEndAt.getDate() + 7);
+    const expiresAt = trialEndAt.toISOString();
+
     await bumpPlanCounters(ctx, user.plan, args.plan);
     await ctx.db.patch(user._id, {
       plan: args.plan,
       trialStartedAt: new Date().toISOString(),
     });
+
+    // Insert an expiry row so the daily downgrade cron actually lapses the
+    // trial after 7 days — without this the trial plan stays active forever.
+    const existingExpiration = await ctx.db
+      .query("one_time_plan_expirations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (existingExpiration) {
+      await ctx.db.patch(existingExpiration._id, { expiresAt });
+    } else {
+      await ctx.db.insert("one_time_plan_expirations", { userId: user._id, expiresAt });
+    }
+
     return user._id;
   },
 });

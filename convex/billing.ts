@@ -121,6 +121,27 @@ export const applyOneTimePlanPayment = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user || !user.email) return;
+
+    // Paystack retries webhooks on timeout — deduplicate by reference so the
+    // same charge.success event never activates a plan twice. The check-and-
+    // insert runs in the same Convex transaction: if two deliveries race, one
+    // commits the row, the other gets an OCC conflict, retries, finds the row,
+    // and returns early.
+    if (args.paystackReference) {
+      const alreadyProcessed = await ctx.db
+        .query("processed_webhook_events")
+        .withIndex("by_provider_reference", (q) =>
+          q.eq("provider", "paystack").eq("reference", args.paystackReference!),
+        )
+        .unique();
+      if (alreadyProcessed) return;
+      await ctx.db.insert("processed_webhook_events", {
+        provider: "paystack",
+        reference: args.paystackReference,
+        processedAt: new Date().toISOString(),
+      });
+    }
+
     const now = new Date();
     const nowIso = now.toISOString();
     const expiresAt = new Date(now.getTime() + CYCLE_DAYS[args.billingCycle] * 24 * 60 * 60 * 1000);

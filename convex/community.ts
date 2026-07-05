@@ -181,6 +181,13 @@ export const flagPost = mutation({
   args: { postId: v.id("community_posts") },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+
+    // Only paid members can flag — prevents 3 free accounts from coordinating
+    // to hide a legitimate post by hitting the FLAG_AUTO_HIDE_THRESHOLD.
+    if (!PAID_PLANS.includes(user.plan as (typeof PAID_PLANS)[number])) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Only Pro and Expert members can flag posts." });
+    }
+
     const post = await ctx.db.get(args.postId);
     if (!post) throw new ConvexError({ code: "NOT_FOUND", message: "Post not found." });
     if (post.status !== "approved") return;

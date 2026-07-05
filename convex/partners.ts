@@ -25,7 +25,11 @@ function normalizeSlug(raw: string): string {
 // cooldown blocks a tight automated loop without ever dropping a real visit
 // — two genuine humans clicking the same link rarely land within 2 seconds
 // of each other.
-const VISIT_COOLDOWN_MS = 2000;
+// Hard cap on unauthenticated visit recording per slug per day. High enough
+// that a real university email blast of 10,000 students all clicking on the
+// same day would be counted; low enough that an automated script hammering
+// the endpoint doesn't inflate partner stats beyond recognition.
+const MAX_DAILY_VISITS_PER_SLUG = 2000;
 
 export async function recordPartnerEvent(
   ctx: MutationCtx,
@@ -35,13 +39,16 @@ export async function recordPartnerEvent(
   if (!partner || !partner.active) return;
 
   if (args.eventType === "visit") {
-    const lastEvent = await ctx.db
-      .query("partner_referral_events")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .order("desc")
-      .first();
-    if (lastEvent && lastEvent.eventType === "visit" && Date.now() - new Date(lastEvent.createdAt).getTime() < VISIT_COOLDOWN_MS) {
-      return;
+    const dateKey = new Date().toISOString().split("T")[0];
+    const dailyRow = await ctx.db
+      .query("partner_slug_daily_events")
+      .withIndex("by_slug_date", (q) => q.eq("slug", args.slug).eq("dateKey", dateKey))
+      .unique();
+    if (dailyRow && dailyRow.count >= MAX_DAILY_VISITS_PER_SLUG) return;
+    if (dailyRow) {
+      await ctx.db.patch(dailyRow._id, { count: dailyRow.count + 1 });
+    } else {
+      await ctx.db.insert("partner_slug_daily_events", { slug: args.slug, dateKey, count: 1 });
     }
   }
 

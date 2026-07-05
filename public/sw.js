@@ -29,9 +29,23 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
+    // Stale-while-revalidate for the HTML shell: return the cached version
+    // immediately (near-instant on repeat visits) while fetching an update
+    // in the background. The SPA always fetches live data from Convex, so
+    // an HTML shell that is one deploy old is never a problem in practice.
     event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match("/"))
+      caches.match("/").then((cached) => {
+        const networkFetch = fetch(event.request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put("/", clone));
+            }
+            return response;
+          })
+          .catch(() => null);
+        return cached ?? networkFetch;
+      })
     );
     return;
   }

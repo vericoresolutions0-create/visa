@@ -3,7 +3,7 @@
 import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import OpenAI from "openai";
-import { api } from "../_generated/api.js";
+import { internal } from "../_generated/api.js";
 import { languageInstruction } from "./_languageNames.ts";
 
 export const askVisaQuestion = action({
@@ -28,7 +28,7 @@ export const askVisaQuestion = action({
     // Enforces real sign-in + the Pro/Expert monthly quota before spending
     // any money on an OpenAI call. Throws (and aborts) if the caller is on
     // the free plan or has used up their monthly questions.
-    await ctx.runMutation(api.aiUsage.checkAndIncrementUsage, {});
+    await ctx.runMutation(internal.aiUsage.checkAndIncrementUsage, {});
 
     if (!process.env.OPENAI_API_KEY) {
       throw new ConvexError({
@@ -63,6 +63,7 @@ Formatting rules (very important):
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
+        max_tokens: 1024,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: args.question },

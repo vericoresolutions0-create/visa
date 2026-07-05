@@ -70,6 +70,14 @@ export default defineConfig({
           if (id.includes("/motion/") || id.includes("framer-motion")) return "vendor-motion";
           if (id.includes("i18next")) return "vendor-i18n";
           if (id.includes("convex") || id.includes("@tanstack")) return "vendor-data";
+          // Large icon library — split so it loads in parallel with react on first paint.
+          if (id.includes("lucide-react")) return "vendor-icons";
+          // Charting library pulls in d3 — only used on dashboard stats pages.
+          if (id.includes("recharts") || id.includes("node_modules/d3") || id.includes("node_modules/victory-")) return "vendor-charts";
+          // PDF generation — only used on checklist export; very large, defer it.
+          if (id.includes("jspdf")) return "vendor-pdf";
+          // Error monitoring — not on the critical render path.
+          if (id.includes("@sentry")) return "vendor-sentry";
           return undefined;
         },
       },

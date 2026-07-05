@@ -57,7 +57,7 @@ function ClientPortalInner({
   token: string;
   destination: string;
   visaType: string;
-  clientName: string;
+  clientName?: string;
 }) {
   const { t, i18n } = useTranslation("client-portal");
   const [, setI18nTick] = useState(0);
@@ -269,7 +269,7 @@ export default function ClientPortalPage() {
                 token={token}
                 destination={intake.destination}
                 visaType={intake.visaType}
-                clientName={intake.clientName}
+                clientName={undefined}
               />
             </Authenticated>
           </>

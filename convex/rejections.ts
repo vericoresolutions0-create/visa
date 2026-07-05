@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { bumpStat } from "./platformStats.ts";
@@ -9,19 +9,14 @@ export const generateRejectionUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);
-    const plan = user.plan ?? "free";
-    const isTrialActive = user.trialStartedAt
-      ? new Date() < new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)
-      : false;
-    const effectivePlan = isTrialActive ? "pro" : plan;
-    if (effectivePlan !== "expert") {
+    if ((user.plan ?? "free") !== "expert") {
       throw new ConvexError({ code: "FORBIDDEN", message: "The Rejection Analyser requires an Expert plan." });
     }
     return await ctx.storage.generateUploadUrl();
   },
 });
 
-export const saveAnalysis = mutation({
+export const saveAnalysis = internalMutation({
   args: {
     destination: v.string(),
     visaType: v.string(),

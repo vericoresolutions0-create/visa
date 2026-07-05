@@ -856,6 +856,27 @@ export default defineSchema({
     expertUsers: v.optional(v.number()),
   }),
 
+  // Immutable idempotency log for payment webhooks. One row per processed
+  // provider+reference pair. Paystack retries webhooks on timeout — this
+  // table ensures the same charge.success event is never applied twice even
+  // if the webhook fires multiple times. Never deleted.
+  processed_webhook_events: defineTable({
+    provider: v.string(),    // "paystack" (future: "stripe")
+    reference: v.string(),   // Paystack reference or Stripe event ID
+    processedAt: v.string(),
+  }).index("by_provider_reference", ["provider", "reference"]),
+
+  // Per-slug daily visit counter for the partner referral system. Caps
+  // unauthenticated "visit" recording at 500 events per slug per day —
+  // same backstop pattern as photo_check_daily_usage. One row per (slug,
+  // date); rows accumulate and are never deleted (they're small and
+  // serve as a permanent traffic log).
+  partner_slug_daily_events: defineTable({
+    slug: v.string(),
+    dateKey: v.string(),  // "YYYY-MM-DD"
+    count: v.number(),
+  }).index("by_slug_date", ["slug", "dateKey"]),
+
   // One row per qualifying payment from a client an agent referred — 15% of
   // a Pro payment, 20% of an Expert payment, logged as an immutable ledger
   // entry (not a mutable running counter) so the commission total is always

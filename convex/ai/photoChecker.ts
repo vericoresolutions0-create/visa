@@ -15,6 +15,30 @@ type PhotoCheckResult = {
   summary: string;
 };
 
+function isPhotoCheckResult(obj: unknown): obj is PhotoCheckResult {
+  if (!obj || typeof obj !== "object") return false;
+  const r = obj as Record<string, unknown>;
+  return (
+    typeof r.score === "number" &&
+    (r.verdict === "Approved" || r.verdict === "Review Required" || r.verdict === "Rejected") &&
+    Array.isArray(r.issues) &&
+    typeof r.summary === "string"
+  );
+}
+
+// Allowed image MIME prefixes for the data URI the frontend sends.
+// Validating this server-side prevents someone crafting a data URI with an
+// unexpected MIME type (e.g. text/html) to try to confuse the vision model.
+const ALLOWED_IMAGE_DATA_PREFIXES = [
+  "data:image/jpeg",
+  "data:image/jpg",
+  "data:image/png",
+  "data:image/webp",
+  "data:image/heic",
+  "data:image/heif",
+  "data:image/gif",
+];
+
 export const checkPassportPhoto = action({
   args: {
     imageBase64: v.string(),
@@ -33,6 +57,11 @@ export const checkPassportPhoto = action({
     // No sign-in is required for this guest feature, so there's no user to
     // gate by — this is a platform-wide backstop against scripted abuse.
     await ctx.runMutation(internal.rateLimits.checkAndIncrementPhotoCheckUsage, {});
+
+    // Validate MIME type from the data URI prefix before touching the payload.
+    if (!ALLOWED_IMAGE_DATA_PREFIXES.some((prefix) => args.imageBase64.startsWith(prefix))) {
+      throw new ConvexError({ code: "INVALID_IMAGE_TYPE", message: "Only JPEG, PNG, WebP, or HEIC photos are supported." });
+    }
 
     // Input length cap — base64 of a 5 MB image is ~6.7 MB of text.
     // Frontend already blocks >5 MB files, but we enforce server-side too.
@@ -78,6 +107,7 @@ The "verdict" field must always be exactly one of the literal English strings "A
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
+        max_tokens: 512,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -98,8 +128,11 @@ The "verdict" field must always be exactly one of the literal English strings "A
       });
 
       const raw = response.choices[0]?.message?.content ?? "{}";
-      const result = JSON.parse(raw) as PhotoCheckResult;
-      return result;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isPhotoCheckResult(parsed)) {
+        throw new ConvexError({ code: "AI_ERROR", message: "Photo analysis returned an unexpected format. Please try again." });
+      }
+      return parsed;
     } catch (error) {
       if (error instanceof ConvexError) throw error;
       if (error instanceof OpenAI.APIError) {

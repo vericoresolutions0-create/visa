@@ -83,6 +83,7 @@ Keep the JSON keys exactly as shown above, in English. Only the text VALUES shou
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
+        max_tokens: 512,
         response_format: { type: "json_object" },
         messages: [{ role: "system", content: systemPrompt }],
       });

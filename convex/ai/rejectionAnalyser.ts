@@ -4,7 +4,25 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
 import { ConvexError } from "convex/values";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+
+function isRejectionAnalysisResult(obj: unknown): obj is RejectionAnalysisResult {
+  if (!obj || typeof obj !== "object") return false;
+  const r = obj as Record<string, unknown>;
+  return (
+    Array.isArray(r.rootCauses) &&
+    Array.isArray(r.documentFixGuide) &&
+    Array.isArray(r.timelinedSteps) &&
+    typeof r.appealRecommended === "boolean" &&
+    typeof r.appealDraft === "string" &&
+    typeof r.waitPeriodAdvice === "string" &&
+    Array.isArray(r.strengthsToKeep) &&
+    Array.isArray(r.missedDocuments) &&
+    Array.isArray(r.urgentActions) &&
+    typeof r.successProbability === "number" &&
+    typeof r.summary === "string"
+  );
+}
 import { languageInstruction } from "./_languageNames.ts";
 
 export type RootCause = {
@@ -50,12 +68,11 @@ export const analyseRejection = action({
   handler: async (ctx, args): Promise<RejectionAnalysisResult> => {
     const user = await ctx.runQuery(api.users.getCurrentUser, {});
     if (!user) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
-    const plan = user.plan ?? "free";
-    const isTrialActive = user.trialStartedAt
-      ? new Date() < new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)
-      : false;
-    const effectivePlan = isTrialActive ? "pro" : plan;
-    if (effectivePlan !== "expert") {
+    // startTrial sets user.plan to the chosen plan (pro or expert), so a trial
+    // user's plan field is already the correct one — no need to remap it. The
+    // old "isTrialActive → clamp to pro" logic was wrong: it blocked Expert
+    // trial users from Expert features.
+    if ((user.plan ?? "free") !== "expert") {
       throw new ConvexError({ code: "FORBIDDEN", message: "The Rejection Analyser requires an Expert plan. Upgrade at /pricing." });
     }
 
@@ -67,8 +84,8 @@ export const analyseRejection = action({
       throw new ConvexError({ code: "INVALID_INPUT", message: "Input fields contain unexpectedly long values." });
     }
 
-    // Per-user monthly rate limit.
-    await ctx.runMutation(api.rateLimits.checkAndIncrementRejectionAnalyserUsage, {});
+    // Per-user monthly rate limit — internal so the client can't call it directly.
+    await ctx.runMutation(internal.rateLimits.checkAndIncrementRejectionAnalyserUsage, { userId: user._id });
 
     if (!process.env.OPENAI_API_KEY) {
       throw new ConvexError({
@@ -170,6 +187,7 @@ Keep all JSON key names in English. Translate text values only if instructed bel
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         temperature: 0.2,
+        max_tokens: 4096,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -178,9 +196,13 @@ Keep all JSON key names in English. Translate text values only if instructed bel
       });
 
       const raw = response.choices[0]?.message?.content ?? "{}";
-      const result = JSON.parse(raw) as RejectionAnalysisResult;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isRejectionAnalysisResult(parsed)) {
+        throw new ConvexError({ code: "AI_ERROR", message: "Analysis returned an unexpected format. Please try again." });
+      }
+      const result = parsed;
 
-      await ctx.runMutation(api.rejections.saveAnalysis, {
+      await ctx.runMutation(internal.rejections.saveAnalysis, {
         destination: args.destination,
         visaType: args.visaType,
         refusalText: refusalText.slice(0, 2000),
