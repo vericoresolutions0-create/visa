@@ -74,6 +74,23 @@ export const upsertProfile = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
 
+    if (!args.fullName.trim() || args.fullName.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Full name must be under 200 characters." });
+    if (!args.email.includes("@") || args.email.length > 254)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
+    if (args.phone && args.phone.length > 30)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Phone number is too long." });
+    if (!args.bio.trim() || args.bio.length > 1000)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Bio is required and must be under 1000 characters." });
+    if (args.country.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Country is too long." });
+    if (args.specialisations.length > 20 || args.specialisations.some((s) => s.length > 100))
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Too many specialisations or one is too long." });
+    if (args.languages.length > 20 || args.languages.some((l) => l.length > 100))
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Too many languages or one is too long." });
+    if (args.yearsExperience < 0 || args.yearsExperience > 60)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Years of experience must be between 0 and 60." });
+
     const existing = await ctx.db
       .query("agent_profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

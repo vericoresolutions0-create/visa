@@ -27,7 +27,7 @@ export const inviteEmployee = mutation({
   handler: async (ctx, args) => {
     const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
     const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
+    if (!email || !email.includes("@") || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
 
@@ -130,8 +130,8 @@ export const addEmployeeNote = mutation({
   handler: async (ctx, args) => {
     const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
     await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
-    if (!args.note.trim()) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Note can't be empty." });
+    if (!args.note.trim() || args.note.length > 2000) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Note can't be empty and must be under 2000 characters." });
     }
     await ctx.db.insert("org_employee_notes", {
       linkId: args.linkId,

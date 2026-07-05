@@ -45,6 +45,10 @@ export const submitStory = mutation({
       "You can submit up to 3 Wall of Fame stories per day. Resets at midnight UTC.",
     );
 
+    if (args.destination.length > 100)
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Destination is too long." });
+    if (args.visaType.length > 100)
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Visa type is too long." });
     if (args.refusalCount < 1 || args.refusalCount > 20) {
       throw new ConvexError({ code: "INVALID_INPUT", message: "Refusal count must be between 1 and 20." });
     }

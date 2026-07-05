@@ -10,7 +10,7 @@ export const subscribe = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const email = args.email.trim().toLowerCase();
-    if (!EMAIL_PATTERN.test(email)) {
+    if (!EMAIL_PATTERN.test(email) || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
 
