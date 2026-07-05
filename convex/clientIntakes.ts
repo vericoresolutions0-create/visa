@@ -22,6 +22,16 @@ export const createIntake = mutation({
     if (!agent.agentPlan) {
       throw new ConvexError({ code: "FORBIDDEN", message: "An active agent plan is required to create client intakes." });
     }
+    if (!args.clientName.trim() || args.clientName.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Client name must be under 200 characters." });
+    if (args.clientEmail && args.clientEmail.length > 254)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Email address is too long." });
+    if (args.clientPhone && args.clientPhone.length > 30)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Phone number is too long." });
+    if (args.destination.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Destination must be under 100 characters." });
+    if (args.visaType.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Visa type must be under 100 characters." });
 
     const token = generateToken();
     await ctx.db.insert("client_intakes", {
@@ -196,6 +206,11 @@ export const recordDocument = mutation({
   },
   handler: async (ctx, args) => {
     const client = await getCurrentUserOrThrow(ctx);
+
+    if (!args.label.trim() || args.label.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Label must be under 200 characters." });
+    if (args.fileName.length > 260)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "File name is too long." });
 
     const intake = await ctx.db
       .query("client_intakes")

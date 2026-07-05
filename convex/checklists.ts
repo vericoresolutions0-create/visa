@@ -60,6 +60,19 @@ export const saveChecklist = mutation({
     const user = await getUserOrThrow(ctx);
     const plan = getEffectivePlan(user);
 
+    if (args.origin.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Origin must be under 100 characters." });
+    if (args.destination.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Destination must be under 100 characters." });
+    if (args.visaType.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Visa type must be under 100 characters." });
+    if (!args.title.trim() || args.title.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Title must be under 200 characters." });
+    if (args.tripName && args.tripName.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Trip name must be under 200 characters." });
+    if (args.travelDate && args.travelDate.length > 20)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid travel date." });
+
     // Check if a checklist for this combo already exists and update it
     const existing = await ctx.db
       .query("saved_checklists")
@@ -145,6 +158,12 @@ export const updateTripDetails = mutation({
     if (doc.userId !== user._id) {
       throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this trip" });
     }
+    if (args.tripName && args.tripName.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Trip name must be under 200 characters." });
+    if (args.notes && args.notes.length > 2000)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Notes must be under 2000 characters." });
+    if (args.travelDate && args.travelDate.length > 20)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid travel date." });
     const { id, ...patch } = args;
     const justApproved = args.status === "approved" && doc.status !== "approved";
     await ctx.db.patch(id, patch);

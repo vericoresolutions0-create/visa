@@ -99,6 +99,28 @@ function ProfileSettingsInner() {
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [exportRequested, setExportRequested] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportData = useQuery(
+    api.users.exportMyData,
+    isDemoAuthenticated || !exportRequested ? "skip" : {},
+  );
+
+  useEffect(() => {
+    if (!exportData || !exportRequested) return;
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `visaclear-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setExportRequested(false);
+    setExporting(false);
+    toast.success("Your data export has downloaded.");
+  }, [exportData, exportRequested]);
 
   useEffect(() => {
     const user = demoUser ?? userQuery;
@@ -635,6 +657,29 @@ function ProfileSettingsInner() {
           </Button>
         </div>
       </section>
+
+      {!isDemoAuthenticated && (
+        <section className="bg-muted/40 border border-border rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold">Your data</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Under GDPR Article 20, you have the right to receive a copy of all the data we hold about you. This downloads a JSON file containing your profile, checklists, documents, travel log, and more.
+          </p>
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            disabled={exporting}
+            onClick={() => {
+              setExporting(true);
+              setExportRequested(true);
+            }}
+          >
+            {exporting ? "Preparing export..." : "Download my data"}
+          </Button>
+        </section>
+      )}
 
       <section className="bg-destructive/5 border border-destructive/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-4">

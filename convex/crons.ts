@@ -3,48 +3,46 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Run daily at 8:00 AM UTC — sends email alerts for all due reminders
-crons.daily(
+// 8:00 AM UTC daily — sends email alerts for all due reminders
+crons.cron(
   "send due reminder emails",
-  { hourUTC: 8, minuteUTC: 0 },
+  "0 8 * * *",
   internal.reminderDispatch.dispatchDueReminders,
   {},
 );
 
-// Run daily at 9:00 AM UTC — downgrades plans paid via a one-time payment
-// method (Pix, boleto, OXXO, Paystack) whose cycle lapsed without renewal.
-crons.daily(
+// 9:00 AM UTC daily — downgrades plans paid via a one-time payment method
+// (Pix, boleto, OXXO, Paystack) whose cycle lapsed without renewal.
+crons.cron(
   "downgrade expired one-time plans",
-  { hourUTC: 9, minuteUTC: 0 },
+  "0 9 * * *",
   internal.billing.dispatchExpiredPlanDowngrades,
   {},
 );
 
-// Run daily at 7:00 AM UTC — warns paid users when vault documents are
-// expiring in exactly 30 or 7 days. Silently skips free users.
-crons.daily(
+// 7:00 AM UTC daily — warns paid users when vault documents are expiring
+// in 30 or 7 days. Silently skips free users.
+crons.cron(
   "document expiry alerts",
-  { hourUTC: 7, minuteUTC: 0 },
+  "0 7 * * *",
   internal.notificationDispatch.dispatchDocumentExpiryAlerts,
   {},
 );
 
-// Run daily at 7:30 AM UTC — warns paid users when a saved trip's travel
-// date is 7, 3, or 1 day away. Silently skips free users and trips with
-// no travelDate set.
-crons.daily(
+// 7:30 AM UTC daily — warns paid users when a saved trip's travel date is
+// 7, 3, or 1 day away. Silently skips free users and trips with no date.
+crons.cron(
   "trip deadline alerts",
-  { hourUTC: 7, minuteUTC: 30 },
+  "30 7 * * *",
   internal.notificationDispatch.dispatchTripDeadlineAlerts,
   {},
 );
 
-// Run weekly (Monday 8:00 AM UTC) — emails admins when any destination's
-// checklist hasn't been re-verified in 90+ days, so staleness gets noticed
-// and acted on instead of silently sitting there.
-crons.weekly(
+// Monday 8:00 AM UTC weekly — emails admins when any destination's checklist
+// hasn't been re-verified in 90+ days.
+crons.cron(
   "visa data freshness digest",
-  { dayOfWeek: "monday", hourUTC: 8, minuteUTC: 0 },
+  "0 8 * * 1",
   internal.dataFreshnessDigest.sendStaleDataDigest,
   {},
 );

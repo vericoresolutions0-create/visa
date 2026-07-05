@@ -10,11 +10,14 @@ export const addDependent = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
-    if (!args.fullName.trim()) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Name is required." });
+    if (!args.fullName.trim() || args.fullName.length > 200) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Name is required and must be under 200 characters." });
     }
-    if (!args.relationship.trim()) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Relationship is required (e.g. Son, Daughter)." });
+    if (!args.relationship.trim() || args.relationship.length > 100) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Relationship is required (e.g. Son, Daughter) — max 100 characters." });
+    }
+    if (args.dateOfBirth && args.dateOfBirth.length > 20) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid date of birth." });
     }
     return await ctx.db.insert("managed_dependents", {
       parentUserId: user._id,
@@ -58,11 +61,14 @@ export const updateDependent = mutation({
     }
     const fullName = args.fullName?.trim();
     const relationship = args.relationship?.trim();
-    if (args.fullName !== undefined && !fullName) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Name can't be empty." });
+    if (args.fullName !== undefined && (!fullName || args.fullName.length > 200)) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Name can't be empty and must be under 200 characters." });
     }
-    if (args.relationship !== undefined && !relationship) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Relationship can't be empty." });
+    if (args.relationship !== undefined && (!relationship || args.relationship.length > 100)) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Relationship can't be empty and must be under 100 characters." });
+    }
+    if (args.dateOfBirth && args.dateOfBirth.length > 20) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid date of birth." });
     }
     await ctx.db.patch(args.id, {
       ...(fullName !== undefined ? { fullName } : {}),

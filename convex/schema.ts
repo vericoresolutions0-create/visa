@@ -547,6 +547,7 @@ export default defineSchema({
     moderatedByUserId: v.optional(v.id("users")),
   })
     .index("by_status", ["status"])
+    .index("by_status_category", ["status", "category"])
     .index("by_user", ["userId"])
     .index("by_country", ["country"]),
 

@@ -34,6 +34,8 @@ export const addWatch = mutation({
       .query("country_watches")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+    if (args.countryName.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Country name is too long." });
     if (existing.some((w) => w.countryName === args.countryName)) {
       return; // already watching
     }

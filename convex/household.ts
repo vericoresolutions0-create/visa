@@ -39,11 +39,11 @@ export const inviteHouseholdMember = mutation({
     }
 
     const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
+    if (!email || !email.includes("@") || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
-    if (!args.relationship.trim()) {
-      throw new ConvexError({ code: "BAD_REQUEST", message: "Please describe their relationship to you (e.g. Spouse)." });
+    if (!args.relationship.trim() || args.relationship.length > 100) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Please describe their relationship to you (e.g. Spouse) — max 100 characters." });
     }
 
     const existingLinks = await ctx.db

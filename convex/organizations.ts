@@ -27,10 +27,12 @@ export async function createOrganizationImpl(
   args: { name: string; type: "employer" | "household" },
 ) {
   const user = await getCurrentUserOrThrow(ctx);
-  if (!args.name.trim()) {
+  if (!args.name.trim() || args.name.length > 200) {
     throw new ConvexError({
       code: "BAD_REQUEST",
-      message: args.type === "household" ? "Household name is required." : "Company name is required.",
+      message: args.type === "household"
+        ? "Household name is required and must be under 200 characters."
+        : "Company name is required and must be under 200 characters.",
     });
   }
 

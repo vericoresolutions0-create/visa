@@ -720,3 +720,167 @@ export const startTrial = mutation({
     return user._id;
   },
 });
+
+// ─── GDPR Article 15 / 20 — data access and portability ─────────────────────
+// Returns all personal data held for the signed-in user in a single structured
+// object. The frontend renders a "Download my data" button that serialises this
+// to JSON. Vault document binaries are excluded (they're the user's own files
+// and the download link is provided separately), but all metadata is included.
+export const exportMyData = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    const [
+      checklists,
+      reminders,
+      vaultDocs,
+      analyses,
+      communityPosts,
+      wallOfFameStories,
+      countryWatches,
+      travelTrips,
+      managedDependents,
+      visaStatuses,
+      riskScoreResults,
+      inAppNotifications,
+      agentProfile,
+      sentContactRequests,
+    ] = await Promise.all([
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
+      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).collect(),
+      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).unique(),
+      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).collect(),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: {
+        email: user.email,
+        name: user.name,
+        country: user.country,
+        plan: user.plan,
+        referralCode: user.referralCode,
+        trialStartedAt: user.trialStartedAt,
+        emailVerificationTime: user.emailVerificationTime,
+        createdAt: user._creationTime,
+      },
+      checklists: checklists.map((c) => ({
+        origin: c.origin,
+        destination: c.destination,
+        visaType: c.visaType,
+        title: c.title,
+        tripName: c.tripName,
+        travelDate: c.travelDate,
+        status: c.status,
+        progress: c.progress,
+        notes: c.notes,
+        savedAt: c.savedAt,
+      })),
+      reminders: reminders.map((r) => ({
+        title: r.title,
+        note: r.note,
+        dueDate: r.dueDate,
+        email: r.email,
+        sent: r.sent,
+        createdAt: r.createdAt,
+      })),
+      vaultDocuments: vaultDocs.map((d) => ({
+        label: d.label,
+        fileName: d.fileName,
+        fileSize: d.fileSize,
+        mimeType: d.mimeType,
+        expiryDate: d.expiryDate,
+        uploadedAt: d.uploadedAt,
+      })),
+      rejectionAnalyses: analyses.map((a) => ({
+        destination: a.destination,
+        visaType: a.visaType,
+        createdAt: a.createdAt,
+      })),
+      communityPosts: communityPosts.map((p) => ({
+        title: p.title,
+        body: p.body,
+        category: p.category,
+        status: p.status,
+        createdAt: p.createdAt,
+      })),
+      wallOfFameStories: wallOfFameStories.map((s) => ({
+        destination: s.destination,
+        visaType: s.visaType,
+        refusalCount: s.refusalCount,
+        whatWentWrong: s.whatWentWrong,
+        whatFixedIt: s.whatFixedIt,
+        status: s.status,
+        createdAt: s.createdAt,
+      })),
+      watchedCountries: countryWatches.map((w) => w.countryName),
+      travelLog: travelTrips.map((t) => ({
+        destination: t.destination,
+        departureDate: t.departureDate,
+        returnDate: t.returnDate,
+        purpose: t.purpose,
+        notes: t.notes,
+        daysAbsent: t.daysAbsent,
+        createdAt: t.createdAt,
+      })),
+      dependents: managedDependents.map((d) => ({
+        fullName: d.fullName,
+        relationship: d.relationship,
+        dateOfBirth: d.dateOfBirth,
+        createdAt: d.createdAt,
+      })),
+      visaStatuses: visaStatuses.map((vs) => ({
+        jurisdiction: vs.jurisdiction,
+        visaType: vs.visaType,
+        hostCountry: vs.hostCountry,
+        grantDate: vs.grantDate,
+        expiryDate: vs.expiryDate,
+        sponsorEmployer: vs.sponsorEmployer,
+        notes: vs.notes,
+        active: vs.active,
+        createdAt: vs.createdAt,
+      })),
+      riskScores: riskScoreResults.map((r) => ({
+        destination: r.destination,
+        visaType: r.visaType,
+        rawScore: r.rawScore,
+        displayScore: r.displayScore,
+        createdAt: r.createdAt,
+      })),
+      notifications: inAppNotifications.map((n) => ({
+        title: n.title,
+        body: n.body,
+        read: n.read,
+        createdAt: n.createdAt,
+      })),
+      agentProfile: agentProfile
+        ? {
+            fullName: agentProfile.fullName,
+            email: agentProfile.email,
+            phone: agentProfile.phone,
+            bio: agentProfile.bio,
+            specialisations: agentProfile.specialisations,
+            languages: agentProfile.languages,
+            country: agentProfile.country,
+            yearsExperience: agentProfile.yearsExperience,
+            createdAt: agentProfile.createdAt,
+          }
+        : null,
+      agentContactRequests: sentContactRequests.map((r) => ({
+        message: r.message,
+        createdAt: r._creationTime,
+      })),
+    };
+  },
+});

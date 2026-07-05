@@ -114,16 +114,23 @@ export const listApprovedPosts = query({
     country: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const result = await ctx.db
-      .query("community_posts")
-      .withIndex("by_status", (q) => q.eq("status", "approved"))
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const result = args.category
+      ? await ctx.db
+          .query("community_posts")
+          .withIndex("by_status_category", (q) =>
+            q.eq("status", "approved").eq("category", args.category!),
+          )
+          .order("desc")
+          .paginate(args.paginationOpts)
+      : await ctx.db
+          .query("community_posts")
+          .withIndex("by_status", (q) => q.eq("status", "approved"))
+          .order("desc")
+          .paginate(args.paginationOpts);
 
     return {
       ...result,
       page: result.page
-        .filter((p) => !args.category || p.category === args.category)
         .filter((p) => !args.country || p.country === args.country)
         .map((p) => ({
           _id: p._id,
