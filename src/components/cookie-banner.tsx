@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Cookie, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
+import { initSentry, isSentryConfigured } from "@/lib/sentry.ts";
 
 const STORAGE_KEY = "vc_cookie_consent";
 
@@ -23,6 +24,7 @@ export default function CookieBanner() {
   const accept = () => {
     localStorage.setItem(STORAGE_KEY, "accepted");
     setConsent("accepted");
+    if (isSentryConfigured) initSentry();
   };
 
   const decline = () => {
