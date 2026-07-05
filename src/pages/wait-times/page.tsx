@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { VISA_TYPES } from "@/lib/visa-data.ts";
-import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
+import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { WORLD_DESTINATIONS } from "@/lib/countries.ts";
 import { daysToReadable } from "@/lib/wait-time.ts";
 
@@ -100,6 +100,10 @@ export default function WaitTimesPage() {
   const [showForm, setShowForm] = useState(false);
 
   const stats = useQuery(api.waitTimeTracker.getWaitTimeStats, { destination, visaType });
+  const [, setI18nTick] = useState(0);
+  useEffect(() => {
+    ensureChecklistLanguageLoaded(i18n.language).then(() => setI18nTick((n) => n + 1));
+  }, [i18n.language]);
   const checklist = useMemo(() => getLocalizedChecklist(destination, visaType as never, i18n.language), [destination, visaType, i18n.language]);
 
   return (

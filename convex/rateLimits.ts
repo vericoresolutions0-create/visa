@@ -1,5 +1,8 @@
 import { ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { internalMutation, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel.js";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // Generous ceiling — sized to absorb real legitimate traffic while still
@@ -148,6 +151,35 @@ export const checkAndIncrementRejectionAnalyserUsage = mutation({
     }
   },
 });
+
+// Per-user daily cap for authenticated write endpoints. Call this directly
+// from within a mutation handler (same transaction, no scheduler needed).
+// Throws ConvexError { code: "RATE_LIMITED" } when the cap is reached.
+export async function checkUserDailyLimit(
+  ctx: Pick<MutationCtx, "db">,
+  userId: Id<"users">,
+  resource: string,
+  limit: number,
+  message: string,
+): Promise<void> {
+  const dateKey = new Date().toISOString().split("T")[0];
+  const existing = await ctx.db
+    .query("user_daily_usage")
+    .withIndex("by_user_resource_date", (q) =>
+      q.eq("userId", userId).eq("resource", resource).eq("dateKey", dateKey)
+    )
+    .unique();
+
+  if (existing && existing.count >= limit) {
+    throw new ConvexError({ code: "RATE_LIMITED", message });
+  }
+
+  if (existing) {
+    await ctx.db.patch(existing._id, { count: existing.count + 1 });
+  } else {
+    await ctx.db.insert("user_daily_usage", { userId, resource, dateKey, count: 1 });
+  }
+}
 
 // Same backstop, for the public blog newsletter subscribe form.
 const NEWSLETTER_GLOBAL_DAILY_LIMIT = 500;

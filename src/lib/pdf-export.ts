@@ -74,7 +74,7 @@ export async function downloadChecklistPDF(
   ];
 
   // Increase header band height to 52 to give summary strip more room
-  const colW = contentW / summaryItems.length;
+  const colW = contentW / (summaryItems.length || 1);
   summaryItems.forEach((s, i) => {
     const x = margin + i * colW + colW / 2;
     // Wrap long values (e.g. fee with extra text) across 2 lines if needed
@@ -163,7 +163,8 @@ export async function downloadChecklistPDF(
   });
 
   // ── Disclaimer + footer ───────────────────────────────────────────────────
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  const autoTableDoc = doc as unknown as { lastAutoTable?: { finalY: number } };
+  const finalY = (autoTableDoc.lastAutoTable?.finalY ?? (pageH - 60)) + 8;
 
   if (finalY < pageH - 40) {
     doc.setFillColor(250, 248, 244);

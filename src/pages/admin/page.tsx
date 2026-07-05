@@ -1709,7 +1709,11 @@ export default function AdminPage() {
         </div>
       </Unauthenticated>
       <Authenticated>
-        {currentUser !== undefined && currentUser?.role !== "admin" ? (
+        {currentUser === undefined ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-[#0f2040]/20 border-t-[#0f2040] rounded-full animate-spin" />
+          </div>
+        ) : currentUser?.role !== "admin" ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-sm px-6">
               <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-4" />

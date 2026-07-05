@@ -16,14 +16,14 @@ async function getMyAgentProfileOrThrow(ctx: QueryCtx | MutationCtx) {
 }
 
 // ─── List agents (public, paginated) ──────────────────────────────────────────
-// Paginated rather than collect()-ing the whole table: at scale this table can
-// hold millions of rows, and an unbounded query here would slow down (or
-// eventually crash) every visit to the public agent directory.
+// Only verified agents appear in the public marketplace — unverified profiles
+// are pending admin review and must not be shown as bookable experts.
 export const listAgents = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("agent_profiles")
+      .withIndex("by_verified", (q) => q.eq("verified", true))
       .order("desc")
       .paginate(args.paginationOpts);
   },

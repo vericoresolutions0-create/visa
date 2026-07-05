@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api.js";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { type VisaType } from "@/lib/visa-data.ts";
-import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
+import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
@@ -60,6 +60,10 @@ function ClientPortalInner({
   clientName: string;
 }) {
   const { t, i18n } = useTranslation("client-portal");
+  const [, setI18nTick] = useState(0);
+  useEffect(() => {
+    ensureChecklistLanguageLoaded(i18n.language).then(() => setI18nTick((n) => n + 1));
+  }, [i18n.language]);
   const checklist = getLocalizedChecklist(destination, visaType as VisaType, i18n.language);
   const uploads = useQuery(api.clientIntakes.listMyUploadsForIntake, { token });
   const generateUploadUrl = useMutation(api.clientIntakes.generateUploadUrl);

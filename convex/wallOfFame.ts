@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 const MAX_FIELD_LENGTH = 1500;
 const MIN_FIELD_LENGTH = 20;
@@ -38,6 +39,11 @@ export const submitStory = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+
+    await checkUserDailyLimit(
+      ctx, user._id, "wall_of_fame", 3,
+      "You can submit up to 3 Wall of Fame stories per day. Please try again tomorrow.",
+    );
 
     if (args.refusalCount < 1 || args.refusalCount > 20) {
       throw new ConvexError({ code: "INVALID_INPUT", message: "Refusal count must be between 1 and 20." });

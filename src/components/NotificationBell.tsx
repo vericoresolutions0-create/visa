@@ -53,14 +53,22 @@ export function NotificationBell() {
 
   const handleNotificationClick = async (n: Notification) => {
     if (!n.read) {
-      await markRead({ id: n._id });
+      try {
+        await markRead({ id: n._id });
+      } catch {
+        // Best-effort — don't block navigation on a network hiccup
+      }
     }
     setOpen(false);
     if (n.linkTo) navigate(n.linkTo);
   };
 
   const handleMarkAll = async () => {
-    await markAllRead();
+    try {
+      await markAllRead();
+    } catch {
+      // Silently ignore — the bell will show as read once connectivity returns
+    }
   };
 
   const hasUnread = unreadCount > 0;

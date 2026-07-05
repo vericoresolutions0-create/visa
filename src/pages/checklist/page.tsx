@@ -26,7 +26,7 @@ import {
   AVAILABLE_DESTINATIONS, VISA_TYPES, type VisaType, type ChecklistItem,
   CHECKLISTS_WITH_DATA,
 } from "@/lib/visa-data.ts";
-import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
+import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -509,6 +509,11 @@ export default function ChecklistPage() {
       });
     }
   }, [step]);
+
+  const [, setI18nTick] = useState(0);
+  useEffect(() => {
+    ensureChecklistLanguageLoaded(i18n.language).then(() => setI18nTick((n) => n + 1));
+  }, [i18n.language]);
 
   const checklist = destination && visaType
     ? getLocalizedChecklist(destination, visaType as VisaType, i18n.language)

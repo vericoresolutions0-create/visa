@@ -19,6 +19,9 @@ export const createIntake = mutation({
   },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
+    if (!agent.agentPlan) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "An active agent plan is required to create client intakes." });
+    }
 
     const token = generateToken();
     await ctx.db.insert("client_intakes", {
@@ -48,7 +51,7 @@ export const listMyIntakes = query({
       .query("client_intakes")
       .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
       .order("desc")
-      .collect();
+      .take(200);
 
     return await Promise.all(
       intakes.map(async (intake) => {

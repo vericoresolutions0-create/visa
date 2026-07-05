@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 const VAULT_CATEGORIES = [
   "identity",
@@ -62,6 +63,10 @@ export const addDocument = mutation({
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
     requirePlan(user.plan);
+    await checkUserDailyLimit(
+      ctx, user._id, "vault_upload", 20,
+      "You can upload up to 20 documents per day. Please try again tomorrow.",
+    );
     await validateUploadedFile(ctx, args.storageId);
     const docId = await ctx.db.insert("vault_documents", {
       userId: user._id,

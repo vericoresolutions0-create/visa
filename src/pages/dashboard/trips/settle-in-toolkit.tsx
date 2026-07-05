@@ -5,7 +5,7 @@ import { CheckCircle2, PartyPopper } from "lucide-react";
 import type { Doc } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
-import { getLocalizedSettleInGuide } from "@/lib/settle-in-data-i18n.ts";
+import { getLocalizedSettleInGuide, ensureSettleInLanguageLoaded } from "@/lib/settle-in-data-i18n.ts";
 
 export function SettleInToolkit({
   trip,
@@ -15,6 +15,10 @@ export function SettleInToolkit({
   onSave: (checkedItems: string[], progress: number) => void | Promise<void>;
 }) {
   const { t, i18n } = useTranslation("settle_in");
+  const [, setI18nTick] = useState(0);
+  useEffect(() => {
+    ensureSettleInLanguageLoaded(i18n.language).then(() => setI18nTick((n) => n + 1));
+  }, [i18n.language]);
   const guide = getLocalizedSettleInGuide(trip.destination, i18n.language);
   const [checkedItems, setCheckedItems] = useState<string[]>(trip.settleInCheckedItems ?? []);
   const [saving, setSaving] = useState(false);

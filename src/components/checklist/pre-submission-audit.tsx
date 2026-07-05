@@ -80,8 +80,8 @@ function AuditQuiz({ destination, visaType, isDemoAuthenticated, onComplete }: {
 }
 
 function AuditResults({ factors }: { factors: RiskScoreFactor[] }) {
-  const flagged = factors.filter((f) => f.earnedPoints / f.maxPoints < 0.5);
-  const ok = factors.filter((f) => f.earnedPoints / f.maxPoints >= 0.5);
+  const flagged = factors.filter((f) => f.earnedPoints / (f.maxPoints || 1) < 0.5);
+  const ok = factors.filter((f) => f.earnedPoints / (f.maxPoints || 1) >= 0.5);
 
   return (
     <div className="space-y-3">

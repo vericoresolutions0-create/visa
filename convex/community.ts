@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 const PAID_PLANS = ["pro", "expert"] as const;
 const MAX_TITLE_LENGTH = 120;
@@ -74,6 +75,11 @@ export const submitPost = mutation({
         message: "Community posts are available on Pro and Expert plans.",
       });
     }
+
+    await checkUserDailyLimit(
+      ctx, user._id, "community_post", 10,
+      "You can submit up to 10 community posts per day. Please try again tomorrow.",
+    );
 
     validatePost(args.title, args.body);
 

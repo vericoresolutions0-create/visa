@@ -231,7 +231,7 @@ export const getMyReferralStats = query({
     const referred = await ctx.db
       .query("users")
       .withIndex("by_referred_by_code", (q) => q.eq("referredByCode", user.referralCode))
-      .collect();
+      .take(5000);
     return { referralCode: user.referralCode, signupCount: referred.length };
   },
 });

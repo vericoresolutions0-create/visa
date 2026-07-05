@@ -509,6 +509,16 @@ export default function PaymentPage() {
                     {t("method.stripe_desc")}
                   </p>
                 </div>
+              ) : !isDemoAuthenticated && isStripeConfigured === false ? (
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lock className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="font-semibold text-primary">Payment temporarily unavailable</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Our payment system is being configured. Please try again shortly or contact us at support@visaclear.app.
+                  </p>
+                </div>
               ) : (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-5">

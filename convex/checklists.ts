@@ -6,6 +6,7 @@ import { bumpStat } from "./platformStats.ts";
 import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
 import { recordPartnerEvent } from "./partners.ts";
 import { internal } from "./_generated/api";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 export const FREE_MONTHLY_TRIP_LIMIT = 3;
 
@@ -79,6 +80,13 @@ export const saveChecklist = mutation({
       });
       return match._id;
     }
+
+    // Per-user daily cap on new trip saves (not updates — this block is only
+    // reached when no existing match was found above).
+    await checkUserDailyLimit(
+      ctx, user._id, "checklist_save", 30,
+      "You can save up to 30 new checklists per day. Please try again tomorrow.",
+    );
 
     // Free plan: real 3-new-trips-per-month limit (saving over an existing
     // trip above never counts against this — only brand new trips do).

@@ -42,6 +42,9 @@ export const logClick = mutation({
       sessionId: args.sessionId,
       createdAt: new Date().toISOString(),
     });
+    // Increment the denormalized counter so getPortalStats never has to count
+    // event rows — which would silently truncate at scale (.take cap).
+    await ctx.db.patch(creator._id, { clickCount: (creator.clickCount ?? 0) + 1 });
   },
 });
 
@@ -68,6 +71,8 @@ export const trackSignup = mutation({
       creatorCode: normalSlug,
       creatorTrackedAt: new Date().toISOString(),
     });
+    // Increment the denormalized signup counter on the creator document.
+    await ctx.db.patch(creator._id, { signupCount: (creator.signupCount ?? 0) + 1 });
   },
 });
 
@@ -82,19 +87,22 @@ export const getPortalStats = query({
       .first();
     if (!creator) return null;
 
-    // Click count (all time)
-    const clicks = await ctx.db
-      .query("creator_click_events")
-      .withIndex("by_slug", (q) => q.eq("creatorSlug", creator.slug))
-      .take(5000);
-    const totalClicks = clicks.length;
+    // Use the denormalized counter if available — avoids the .take(N) cap that
+    // would silently lie once a popular creator exceeds the row limit. Legacy
+    // creators without the counter fall back to the event query.
+    const totalClicks = creator.clickCount !== undefined
+      ? creator.clickCount
+      : (await ctx.db
+          .query("creator_click_events")
+          .withIndex("by_slug", (q) => q.eq("creatorSlug", creator.slug))
+          .take(5000)).length;
 
-    // Signup count (users who have this creator's slug attributed)
+    // Still need to query users to compute paidSubscriberCount below.
     const signups = await ctx.db
       .query("users")
       .withIndex("by_creator_code", (q) => q.eq("creatorCode", creator.slug))
       .take(1000);
-    const signupCount = signups.length;
+    const signupCount = creator.signupCount !== undefined ? creator.signupCount : signups.length;
 
     // Paying users (signups who are on pro or expert)
     const payingUserIds = new Set(
@@ -264,15 +272,21 @@ export const listAll = query({
 
     const results = [];
     for (const code of codes) {
-      const clicks = await ctx.db
-        .query("creator_click_events")
-        .withIndex("by_slug", (q) => q.eq("creatorSlug", code.slug))
-        .take(5000);
+      // Skip the click event query when the denormalized counter is available —
+      // that query was .take(5000) and becomes a lie at scale.
+      const totalClicks = code.clickCount !== undefined
+        ? code.clickCount
+        : (await ctx.db
+            .query("creator_click_events")
+            .withIndex("by_slug", (q) => q.eq("creatorSlug", code.slug))
+            .take(5000)).length;
 
+      // Still need to query users for paidSubscriberCount.
       const signups = await ctx.db
         .query("users")
         .withIndex("by_creator_code", (q) => q.eq("creatorCode", code.slug))
         .take(500);
+      const signupCount = code.signupCount !== undefined ? code.signupCount : signups.length;
 
       const commissions = await ctx.db
         .query("creator_commissions")
@@ -284,8 +298,8 @@ export const listAll = query({
 
       results.push({
         ...code,
-        totalClicks: clicks.length,
-        signupCount: signups.length,
+        totalClicks,
+        signupCount,
         paidSubscriberCount: signups.filter((u) => u.plan === "pro" || u.plan === "expert").length,
         totalCommissionCents,
         pendingCents,

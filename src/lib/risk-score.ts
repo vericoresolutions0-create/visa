@@ -151,7 +151,7 @@ export function computeRiskScore(answers: RiskScoreAnswers): RiskScoreResult {
   const displayScore = Math.min(MAX_DISPLAY_SCORE, Math.max(MIN_DISPLAY_SCORE, rawScore));
 
   const topWeakFactors = [...factors]
-    .sort((a, b) => a.earnedPoints / a.maxPoints - b.earnedPoints / b.maxPoints)
+    .sort((a, b) => a.earnedPoints / (a.maxPoints || 1) - b.earnedPoints / (b.maxPoints || 1))
     .slice(0, 3);
 
   return { rawScore, displayScore, factors, topWeakFactors };

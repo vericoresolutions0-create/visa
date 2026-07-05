@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   Globe,
   CheckCircle2,
+  ArrowLeft,
   ArrowRight,
   Shield,
   FileText,
@@ -56,6 +57,17 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-12">
+      {/* Back button */}
+      <div className="w-full max-w-md mb-4">
+        <button
+          onClick={() => step === 0 ? navigate("/") : setStep((s) => s - 1)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {step === 0 ? t("back_home") : t("back")}
+        </button>
+      </div>
+
       {/* Progress dots */}
       <div className="flex gap-2 mb-10">
         {Array.from({ length: STEP_COUNT }).map((_, i) => (

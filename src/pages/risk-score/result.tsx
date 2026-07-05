@@ -148,7 +148,7 @@ export default function RiskScoreResultPage() {
           </h2>
           <div className="space-y-3">
             {result.topWeakFactors.map((factor) => {
-              const ratio = factor.earnedPoints / factor.maxPoints;
+              const ratio = factor.earnedPoints / (factor.maxPoints || 1);
               const isStrength = ratio >= 0.7;
               return (
                 <div key={factor.category} className="bg-card border border-border rounded-xl p-4 flex items-start gap-3">

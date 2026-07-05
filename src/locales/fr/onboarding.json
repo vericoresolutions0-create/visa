@@ -24,5 +24,8 @@
   "step2.privacy_link": "Politique de confidentialité",
   "step2.disclaimer": "VisaClear est un outil d'orientation, pas un conseil juridique.",
   "step2.cta": "Continuer vers la création de compte",
-  "skip": "Passer l'introduction"
+  "skip": "Passer l'introduction",
+  "back": "Retour",
+  "back_home": "Retour à l'accueil",
+  "back": "वापस", "back_home": "होम पर वापस जाएं"
 }

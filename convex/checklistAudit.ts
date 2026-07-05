@@ -12,7 +12,7 @@ export const submitAudit = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     const { factors } = computeRiskScore(args.answers as RiskScoreAnswers);
-    const flaggedCount = factors.filter((f) => f.earnedPoints / f.maxPoints < 0.5).length;
+    const flaggedCount = factors.filter((f) => f.earnedPoints / (f.maxPoints || 1) < 0.5).length;
 
     await ctx.db.insert("checklist_audits", {
       userId: user._id,

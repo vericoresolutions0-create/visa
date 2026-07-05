@@ -24,5 +24,7 @@
   "step2.privacy_link": "Privacy Policy",
   "step2.disclaimer": "VisaClear is a guidance tool, not legal advice.",
   "step2.cta": "Continue to account setup",
-  "skip": "Skip introduction"
+  "skip": "Skip introduction",
+  "back": "Back",
+  "back_home": "Back to home"
 }

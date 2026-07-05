@@ -1,9 +1,4 @@
 import { getChecklist, type VisaChecklist, type VisaType } from "./visa-data.ts";
-import frContent from "./content-i18n/checklist.fr.json";
-import esContent from "./content-i18n/checklist.es.json";
-import ptContent from "./content-i18n/checklist.pt.json";
-import arContent from "./content-i18n/checklist.ar.json";
-import hiContent from "./content-i18n/checklist.hi.json";
 
 type ChecklistItemOverlay = {
   title?: string;
@@ -17,17 +12,33 @@ type ChecklistContentOverlay = {
   checklists: Record<string, { successTip?: string; processingTime?: string; fee?: string }>;
 };
 
-// Translated text overlaid onto the English source data at read time, keyed
-// by the stable item/checklist ids in visa-data.ts. Any field missing from
-// the overlay (untranslated yet, or a language file not caught up) silently
-// falls back to the English value below — content is never blank.
-const OVERLAYS: Record<string, ChecklistContentOverlay> = {
-  fr: frContent as ChecklistContentOverlay,
-  es: esContent as ChecklistContentOverlay,
-  pt: ptContent as ChecklistContentOverlay,
-  ar: arContent as ChecklistContentOverlay,
-  hi: hiContent as ChecklistContentOverlay,
-};
+// Language overlays are loaded on-demand the first time a non-English language
+// is requested. English users pay zero bytes for translation files.
+const overlayCache: Record<string, ChecklistContentOverlay> = {};
+const loadingPromises: Record<string, Promise<void>> = {};
+
+export function ensureChecklistLanguageLoaded(language: string): Promise<void> {
+  if (language === "en" || language in overlayCache) return Promise.resolve();
+  if (language in loadingPromises) return loadingPromises[language];
+
+  const load = async () => {
+    try {
+      let mod: { default: unknown };
+      if (language === "fr")      mod = await import("./content-i18n/checklist.fr.json");
+      else if (language === "es") mod = await import("./content-i18n/checklist.es.json");
+      else if (language === "pt") mod = await import("./content-i18n/checklist.pt.json");
+      else if (language === "ar") mod = await import("./content-i18n/checklist.ar.json");
+      else if (language === "hi") mod = await import("./content-i18n/checklist.hi.json");
+      else return;
+      overlayCache[language] = mod.default as ChecklistContentOverlay;
+    } catch {
+      // On failure, getLocalizedChecklist silently returns English content
+    }
+  };
+
+  loadingPromises[language] = load();
+  return loadingPromises[language];
+}
 
 export function getLocalizedChecklist(
   destination: string,
@@ -36,7 +47,7 @@ export function getLocalizedChecklist(
 ): VisaChecklist | null {
   const base = getChecklist(destination, visaType);
   if (!base) return null;
-  const overlay = OVERLAYS[language];
+  const overlay = overlayCache[language];
   if (!overlay) return base;
 
   const checklistOverlay = overlay.checklists[`${destination}|${visaType}`];

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { canUseMultiTripManager, canUseSuccessProbabilityScore, canUseDocumentVault } from "@/lib/plan-gates.ts";
 import { type VisaType } from "@/lib/visa-data.ts";
-import { getLocalizedChecklist } from "@/lib/visa-data-i18n.ts";
+import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { SettleInToolkit } from "@/pages/dashboard/trips/settle-in-toolkit.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -1405,6 +1405,10 @@ function TripWorkspace() {
   );
   const translateCountry = useCountryName();
   const { i18n } = useTranslation();
+  const [, setI18nTick] = useState(0);
+  useEffect(() => {
+    ensureChecklistLanguageLoaded(i18n.language).then(() => setI18nTick((n) => n + 1));
+  }, [i18n.language]);
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
   const reminders = useQuery(api.reminders.getReminders, isDemoAuthenticated ? "skip" : {});
   const updateTripDetails = useMutation(api.checklists.updateTripDetails);
