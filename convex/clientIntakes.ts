@@ -164,13 +164,17 @@ export const listMyUploadsForIntake = query({
 export const generateUploadUrl = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUserOrThrow(ctx);
 
     const intake = await ctx.db
       .query("client_intakes")
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
     if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired" });
+
+    if (intake.claimedByUserId && intake.claimedByUserId !== user._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "This upload link has already been claimed by another account." });
+    }
 
     return await ctx.storage.generateUploadUrl();
   },
@@ -194,6 +198,10 @@ export const recordDocument = mutation({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
     if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired" });
+
+    if (intake.claimedByUserId && intake.claimedByUserId !== client._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "This upload link has already been claimed by another account." });
+    }
 
     await validateUploadedFile(ctx, args.storageId);
 

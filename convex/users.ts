@@ -285,7 +285,7 @@ export const validateReferralCode = query({
       valid: true,
       discountPercent: 15,
       code: normalizedCode,
-      message: `15% referral discount applied${owner.name ? ` from ${owner.name}` : ""}.`,
+      message: "15% referral discount applied.",
     };
   },
 });
@@ -564,6 +564,12 @@ export const startTrial = mutation({
   args: { plan: v.union(v.literal("pro"), v.literal("expert")) },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    if (user.plan !== "free") {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Trials are only available on the free plan." });
+    }
+    if (user.trialStartedAt !== undefined) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "You have already used your free trial." });
+    }
     await bumpPlanCounters(ctx, user.plan, args.plan);
     await ctx.db.patch(user._id, {
       plan: args.plan,

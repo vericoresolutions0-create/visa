@@ -19,7 +19,7 @@ export const createReminder = mutation({
       title: args.title,
       note: args.note,
       dueDate: args.dueDate,
-      email: args.email,
+      email: user.email ?? args.email,
       sent: false,
       checklistId: args.checklistId,
       createdAt: new Date().toISOString(),

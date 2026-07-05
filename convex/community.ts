@@ -146,7 +146,7 @@ export const listFeaturedPosts = query({
       .query("community_posts")
       .withIndex("by_status", (q) => q.eq("status", "approved"))
       .order("desc")
-      .collect();
+      .take(500);
 
     return posts
       .filter((p) => p.featured)

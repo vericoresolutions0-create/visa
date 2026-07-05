@@ -67,19 +67,19 @@ export const listAll = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const codes = await ctx.db.query("influencer_codes").collect();
+    const codes = await ctx.db.query("influencer_codes").take(500);
 
     return await Promise.all(
       codes.map(async (inf) => {
         const commissions = await ctx.db
           .query("influencer_commissions")
           .withIndex("by_code", (q) => q.eq("influencerCode", inf.code))
-          .collect();
+          .take(5000);
 
         const signupCount = await ctx.db
           .query("users")
           .withIndex("by_influencer_code", (q) => q.eq("influencerCode", inf.code))
-          .collect()
+          .take(5000)
           .then((rows) => rows.length);
 
         const totalCommissionCents = commissions.reduce((s, c) => s + c.commissionCents, 0);
@@ -196,12 +196,12 @@ export const getPortalStats = query({
     const commissions = await ctx.db
       .query("influencer_commissions")
       .withIndex("by_code", (q) => q.eq("influencerCode", inf.code))
-      .collect();
+      .take(5000);
 
     const signupCount = await ctx.db
       .query("users")
       .withIndex("by_influencer_code", (q) => q.eq("influencerCode", inf.code))
-      .collect()
+      .take(5000)
       .then((rows) => rows.length);
 
     const totalCommissionCents = commissions.reduce((s, c) => s + c.commissionCents, 0);
