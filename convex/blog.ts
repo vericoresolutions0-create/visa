@@ -533,7 +533,7 @@ export const listPublished = query({
     const articles = await ctx.db
       .query("blog_articles")
       .withIndex("by_published", (q) => q.eq("published", true))
-      .collect();
+      .take(200);
     return articles
       .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
       .map(({ body: _body, ...rest }) => rest);

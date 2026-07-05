@@ -32,7 +32,7 @@ export const logClick = mutation({
       .withIndex("by_slug_and_created", (q) =>
         q.eq("creatorSlug", normalSlug).gt("createdAt", windowStart.toISOString())
       )
-      .take(100);
+      .take(1000);
 
     const alreadyCounted = recentClicks.some((c) => c.sessionId === args.sessionId);
     if (alreadyCounted) return;

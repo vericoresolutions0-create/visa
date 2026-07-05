@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -179,6 +180,7 @@ export const generateUploadUrl = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    await checkUserDailyLimit(ctx, user._id, "intake_upload", 20, "You can upload up to 20 documents per day on an intake link. Resets at midnight UTC.");
 
     const intake = await ctx.db
       .query("client_intakes")
@@ -206,6 +208,7 @@ export const recordDocument = mutation({
   },
   handler: async (ctx, args) => {
     const client = await getCurrentUserOrThrow(ctx);
+    await checkUserDailyLimit(ctx, client._id, "intake_upload", 20, "You can upload up to 20 documents per day on an intake link. Resets at midnight UTC.");
 
     if (!args.label.trim() || args.label.length > 200)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Label must be under 200 characters." });

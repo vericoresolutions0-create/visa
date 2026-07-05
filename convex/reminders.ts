@@ -16,12 +16,16 @@ export const createReminder = mutation({
     const user = await getCurrentUserOrThrow(ctx);
     await checkUserDailyLimit(ctx, user._id, "createReminder", 20, "You can create up to 20 reminders per day.");
 
+    if (!user.email) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Your account needs a verified email address to create reminders." });
+    }
+
     return await ctx.db.insert("reminders", {
       userId: user._id,
       title: args.title,
       note: args.note,
       dueDate: args.dueDate,
-      email: user.email ?? args.email,
+      email: user.email,
       sent: false,
       checklistId: args.checklistId,
       createdAt: new Date().toISOString(),

@@ -136,7 +136,8 @@ export default defineSchema({
     managedDependentId: v.optional(v.id("managed_dependents")),
   })
     .index("by_user", ["userId"])
-    .index("by_user_archived", ["userId", "archived"]),
+    .index("by_user_archived", ["userId", "archived"])
+    .index("by_travel_date", ["travelDate"]),
 
   vault_documents: defineTable({
     userId: v.id("users"),
@@ -160,7 +161,8 @@ export default defineSchema({
     uploadedAt: v.string(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_category", ["userId", "category"]),
+    .index("by_user_category", ["userId", "category"])
+    .index("by_expiry_date", ["expiryDate"]),
 
   country_watches: defineTable({
     userId: v.id("users"),
@@ -217,7 +219,8 @@ export default defineSchema({
     createdAt: v.string(),
   })
     .index("by_user", ["userId"])
-    .index("by_due_date", ["dueDate"]),
+    .index("by_due_date", ["dueDate"])
+    .index("by_sent_due_date", ["sent", "dueDate"]),
 
   rejection_analyses: defineTable({
     userId: v.id("users"),

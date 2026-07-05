@@ -7,7 +7,7 @@ export const getDocumentsExpiringOn = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("vault_documents")
-      .filter((q) => q.eq(q.field("expiryDate"), args.expiryDate))
+      .withIndex("by_expiry_date", (q) => q.eq("expiryDate", args.expiryDate))
       .collect();
   },
 });
@@ -18,7 +18,7 @@ export const getTripsWithTravelDate = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("saved_checklists")
-      .filter((q) => q.eq(q.field("travelDate"), args.travelDate))
+      .withIndex("by_travel_date", (q) => q.eq("travelDate", args.travelDate))
       .collect();
   },
 });
