@@ -1634,6 +1634,22 @@ export default function AdminPage() {
   const { t } = useTranslation("admin");
   const navigate = useNavigate();
   const currentUser = useQuery(api.users.getCurrentUser, {});
+  const claimFirstAdmin = useMutation(api.admin.claimFirstAdmin);
+  const [claiming, setClaiming] = useState(false);
+
+  const handleClaimAdmin = async () => {
+    setClaiming(true);
+    try {
+      await claimFirstAdmin({});
+      toast.success("Admin access granted. Welcome.");
+    } catch (err) {
+      const msg = err instanceof ConvexError
+        ? (err.data as { message: string }).message
+        : "Could not claim admin access.";
+      toast.error(msg);
+      setClaiming(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -1718,8 +1734,22 @@ export default function AdminPage() {
             <div className="text-center max-w-sm px-6">
               <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-4" />
               <h2 className="font-serif text-2xl font-semibold text-[#0f2040] mb-2">{t("page.access_denied")}</h2>
-              <p className="text-gray-500 text-sm mb-6">{t("page.access_denied_body")}</p>
-              <Button onClick={() => navigate("/")} className="cursor-pointer">{t("page.go_home")}</Button>
+              <p className="text-gray-500 text-sm mb-4">{t("page.access_denied_body")}</p>
+              <p className="text-gray-400 text-xs mb-6">
+                If this is a brand-new deployment and no admin exists yet, you can claim the first admin seat below.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => { void handleClaimAdmin(); }}
+                  disabled={claiming}
+                  className="cursor-pointer bg-[#0f2040] hover:bg-[#0f2040]/90"
+                >
+                  {claiming ? "Claiming..." : "Claim first admin seat"}
+                </Button>
+                <Button variant="ghost" onClick={() => navigate("/")} className="cursor-pointer text-gray-500">
+                  {t("page.go_home")}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (

@@ -86,6 +86,37 @@ export const updateUserPlan = mutation({
   },
 });
 
+// Bootstrap mutation — works exactly once, while the database has zero admins.
+// After the first admin exists this permanently throws, so there's no ongoing
+// attack surface. The founder calls this once from /admin after signing up.
+export const claimFirstAdmin = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    // Scan the whole users table for any existing admin — this is a one-time
+    // bootstrap operation, not a hot path, so a full collect is acceptable.
+    const allUsers = await ctx.db.query("users").collect();
+    const adminAlreadyExists = allUsers.some((u) => u.role === "admin");
+    if (adminAlreadyExists) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "An admin account already exists. Contact the existing admin to grant access.",
+      });
+    }
+
+    await ctx.db.patch(user._id, { role: "admin" });
+    await ctx.db.insert("admin_audit_log", {
+      adminUserId: user._id,
+      adminEmail: user.email,
+      action: "claimFirstAdmin",
+      targetId: user._id,
+      details: `Bootstrap: ${user.email ?? user._id} claimed first admin`,
+      createdAt: new Date().toISOString(),
+    });
+  },
+});
+
 export const updateUserRole = mutation({
   args: {
     userId: v.id("users"),
