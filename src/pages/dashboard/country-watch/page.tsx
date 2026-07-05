@@ -135,7 +135,7 @@ export default function CountryWatchPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary">
               <Bell className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
             </div>
             {canAccess && (

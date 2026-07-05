@@ -172,7 +172,7 @@ export default function WallOfFamePage() {
           <select
             value={destinationFilter}
             onChange={(e) => setDestinationFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">{t("page.all_destinations")}</option>
             {[...WORLD_DESTINATIONS].sort((a, b) => a.localeCompare(b)).map((d) => <option key={d} value={d}>{DESTINATION_FLAGS[d] ?? "🌍"} {translateCountry(d)}</option>)}

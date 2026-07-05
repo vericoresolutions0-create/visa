@@ -312,7 +312,7 @@ export default function DocumentVaultPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary">
               <Shield className="w-3.5 h-3.5 text-accent" /> {t("header.badge")}
             </div>
             {canAccess && (
@@ -452,12 +452,12 @@ export default function DocumentVaultPage() {
                               <div className="text-xs text-muted-foreground truncate">{doc.fileName}</div>
                             </div>
                             {editingExpiryId === doc._id ? (
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1">
                                 <input
                                   type="date"
                                   value={editingExpiryValue}
                                   onChange={(e) => setEditingExpiryValue(e.target.value)}
-                                  className="w-32 px-2 py-1 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                  className="w-24 px-2 py-1 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                   autoFocus
                                 />
                                 <button onClick={() => void handleSaveExpiry(doc._id)} className="text-[11px] font-semibold text-accent hover:underline cursor-pointer">{t("doc.save_expiry")}</button>
