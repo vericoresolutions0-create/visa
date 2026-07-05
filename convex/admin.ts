@@ -106,27 +106,78 @@ export const deleteUser = mutation({
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
 
-    const [checklists, reminders, analyses, agentProfiles, vaultDocs, countryWatches, aiUsageRows, expirations] =
-      await Promise.all([
-        ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("ai_assistant_usage").withIndex("by_user_month", (q) => q.eq("userId", args.userId)).collect(),
-        ctx.db.query("one_time_plan_expirations").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
-      ]);
+    const [
+      checklists, reminders, analyses, agentProfiles, vaultDocs, countryWatches,
+      aiUsageRows, communityPosts, wallOfFameStories, waitTimeReports, clientIntakes,
+      expirations, pendingEmailChanges, rejectionAnalyserUsage, inAppNotifications,
+      orgMembers, visaStatuses, travelTrips, managedDependents, checklistAudits,
+      userDailyUsage, sentContactRequests, employeeLinks, riskScoreResults, pendingRejectionUploads,
+    ] = await Promise.all([
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("ai_assistant_usage").withIndex("by_user_month", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", args.userId)).collect(),
+      ctx.db.query("wait_time_reports").withIndex("by_user", (q) => q.eq("submittedByUserId", args.userId)).collect(),
+      ctx.db.query("client_intakes").withIndex("by_agent", (q) => q.eq("agentId", args.userId)).collect(),
+      ctx.db.query("one_time_plan_expirations").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("pending_email_changes").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("rejection_analyser_usage").withIndex("by_user_month", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("org_members").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", args.userId)).collect(),
+      ctx.db.query("checklist_audits").withIndex("by_user_route", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("user_daily_usage").withIndex("by_user_resource_date", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", args.userId)).collect(),
+      ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", args.userId)).collect(),
+      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+      ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", args.userId)).collect(),
+    ]);
 
-    // Delete storage files before their rows — leaving files behind without
-    // rows is a GDPR right-to-erasure violation for a product that promises
-    // data privacy in its own marketing and emails.
+    // Delete storage blobs before their rows.
     for (const doc of vaultDocs) {
       await ctx.storage.delete(doc.storageId);
     }
+    for (const intake of clientIntakes) {
+      const documents = await ctx.db
+        .query("client_documents")
+        .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
+        .collect();
+      for (const doc of documents) {
+        await ctx.storage.delete(doc.storageId);
+        await ctx.db.delete(doc._id);
+      }
+    }
+    for (const upload of pendingRejectionUploads) {
+      try { await ctx.storage.delete(upload.storageId); } catch {}
+    }
 
-    for (const doc of [...checklists, ...reminders, ...analyses, ...agentProfiles, ...vaultDocs, ...countryWatches, ...aiUsageRows, ...expirations]) {
-      await ctx.db.delete(doc._id);
+    // Delete employer notes about this user as an employee.
+    for (const link of employeeLinks) {
+      const notes = await ctx.db
+        .query("org_employee_notes")
+        .withIndex("by_link", (q) => q.eq("linkId", link._id))
+        .collect();
+      for (const note of notes) {
+        await ctx.db.delete(note._id);
+      }
+    }
+
+    for (const row of [
+      ...checklists, ...reminders, ...analyses, ...agentProfiles, ...vaultDocs,
+      ...countryWatches, ...aiUsageRows, ...communityPosts, ...wallOfFameStories,
+      ...waitTimeReports, ...clientIntakes, ...expirations, ...pendingEmailChanges,
+      ...rejectionAnalyserUsage, ...inAppNotifications, ...orgMembers, ...visaStatuses,
+      ...travelTrips, ...managedDependents, ...checklistAudits, ...userDailyUsage,
+      ...sentContactRequests, ...employeeLinks, ...riskScoreResults, ...pendingRejectionUploads,
+    ]) {
+      await ctx.db.delete(row._id);
     }
     await ctx.db.delete(args.userId);
 

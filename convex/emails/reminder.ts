@@ -1,5 +1,6 @@
 "use node";
 
+import escapeHtml from "escape-html";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { sendEmail } from "./sendEmail.ts";
@@ -40,9 +41,9 @@ export const sendReminderEmail = internalAction({
             <div style="display:inline-block;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;color:#7a5300;margin-bottom:20px;">
               REMINDER DUE
             </div>
-            <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 8px;font-weight:600;">${args.title}</h2>
+            <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 8px;font-weight:600;">${escapeHtml(args.title)}</h2>
             <p style="font-size:14px;color:#b8a06a;font-weight:600;margin:0 0 20px;">Due: ${formattedDate}</p>
-            ${args.note ? `<p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 20px;padding:14px 16px;background:#f8f5ef;border-radius:8px;border-left:3px solid #b8953c;">${args.note}</p>` : ""}
+            ${args.note ? `<p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 20px;padding:14px 16px;background:#f8f5ef;border-radius:8px;border-left:3px solid #b8953c;">${escapeHtml(args.note)}</p>` : ""}
             <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 24px;">
               This is your scheduled visa application reminder from VisaClear. Please check your application progress and complete any outstanding items before your deadline.
             </p>

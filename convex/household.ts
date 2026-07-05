@@ -64,6 +64,7 @@ export const inviteHouseholdMember = mutation({
       relationship: args.relationship.trim(),
       pipelineStage: "invited",
       createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
     await ctx.scheduler.runAfter(0, internal.emails.householdInvite.sendHouseholdInviteEmail, {
       to: email,

@@ -125,6 +125,7 @@ function RejectionAnalyserInner() {
   const [copied, setCopied] = useState(false);
 
   const generateUploadUrl = useMutation(api.rejections.generateRejectionUploadUrl);
+  const confirmUpload = useMutation(api.rejections.confirmRejectionUpload);
   const analyseRejection = useAction(api.ai.rejectionAnalyser.analyseRejection);
 
   const visibleDestinations = showAllCountries ? REJECTION_DESTINATIONS : REJECTION_DESTINATIONS.slice(0, 12);
@@ -158,6 +159,7 @@ function RejectionAnalyserInner() {
         body: file,
       });
       const { storageId } = await response.json() as { storageId: Id<"_storage"> };
+      await confirmUpload({ storageId });
       setPdfStorageId(storageId);
       setPdfFileName(file.name);
       toast.success("PDF uploaded. Ready to analyse.");

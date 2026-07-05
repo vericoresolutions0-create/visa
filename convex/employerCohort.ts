@@ -49,6 +49,7 @@ export const inviteEmployee = mutation({
       invitedByUserId: user._id,
       pipelineStage: "invited",
       createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
     await ctx.scheduler.runAfter(0, internal.emails.employerInvite.sendEmployerInviteEmail, {
       to: email,

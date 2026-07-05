@@ -65,7 +65,7 @@ export const dispatchDueReminders = internalAction({
           });
         } catch (err) {
           console.error(
-            `Failed to send reminder ${reminder._id} to ${reminder.email}`,
+            `Failed to send reminder ${reminder._id} [email redacted]`,
             err,
           );
         }

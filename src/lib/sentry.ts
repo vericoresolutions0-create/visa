@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/react";
 
-const DSN = "https://125c7bec1bbcc90586d396c0fd499408@o4511659934285824.ingest.de.sentry.io/4511659957747792";
+const DSN = import.meta.env.VITE_SENTRY_DSN ?? "";
 
-export const isSentryConfigured = true;
+export const isSentryConfigured = DSN.length > 0;
 
 function scrubSensitiveUrls(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
   // Client portal URLs contain a 32-char hex intake token in the path

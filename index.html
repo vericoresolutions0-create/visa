@@ -9,7 +9,7 @@
          real HTTP header (vercel.json / vite.config.ts) instead. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self' https:; upgrade-insecure-requests"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self' https:; upgrade-insecure-requests"
     />
 
     <title>VisaClear by Vericore — Precise Visa Document Checklists</title>
@@ -95,19 +95,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- Detect dark mode preference and set the class before next-themes loads. This avoids a flash of unstyled content (FOUC) when the page loads. -->
-    <script>
-      try {
-        let theme = localStorage.getItem("theme");
-        if (theme === "system" || !theme) {
-          let prefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-          ).matches;
-          theme = prefersDark ? "dark" : "light";
-        }
-        document.documentElement.classList.add(theme);
-      } catch (e) {}
-    </script>
+    <!-- Detect dark mode preference before next-themes loads to avoid a flash of unstyled content. External file avoids unsafe-inline in CSP. -->
+    <script src="/theme-init.js"></script>
 
     <link href="/src/index.css" rel="stylesheet" />
   </head>

@@ -229,6 +229,17 @@ export default defineSchema({
     createdAt: v.string(),
   }).index("by_user", ["userId"]),
 
+  // Tracks PDF uploads for the Rejection Analyser so we can verify the
+  // caller uploaded the file themselves before allowing it to be read or
+  // deleted. Row is deleted once the file is consumed by the action.
+  pending_rejection_uploads: defineTable({
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    createdAt: v.string(),
+  })
+    .index("by_storage", ["storageId"])
+    .index("by_user", ["userId"]),
+
   agent_profiles: defineTable({
     userId: v.id("users"),
     fullName: v.string(),
@@ -272,7 +283,9 @@ export default defineSchema({
     message: v.optional(v.string()),
     createdAt: v.string(),
     read: v.boolean(),
-  }).index("by_agent", ["agentProfileId"]),
+  })
+    .index("by_agent", ["agentProfileId"])
+    .index("by_from_user", ["fromUserId"]),
   contact_messages: defineTable({
     name: v.string(),
     email: v.string(),
@@ -636,6 +649,7 @@ export default defineSchema({
     createdAt: v.string(),
     respondedAt: v.optional(v.string()),
     revokedAt: v.optional(v.string()),
+    expiresAt: v.optional(v.string()),
   })
     .index("by_org", ["organizationId"])
     .index("by_token", ["token"])

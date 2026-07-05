@@ -34,11 +34,36 @@ export const applyCheckoutCompleted = internalMutation({
     amountCents: v.number(),
     stripeCustomerId: v.string(),
     stripeSubscriptionId: v.string(),
+    stripeEventId: v.optional(v.string()),
+    referralCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Idempotency: Stripe retries webhooks on timeout — process each event exactly once.
+    if (args.stripeEventId) {
+      const alreadyProcessed = await ctx.db
+        .query("processed_webhook_events")
+        .withIndex("by_provider_reference", (q) =>
+          q.eq("provider", "stripe").eq("reference", args.stripeEventId!),
+        )
+        .unique();
+      if (alreadyProcessed) return;
+      await ctx.db.insert("processed_webhook_events", {
+        provider: "stripe",
+        reference: args.stripeEventId,
+        processedAt: new Date().toISOString(),
+      });
+    }
+
     const user = await ctx.db.get(args.userId);
     if (!user) return;
     const now = new Date().toISOString();
+
+    // If a referral code was captured at checkout and the user doesn't yet
+    // have one stored, apply it now so the agent commission fires correctly.
+    if (args.referralCode && !user.referredByCode) {
+      await ctx.db.patch(user._id, { referredByCode: args.referralCode });
+      user.referredByCode = args.referralCode;
+    }
 
     if (args.product === "applicant") {
       await bumpPlanCounters(ctx, user.plan, args.plan as "pro" | "expert");
@@ -62,13 +87,17 @@ export const applyCheckoutCompleted = internalMutation({
         await ctx.db.delete(staleExpiration._id);
       }
 
-      await creditAgentReferralCommission(
-        ctx,
-        user,
-        args.plan as "pro" | "expert",
-        args.billingCycle,
-        args.amountCents,
-      );
+      // Only pay agent commission on a first subscription — resubscribing
+      // after cancellation should not trigger a second referral payout.
+      if (!user.subscriptionStartedAt) {
+        await creditAgentReferralCommission(
+          ctx,
+          user,
+          args.plan as "pro" | "expert",
+          args.billingCycle,
+          args.amountCents,
+        );
+      }
     } else {
       await ctx.db.patch(user._id, {
         agentPlan: args.plan as

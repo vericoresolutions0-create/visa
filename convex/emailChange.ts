@@ -102,7 +102,7 @@ export const confirmEmailChange = mutation({
     }
 
     await ctx.db.patch(user._id, { email: pending.newEmail, emailVerificationTime: Date.now() });
-    await ctx.db.patch(pending._id, { consumedAt: new Date().toISOString() });
+    await ctx.db.delete(pending._id);
 
     return { newEmail: pending.newEmail };
   },

@@ -97,6 +97,14 @@ export const analyseRejection = action({
     let refusalText = args.refusalText;
 
     if (args.pdfStorageId) {
+      // Verify the caller owns this upload before reading or deleting it.
+      const ownershipRow = await ctx.runQuery(internal.rejections.getPendingUpload, {
+        storageId: args.pdfStorageId,
+      });
+      if (!ownershipRow || ownershipRow.userId !== user._id) {
+        throw new ConvexError({ code: "FORBIDDEN", message: "Upload not found. Please re-upload your PDF and try again." });
+      }
+
       try {
         const blob = await ctx.storage.get(args.pdfStorageId);
         if (blob) {
@@ -113,12 +121,16 @@ export const analyseRejection = action({
         // PDF extraction failed — fall back to the pasted text
       } finally {
         try { await ctx.storage.delete(args.pdfStorageId); } catch {}
+        // Delete the ownership row regardless of whether extraction succeeded.
+        await ctx.runMutation(internal.rejections.deletePendingUpload, {
+          storageId: args.pdfStorageId,
+        });
       }
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const systemPrompt = `You are a senior UK immigration barrister and visa consultant with 20 years of experience analysing ${args.visaType} refusals for ${args.destination}, specialising in applicants from ${args.origin}.
+    const systemPrompt = `You are a senior UK immigration barrister and visa consultant with 20 years of experience analysing visa refusals across UK, Schengen, and Canada.
 
 You know every refusal code by heart:
 
@@ -191,7 +203,7 @@ Keep all JSON key names in English. Translate text values only if instructed bel
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Refusal letter:\n\n${refusalText}` },
+          { role: "user", content: `Visa type: ${args.visaType}\nDestination: ${args.destination}\nOrigin: ${args.origin}\n\n---BEGIN REFUSAL LETTER---\n${refusalText}\n---END REFUSAL LETTER---` },
         ],
       });
 

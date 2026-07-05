@@ -62,15 +62,8 @@ export const estimateSuccessProbability = action({
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const systemPrompt = `You are VisaClear's visa approval likelihood estimator.
-A real applicant is applying for a ${args.visaType} visa to ${args.destination} from ${args.origin}.
-Their checklist is ${args.completionPercent}% complete.
-${args.missingRequiredItems.length > 0
-  ? `These required documents are still missing: ${args.missingRequiredItems.join(", ")}.`
-  : "All required documents on their checklist are marked complete."}
 
-Estimate their approval odds honestly based on completion alone (you cannot see the actual documents, only whether
-each checklist item is marked done). Be conservative: missing required documents should sharply lower the estimate.
-A 100%-complete checklist still cannot justify above ~90, since document quality cannot be verified.
+Estimate the applicant's approval odds honestly based on checklist completion alone (you cannot see the actual documents, only whether each item is marked done). Be conservative: missing required documents should sharply lower the estimate. A 100%-complete checklist still cannot justify above ~90, since document quality cannot be verified.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -85,7 +78,10 @@ Keep the JSON keys exactly as shown above, in English. Only the text VALUES shou
         model: "gpt-4o-mini",
         max_tokens: 512,
         response_format: { type: "json_object" },
-        messages: [{ role: "system", content: systemPrompt }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Visa type: ${args.visaType}\nDestination: ${args.destination}\nOrigin: ${args.origin}\nChecklist completion: ${args.completionPercent}%\nMissing required documents: ${args.missingRequiredItems.length > 0 ? args.missingRequiredItems.join(", ") : "none"}` },
+        ],
       });
 
       const raw = response.choices[0]?.message?.content ?? "{}";

@@ -97,6 +97,8 @@ http.route({
             amountCents: Number(metadata.amountCents) || 0,
             stripeCustomerId: String(session.customer),
             stripeSubscriptionId: String(session.subscription),
+            stripeEventId: event.id,
+            referralCode: metadata.referralCode || undefined,
           });
         }
         break;
@@ -173,7 +175,7 @@ http.route({
           userId: metadata.userId,
           plan: metadata.plan,
           billingCycle: metadata.billingCycle,
-          amountCents: Number(metadata.amountCents) || 0,
+          amountCents: Number(event.data?.amount) || 0,
           paystackReference: String(event.data.reference ?? ""),
         });
       }
@@ -272,7 +274,7 @@ http.route({
           body: replyText,
         });
       } catch (err) {
-        console.error(`Failed to send WhatsApp reply to ${fromNumber}`, err);
+        console.error(`Failed to send WhatsApp reply to [redacted]`, err);
       }
 
       await ctx.runMutation(internal.whatsappBot.logBotInteraction, {

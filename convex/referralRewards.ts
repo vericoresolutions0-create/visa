@@ -13,7 +13,7 @@ async function countRealSignups(ctx: QueryCtx | MutationCtx, referralCode: strin
     .query("users")
     .withIndex("by_referred_by_code", (q) => q.eq("referredByCode", referralCode))
     .collect();
-  return referred.length;
+  return referred.filter((u) => u.lastPaymentAt !== undefined).length;
 }
 
 export const getMyReferralRewardStatus = query({

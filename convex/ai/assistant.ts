@@ -46,8 +46,6 @@ export const askVisaQuestion = action({
 You are VisaClear AI, a knowledgeable and practical immigration guide by Vericore.
 You help applicants understand visa requirements for their specific journey.
 
-The user is applying for a ${args.context.visaType} visa to ${args.context.destination} from ${args.context.origin}.
-
 Formatting rules (very important):
 - Write in clear, plain English. Short sentences. No jargon.
 - Break your answer into 2 to 4 short paragraphs separated by blank lines.
@@ -66,7 +64,7 @@ Formatting rules (very important):
         max_tokens: 1024,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: args.question },
+          { role: "user", content: `Visa type: ${args.context.visaType}\nDestination: ${args.context.destination}\nOrigin: ${args.context.origin}\n\nQuestion: ${args.question}` },
         ],
       });
 

@@ -19,6 +19,10 @@ export const submit = mutation({
     if (!args.agencyName.trim() || !args.email.trim() || !args.plan.trim()) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Agency name, email, and preferred plan are required." });
     }
+    if (args.agencyName.length > 200) throw new ConvexError({ code: "BAD_REQUEST", message: "Agency name must be under 200 characters." });
+    if (args.email.length > 254) throw new ConvexError({ code: "BAD_REQUEST", message: "Email address is too long." });
+    if ((args.website ?? "").length > 500) throw new ConvexError({ code: "BAD_REQUEST", message: "Website URL is too long." });
+    if ((args.message ?? "").length > 3000) throw new ConvexError({ code: "BAD_REQUEST", message: "Message must be under 3,000 characters." });
     // No sign-in required for this public lead form, so there's no account
     // to gate by — this is a platform-wide backstop against scripted spam.
     await ctx.runMutation(internal.rateLimits.checkAndIncrementWhitelabelUsage, {});

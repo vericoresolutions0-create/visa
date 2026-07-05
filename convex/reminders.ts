@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 // ─── Create reminder ─────────────────────────────────────────────────────────
 export const createReminder = mutation({
@@ -13,6 +14,7 @@ export const createReminder = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    await checkUserDailyLimit(ctx, user._id, "createReminder", 20, "You can create up to 20 reminders per day.");
 
     return await ctx.db.insert("reminders", {
       userId: user._id,

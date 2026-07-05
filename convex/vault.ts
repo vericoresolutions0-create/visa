@@ -45,6 +45,7 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const user = await getUserOrThrow(ctx);
     requirePlan(user.plan);
+    await checkUserDailyLimit(ctx, user._id, "vault_upload", 20, "You can upload up to 20 documents per day. Resets at midnight UTC.");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -63,6 +64,11 @@ export const addDocument = mutation({
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
     requirePlan(user.plan);
+    if (args.label.length > 200) throw new ConvexError({ code: "BAD_REQUEST", message: "Label must be under 200 characters." });
+    if (args.fileName.length > 260) throw new ConvexError({ code: "BAD_REQUEST", message: "File name is too long." });
+    if (args.expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(args.expiryDate)) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Expiry date must be in YYYY-MM-DD format." });
+    }
     await checkUserDailyLimit(
       ctx, user._id, "vault_upload", 20,
       "You can upload up to 20 documents per day. Resets at midnight UTC.",
@@ -163,12 +169,17 @@ export const createExpiryReminder = mutation({
       throw new ConvexError({ code: "ALREADY_EXISTS", message: "A reminder is already set for this document." });
     }
 
+    const leadDays = args.leadDays ?? EXPIRY_REMINDER_LEAD_DAYS;
+    if (!Number.isInteger(leadDays) || leadDays < 1 || leadDays > 365) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Lead days must be a whole number between 1 and 365." });
+    }
+
     return await ctx.db.insert("reminders", {
       userId: user._id,
       vaultDocumentId: args.id,
       title: `${doc.label} expires soon`,
       note: `This document in your Vault expires on ${doc.expiryDate}.`,
-      dueDate: computeExpiryReminderDueDate(doc.expiryDate, args.leadDays ?? EXPIRY_REMINDER_LEAD_DAYS),
+      dueDate: computeExpiryReminderDueDate(doc.expiryDate, leadDays),
       email: user.email,
       sent: false,
       createdAt: new Date().toISOString(),

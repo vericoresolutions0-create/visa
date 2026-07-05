@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { bumpStat } from "./platformStats.ts";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 async function getMyAgentProfileOrThrow(ctx: QueryCtx | MutationCtx) {
   const user = await getCurrentUserOrThrow(ctx);
@@ -110,6 +111,11 @@ export const contactAgent = mutation({
     const user = await getCurrentUserOrThrow(ctx);
     const agent = await ctx.db.get(args.agentProfileId);
     if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found" });
+    if (!agent.verified) throw new ConvexError({ code: "FORBIDDEN", message: "You can only contact verified agents." });
+    if (args.message && args.message.length > 2000) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Message must be under 2,000 characters." });
+    }
+    await checkUserDailyLimit(ctx, user._id, "contactAgent", 5, "You can send up to 5 contact requests per day.");
 
     await ctx.db.insert("agent_contact_requests", {
       agentProfileId: args.agentProfileId,

@@ -1,5 +1,6 @@
 "use node";
 
+import escapeHtml from "escape-html";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { sendEmail } from "./sendEmail.ts";
@@ -52,13 +53,13 @@ export const sendDocumentExpiryEmail = internalAction({
               ${badgeLabel}
             </div>
             <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 8px;font-weight:600;">Document Expiring Soon</h2>
-            <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 4px;">Hi ${args.name},</p>
+            <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 4px;">Hi ${escapeHtml(args.name)},</p>
             <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
               Your document stored in the VisaClear Vault is expiring soon. Please renew it before your visa application deadline to avoid delays.
             </p>
             <div style="background:#f8f5ef;border-radius:10px;padding:18px 20px;margin-bottom:24px;border-left:3px solid #b8953c;">
               <div style="font-size:12px;color:#b8953c;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Document</div>
-              <div style="font-size:16px;color:#0f2040;font-weight:600;">${args.documentLabel}</div>
+              <div style="font-size:16px;color:#0f2040;font-weight:600;">${escapeHtml(args.documentLabel)}</div>
               <div style="font-size:13px;color:#666;margin-top:4px;">Expires: ${formattedDate}</div>
             </div>
             <div style="text-align:center;margin-bottom:28px;">
@@ -133,13 +134,13 @@ export const sendTripDeadlineEmail = internalAction({
               TRIP IN ${args.daysRemaining} ${dayWord.toUpperCase()}
             </div>
             <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 8px;font-weight:600;">Your Travel Date Is Approaching</h2>
-            <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 4px;">Hi ${args.name},</p>
+            <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 4px;">Hi ${escapeHtml(args.name)},</p>
             <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
               Your upcoming trip is getting close. Make sure your visa checklist is complete before your application deadline.
             </p>
             <div style="background:#f8f5ef;border-radius:10px;padding:18px 20px;margin-bottom:16px;border-left:3px solid #b8953c;">
               <div style="font-size:12px;color:#b8953c;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Trip</div>
-              <div style="font-size:16px;color:#0f2040;font-weight:600;">${args.tripName}</div>
+              <div style="font-size:16px;color:#0f2040;font-weight:600;">${escapeHtml(args.tripName)}</div>
               <div style="font-size:13px;color:#666;margin-top:4px;">Travel date: ${formattedDate}</div>
             </div>
             <div style="background:#f8f5ef;border-radius:10px;padding:14px 20px;margin-bottom:24px;">

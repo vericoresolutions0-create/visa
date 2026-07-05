@@ -28,9 +28,9 @@ export const acceptInvite = mutation({
     if (link.status !== "pending") {
       throw new ConvexError({ code: "BAD_REQUEST", message: "This invite is no longer pending." });
     }
-    // The actual consent enforcement: without this check, anyone who
-    // discovers a token (or an employer who mistypes someone else's email)
-    // could accept on a different person's behalf.
+    if (link.expiresAt && new Date(link.expiresAt) <= new Date()) {
+      throw new ConvexError({ code: "EXPIRED", message: "This invite has expired. Ask the sender to resend it." });
+    }
     if (!user.email || user.email.toLowerCase() !== link.invitedEmail) {
       throw new ConvexError({
         code: "FORBIDDEN",
@@ -63,6 +63,9 @@ export const declineInvite = mutation({
     if (!link) throw new ConvexError({ code: "NOT_FOUND", message: "This invite link is invalid." });
     if (link.status !== "pending") {
       throw new ConvexError({ code: "BAD_REQUEST", message: "This invite is no longer pending." });
+    }
+    if (link.expiresAt && new Date(link.expiresAt) <= new Date()) {
+      throw new ConvexError({ code: "EXPIRED", message: "This invite has expired. Ask the sender to resend it." });
     }
     if (!user.email || user.email.toLowerCase() !== link.invitedEmail) {
       throw new ConvexError({

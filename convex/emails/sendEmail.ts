@@ -9,7 +9,8 @@ import { Resend } from "resend";
 export async function sendEmail(args: { to: string; subject: string; html: string }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.log(`[email not sent: no provider configured] to=${args.to} subject="${args.subject}"`);
+    const domain = args.to.split("@")[1] ?? "?";
+    console.log(`[email not sent: no provider configured] to=[redacted]@${domain} subject="${args.subject}"`);
     return;
   }
 
@@ -22,6 +23,7 @@ export async function sendEmail(args: { to: string; subject: string; html: strin
   });
 
   if (error) {
-    console.error(`[email failed to send] to=${args.to} subject="${args.subject}"`, error);
+    const domain = args.to.split("@")[1] ?? "?";
+    console.error(`[email failed to send] to=[redacted]@${domain} subject="${args.subject}"`, error);
   }
 }

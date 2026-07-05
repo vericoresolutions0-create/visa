@@ -251,6 +251,10 @@ export const validateReferralCode = query({
     }
 
     const currentUser = await getCurrentUserDoc(ctx);
+    if (!currentUser) {
+      return { valid: false, discountPercent: 0, message: "Sign in first to apply a referral code." };
+    }
+
     const owner = await ctx.db
       .query("users")
       .withIndex("by_referral_code", (q) =>
@@ -564,6 +568,10 @@ export const deleteCurrentAccount = mutation({
       managedDependents,
       checklistAudits,
       userDailyUsage,
+      sentContactRequests,
+      employeeLinks,
+      riskScoreResults,
+      pendingRejectionUploads,
     ] = await Promise.all([
       ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
       ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
@@ -586,6 +594,10 @@ export const deleteCurrentAccount = mutation({
       ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).collect(),
       ctx.db.query("checklist_audits").withIndex("by_user_route", (q) => q.eq("userId", user._id)).collect(),
       ctx.db.query("user_daily_usage").withIndex("by_user_resource_date", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).collect(),
+      ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).collect(),
+      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
     ]);
 
     // Vault documents own real storage blobs — must be deleted first.
@@ -602,6 +614,23 @@ export const deleteCurrentAccount = mutation({
       for (const doc of documents) {
         await ctx.storage.delete(doc.storageId);
         await ctx.db.delete(doc._id);
+      }
+    }
+
+    // Delete pending rejection upload blobs and their storage files.
+    for (const upload of pendingRejectionUploads) {
+      try { await ctx.storage.delete(upload.storageId); } catch {}
+    }
+
+    // Delete employer notes about this user (as an employee) before
+    // removing the link rows themselves.
+    for (const link of employeeLinks) {
+      const notes = await ctx.db
+        .query("org_employee_notes")
+        .withIndex("by_link", (q) => q.eq("linkId", link._id))
+        .collect();
+      for (const note of notes) {
+        await ctx.db.delete(note._id);
       }
     }
 
@@ -628,6 +657,10 @@ export const deleteCurrentAccount = mutation({
       ...managedDependents,
       ...checklistAudits,
       ...userDailyUsage,
+      ...sentContactRequests,
+      ...employeeLinks,
+      ...riskScoreResults,
+      ...pendingRejectionUploads,
     ]) {
       await ctx.db.delete(row._id);
     }
