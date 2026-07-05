@@ -48,7 +48,7 @@ export function AuthAccessPanel({
 
     onAuthStart?.();
     try {
-      await signIn("google");
+      await signIn("google", { redirectTo: returnPath });
     } catch {
       setError("Could not start Google sign-in. Please try again.");
       toast.error("Could not start Google sign-in. Please try again.");
