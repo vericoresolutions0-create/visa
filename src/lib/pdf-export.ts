@@ -191,7 +191,7 @@ export async function downloadChecklistPDF(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(160, 175, 200);
-    doc.text("VisaClear by Vericore  |  visaclear.vercel.app  |  GDPR & NDPA Principles  |  Not Legal Advice", margin, pageH - 4);
+    doc.text("VisaClear by Vericore  |  visaclear.app  |  GDPR & NDPA Principles  |  Not Legal Advice", margin, pageH - 4);
     doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 4, { align: "right" });
   }
 
@@ -340,7 +340,7 @@ export async function downloadBankLetterPDF(
   doc.setTextColor(160, 175, 200);
   doc.text("VisaClear by Vericore  |  This is a sample template, not a legal document.", margin, pageH - 4);
   doc.setTextColor(...GOLD);
-  doc.text("visaclear.vercel.app", pageW - margin, pageH - 4, { align: "right" });
+  doc.text("visaclear.app", pageW - margin, pageH - 4, { align: "right" });
 
   doc.save(`VisaClear_Bank_Letter_Template_${destination.replace(/\s+/g, "_")}.pdf`);
 }

@@ -84,7 +84,7 @@ export default function InfluencerPortalPage() {
   }
 
   const isAboveThreshold = stats.pendingCents >= stats.minimumPayoutCents;
-  const shareUrl = `https://visaclear.vercel.app/?af=${stats.code}`;
+  const shareUrl = `https://visaclear.app/?af=${stats.code}`;
 
   const copyShareUrl = async () => {
     try {
