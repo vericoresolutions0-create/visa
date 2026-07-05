@@ -114,7 +114,6 @@ function AcceptFlow({ token, organizationName, isHousehold }: { token: string; o
 function InviteInner({ token }: { token: string }) {
   const { t } = useTranslation("business");
   const invite = useQuery(api.employerInvites.getInviteByToken, { token });
-  const currentUser = useQuery(api.users.getCurrentUser);
 
   if (invite === undefined) return <Skeleton className="h-48 w-full rounded-2xl" />;
   if (invite === null) {
@@ -151,18 +150,18 @@ function InviteInner({ token }: { token: string }) {
           </div>
           <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("invite.signin_title")}</h2>
           <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
-            {t("invite.signin_body", { email: invite.invitedEmail, org: invite.organizationName })}
+            {t("invite.signin_body", { email: invite.maskedEmail, org: invite.organizationName })}
           </p>
           <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("invite.signin_cta")} />
         </div>
       </Unauthenticated>
       <Authenticated>
-        {currentUser && currentUser.email?.toLowerCase() !== invite.invitedEmail ? (
+        {invite.isCorrectAccount === false ? (
           <div className="text-center py-16">
             <FileWarning className="w-10 h-10 text-amber-500 mx-auto mb-3" />
             <h2 className="font-serif text-2xl font-semibold text-primary mb-2">{t("invite.wrong_account_title")}</h2>
             <p className="text-sm text-muted-foreground">
-              {t("invite.wrong_account_body", { email: invite.invitedEmail })}
+              {t("invite.wrong_account_body", { email: invite.maskedEmail })}
             </p>
           </div>
         ) : (

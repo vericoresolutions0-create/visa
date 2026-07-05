@@ -2,18 +2,33 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
-// Public, no-auth — never returns organizationId or any employee data, only
-// enough to show the employee what they're being asked to respond to.
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***@***";
+  const visible = local.length > 2 ? local[0] + "*".repeat(Math.min(local.length - 1, 5)) : local[0] + "*";
+  return `${visible}@${domain}`;
+}
+
+// Public, no-auth — returns only enough to show the invitee what they're
+// responding to. The full invited email is NEVER returned; instead we return
+// a masked address and, for authenticated callers, a server-side flag that
+// says whether their signed-in account is the correct one. The real ownership
+// check happens in acceptInvite/declineInvite — this is purely UX.
 export const getInviteByToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const link = await ctx.db.query("org_employee_links").withIndex("by_token", (q) => q.eq("token", args.token)).unique();
     if (!link) return null;
     const org = await ctx.db.get(link.organizationId);
+    const caller = await getCurrentUser(ctx);
+    const isCorrectAccount = caller?.email
+      ? caller.email.toLowerCase() === link.invitedEmail
+      : null;
     return {
       organizationName: org?.name ?? "an employer",
       organizationType: org?.type ?? "employer",
-      invitedEmail: link.invitedEmail,
+      maskedEmail: maskEmail(link.invitedEmail),
+      isCorrectAccount,
       status: link.status,
     };
   },

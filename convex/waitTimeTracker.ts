@@ -28,6 +28,11 @@ export const submitWaitTimeReport = mutation({
       "You can submit up to 5 wait time reports per day. Resets at midnight UTC.",
     );
 
+    if (args.destination.length > 100)
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Destination is too long." });
+    if (args.visaType.length > 100)
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Visa type is too long." });
+
     const applied = new Date(args.applicationDate).getTime();
     const decided = new Date(args.decisionDate).getTime();
     if (Number.isNaN(applied) || Number.isNaN(decided)) {
