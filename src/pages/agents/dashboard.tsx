@@ -206,7 +206,10 @@ function NewClientForm({
       });
       toast.success(t("form.toast_created"));
       onCreated(token);
-    } catch { toast.error(t("form.toast_create_error")); }
+    } catch (err) {
+      const msg = (err as { data?: { message?: string } })?.data?.message;
+      toast.error(msg ?? t("form.toast_create_error"));
+    }
     finally { setSaving(false); }
   };
 
