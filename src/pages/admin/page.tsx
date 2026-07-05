@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
@@ -60,6 +61,7 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
 function AdminInner() {
   const { t } = useTranslation("admin");
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const stats = useQuery(api.admin.getStats, {});
@@ -144,13 +146,20 @@ function AdminInner() {
           );
         })}
       </div>
-      <div className="px-4 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-white/10 flex flex-col gap-2">
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to site
+        </button>
+        <button
+          onClick={async () => { await signOut(); navigate("/"); }}
+          className="flex items-center gap-2 text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Sign out
         </button>
       </div>
     </nav>
