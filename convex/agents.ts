@@ -113,7 +113,7 @@ export const upsertProfile = mutation({
       // but never actually surface as featured.
       tier: user.agentPlan,
     });
-    await bumpStat(ctx, "totalAgents", 1);
+    if (user.agentPlan) await bumpStat(ctx, "totalAgents", 1);
     return id;
   },
 });
