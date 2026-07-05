@@ -32,7 +32,9 @@ export function ensureChecklistLanguageLoaded(language: string): Promise<void> {
       else return;
       overlayCache[language] = mod.default as ChecklistContentOverlay;
     } catch {
-      // On failure, getLocalizedChecklist silently returns English content
+      // Clear the promise so the next call retries rather than returning a
+      // permanently-resolved-but-empty promise.
+      delete loadingPromises[language];
     }
   };
 

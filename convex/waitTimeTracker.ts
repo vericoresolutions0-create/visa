@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
 import { requireAdmin } from "./admin.ts";
+import { checkUserDailyLimit } from "./rateLimits.ts";
 
 // Below this, a "community average" would just be 1-2 people's experience
 // dressed up as a trend — exactly the kind of thin data that looks fake
@@ -22,6 +23,10 @@ export const submitWaitTimeReport = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    await checkUserDailyLimit(
+      ctx, user._id, "wait_time_report", 5,
+      "You can submit up to 5 wait time reports per day. Resets at midnight UTC.",
+    );
 
     const applied = new Date(args.applicationDate).getTime();
     const decided = new Date(args.decisionDate).getTime();

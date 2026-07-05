@@ -35,7 +35,9 @@ export function ensureSettleInLanguageLoaded(language: string): Promise<void> {
       else return;
       overlayCache[language] = mod.default as SettleInContentOverlay;
     } catch {
-      // On failure, getLocalizedSettleInGuide silently returns English content
+      // Clear the promise so the next call retries rather than returning a
+      // permanently-resolved-but-empty promise.
+      delete loadingPromises[language];
     }
   };
 

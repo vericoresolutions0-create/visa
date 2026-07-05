@@ -78,7 +78,7 @@ export const submitPost = mutation({
 
     await checkUserDailyLimit(
       ctx, user._id, "community_post", 10,
-      "You can submit up to 10 community posts per day. Please try again tomorrow.",
+      "You can submit up to 10 community posts per day. Resets at midnight UTC.",
     );
 
     validatePost(args.title, args.body);

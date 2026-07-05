@@ -65,7 +65,7 @@ export const addDocument = mutation({
     requirePlan(user.plan);
     await checkUserDailyLimit(
       ctx, user._id, "vault_upload", 20,
-      "You can upload up to 20 documents per day. Please try again tomorrow.",
+      "You can upload up to 20 documents per day. Resets at midnight UTC.",
     );
     await validateUploadedFile(ctx, args.storageId);
     const docId = await ctx.db.insert("vault_documents", {

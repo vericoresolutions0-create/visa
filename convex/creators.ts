@@ -42,9 +42,12 @@ export const logClick = mutation({
       sessionId: args.sessionId,
       createdAt: new Date().toISOString(),
     });
-    // Increment the denormalized counter so getPortalStats never has to count
-    // event rows — which would silently truncate at scale (.take cap).
-    await ctx.db.patch(creator._id, { clickCount: (creator.clickCount ?? 0) + 1 });
+    // Increment the denormalized counter. On first write (undefined), seed from
+    // historical event rows so pre-migration history isn't reset to 1.
+    const baseCount = creator.clickCount !== undefined
+      ? creator.clickCount
+      : (await ctx.db.query("creator_click_events").withIndex("by_slug", (q) => q.eq("creatorSlug", creator.slug)).take(5000)).length;
+    await ctx.db.patch(creator._id, { clickCount: baseCount + 1 });
   },
 });
 
@@ -71,8 +74,12 @@ export const trackSignup = mutation({
       creatorCode: normalSlug,
       creatorTrackedAt: new Date().toISOString(),
     });
-    // Increment the denormalized signup counter on the creator document.
-    await ctx.db.patch(creator._id, { signupCount: (creator.signupCount ?? 0) + 1 });
+    // Increment the denormalized signup counter. On first write (undefined), seed
+    // from the actual attributed user count so pre-migration history isn't lost.
+    const baseSignups = creator.signupCount !== undefined
+      ? creator.signupCount
+      : (await ctx.db.query("users").withIndex("by_creator_code", (q) => q.eq("creatorCode", normalSlug)).take(5000)).length;
+    await ctx.db.patch(creator._id, { signupCount: baseSignups + 1 });
   },
 });
 
@@ -101,7 +108,7 @@ export const getPortalStats = query({
     const signups = await ctx.db
       .query("users")
       .withIndex("by_creator_code", (q) => q.eq("creatorCode", creator.slug))
-      .take(1000);
+      .take(5000);
     const signupCount = creator.signupCount !== undefined ? creator.signupCount : signups.length;
 
     // Paying users (signups who are on pro or expert)
@@ -285,7 +292,7 @@ export const listAll = query({
       const signups = await ctx.db
         .query("users")
         .withIndex("by_creator_code", (q) => q.eq("creatorCode", code.slug))
-        .take(500);
+        .take(5000);
       const signupCount = code.signupCount !== undefined ? code.signupCount : signups.length;
 
       const commissions = await ctx.db

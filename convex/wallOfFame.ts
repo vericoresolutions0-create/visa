@@ -42,7 +42,7 @@ export const submitStory = mutation({
 
     await checkUserDailyLimit(
       ctx, user._id, "wall_of_fame", 3,
-      "You can submit up to 3 Wall of Fame stories per day. Please try again tomorrow.",
+      "You can submit up to 3 Wall of Fame stories per day. Resets at midnight UTC.",
     );
 
     if (args.refusalCount < 1 || args.refusalCount > 20) {

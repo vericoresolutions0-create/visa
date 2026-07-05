@@ -163,12 +163,28 @@ export async function checkUserDailyLimit(
   message: string,
 ): Promise<void> {
   const dateKey = new Date().toISOString().split("T")[0];
-  const existing = await ctx.db
-    .query("user_daily_usage")
-    .withIndex("by_user_resource_date", (q) =>
-      q.eq("userId", userId).eq("resource", resource).eq("dateKey", dateKey)
-    )
-    .unique();
+
+  let existing;
+  try {
+    existing = await ctx.db
+      .query("user_daily_usage")
+      .withIndex("by_user_resource_date", (q) =>
+        q.eq("userId", userId).eq("resource", resource).eq("dateKey", dateKey)
+      )
+      .unique();
+  } catch {
+    // Concurrent burst created duplicate rows — sum them all and enforce the cap.
+    const rows = await ctx.db
+      .query("user_daily_usage")
+      .withIndex("by_user_resource_date", (q) =>
+        q.eq("userId", userId).eq("resource", resource).eq("dateKey", dateKey)
+      )
+      .take(limit + 1);
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    if (total >= limit) throw new ConvexError({ code: "RATE_LIMITED", message });
+    if (rows[0]) await ctx.db.patch(rows[0]._id, { count: rows[0].count + 1 });
+    return;
+  }
 
   if (existing && existing.count >= limit) {
     throw new ConvexError({ code: "RATE_LIMITED", message });
