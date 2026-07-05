@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import { useConvexAuth } from "convex/react";
 import {
   BrowserRouter,
   Route,
@@ -95,8 +96,18 @@ function PageLoader() {
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, isLoading } = useConvexAuth();
 
   useEffect(() => {
+    // Authenticated users never need onboarding — also stamp localStorage so
+    // after sign-out the homepage works instead of bouncing to /onboarding.
+    if (isAuthenticated) {
+      localStorage.setItem("vc_onboarded", "true");
+      return;
+    }
+    // Wait for auth to resolve before deciding — avoids a flash redirect.
+    if (isLoading) return;
+
     const onboarded = localStorage.getItem("vc_onboarded");
     const skipPaths = [
       "/onboarding",
@@ -136,7 +147,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
     if (!onboarded && !skipPaths.some((p) => location.pathname.startsWith(p))) {
       navigate("/onboarding", { replace: true });
     }
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, isAuthenticated, isLoading]);
 
   return <>{children}</>;
 }
