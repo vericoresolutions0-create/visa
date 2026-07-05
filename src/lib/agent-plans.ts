@@ -32,7 +32,7 @@ export const AGENT_PLANS: AgentPlan[] = [
     description:
       "A verified profile, trust badge, and direct applicant enquiries for solo consultants.",
     audience: "Solo consultants",
-    leadTarget: "5-12 qualified enquiries/month",
+    leadTarget: "Direct enquiries from applicants looking for help on your routes",
     features: [
       "Verified partner profile",
       "Listed in the VisaClear marketplace",
@@ -51,7 +51,7 @@ export const AGENT_PLANS: AgentPlan[] = [
     description:
       "Priority marketplace visibility for agents who want more qualified demand.",
     audience: "Growing agencies",
-    leadTarget: "15-35 qualified enquiries/month",
+    leadTarget: "More enquiries through priority placement in search results",
     features: [
       "Everything in Verified Listing",
       "Featured ranking in priority routes",

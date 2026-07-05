@@ -1054,13 +1054,13 @@ function OverviewSection({
       {/* Daily greeting */}
       <div className="rounded-2xl bg-[#0f2040] text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-white/50 text-sm font-medium mb-1">
+          <p className="text-white/70 text-sm font-medium mb-1">
             {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
           </p>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white leading-snug">
             {greetingWord()}{firstName ? `, ${firstName}` : ""}.
           </h2>
-          <p className="text-white/60 text-base mt-1">
+          <p className="text-white/80 text-base mt-1">
             {allClear
               ? "Everything is under control — no actions needed right now."
               : totalUrgent > 0
@@ -1071,19 +1071,19 @@ function OverviewSection({
         <div className="flex items-center gap-4 sm:gap-6 shrink-0 flex-wrap">
           <div className="text-center">
             <p className="text-3xl font-bold text-[#d4a726]">{intakes.length}</p>
-            <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">Clients</p>
+            <p className="text-sm text-white/80 mt-1 uppercase tracking-wider font-medium">Clients</p>
           </div>
           <div className="w-px h-10 bg-white/15" />
           <div className="text-center">
             <p className="text-3xl font-bold text-white">{intakes.filter(i => i.status === "complete").length}</p>
-            <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">Complete</p>
+            <p className="text-sm text-white/80 mt-1 uppercase tracking-wider font-medium">Complete</p>
           </div>
           {newUploads > 0 && (
             <>
               <div className="w-px h-10 bg-white/15" />
               <div className="text-center">
                 <p className="text-3xl font-bold text-blue-300">{newUploads}</p>
-                <p className="text-xs text-white/50 mt-0.5 uppercase tracking-wider">New docs</p>
+                <p className="text-sm text-white/80 mt-1 uppercase tracking-wider font-medium">New docs</p>
               </div>
             </>
           )}
@@ -1306,7 +1306,7 @@ function Sidebar({
           </div>
           <div>
             <p className="font-serif font-semibold text-white text-base leading-none">VisaClear</p>
-            <p className="text-[10px] text-white/50 tracking-widest uppercase mt-0.5">Agent Portal</p>
+            <p className="text-[10px] text-white/70 tracking-widest uppercase mt-0.5">Agent Portal</p>
           </div>
         </button>
       </div>
@@ -1325,10 +1325,10 @@ function Sidebar({
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer group",
                 active
                   ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/8 hover:text-white"
+                  : "text-white/75 hover:bg-white/8 hover:text-white"
               )}
             >
-              <Icon className={cn("w-5 h-5 shrink-0", active ? "text-[#d4a726]" : "text-white/50 group-hover:text-white/80")} />
+              <Icon className={cn("w-5 h-5 shrink-0", active ? "text-[#d4a726]" : "text-white/65 group-hover:text-white/90")} />
               <span className="font-semibold text-[15px] leading-none">{t(labelKey) || id}</span>
               {badge && (
                 <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold shrink-0">{badge}</span>
@@ -1344,7 +1344,7 @@ function Sidebar({
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" />
           <span className="text-sm font-medium">Back to site</span>
@@ -1352,7 +1352,7 @@ function Sidebar({
         <button
           type="button"
           onClick={onSignOut}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0" />
           <span className="text-sm font-medium">{t("header.sign_out")}</span>
@@ -1470,6 +1470,15 @@ function DashboardInner() {
                 <UserPlus className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("header.add_client")}</span>
               </Button>
+              <button
+                type="button"
+                onClick={() => { void handleSignOut(); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 border border-border transition-colors cursor-pointer"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
             </div>
           </div>
         </header>
@@ -1528,7 +1537,7 @@ export default function AgentDashboardPreviewPage() {
                 <span className="font-serif text-xl font-semibold text-white">VisaClear</span>
               </div>
               <h2 className="font-serif text-3xl font-semibold text-white leading-snug mb-4">Agent Operating System</h2>
-              <p className="text-white/60 text-sm leading-relaxed mb-8">Manage your clients, track documents, and grow your consultancy — all in one place.</p>
+              <p className="text-white/80 text-sm leading-relaxed mb-8">Manage your clients, track documents, and grow your consultancy — all in one place.</p>
               <div className="space-y-4">
                 {[
                   { icon: Users, text: "Secure client document portals" },
@@ -1540,7 +1549,7 @@ export default function AgentDashboardPreviewPage() {
                     <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4 text-[#d4a726]" />
                     </div>
-                    <p className="text-white/70 text-sm">{text}</p>
+                    <p className="text-white/85 text-sm">{text}</p>
                   </div>
                 ))}
               </div>
@@ -1549,18 +1558,18 @@ export default function AgentDashboardPreviewPage() {
               <button
                 type="button"
                 onClick={() => navigate("/agents")}
-                className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors cursor-pointer text-sm"
+                className="flex items-center gap-2 text-white/65 hover:text-white transition-colors cursor-pointer text-sm"
               >
                 <ArrowLeft className="w-4 h-4" /> Browse agent marketplace
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors cursor-pointer text-sm"
+                className="flex items-center gap-2 text-white/65 hover:text-white transition-colors cursor-pointer text-sm"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to VisaClear
               </button>
-              <p className="text-white/20 text-xs pt-2">© {new Date().getFullYear()} Vericore Ltd.</p>
+              <p className="text-white/40 text-xs pt-2">© {new Date().getFullYear()} Vericore Ltd.</p>
             </div>
           </div>
           <div className="flex-1 flex flex-col px-6 py-8 bg-gray-50">
