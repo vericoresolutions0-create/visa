@@ -216,9 +216,11 @@ export function AuthAccessPanel({
             }}
             className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
           >
-            {authMode === "signIn"
-              ? "New to VisaClear? Create an account"
-              : "Already have an account? Sign in"}
+            {authMode === "signIn" ? (
+              <>New to VisaClear? <strong className="text-primary font-bold">Create an account</strong></>
+            ) : (
+              <>Already have an account? <strong className="text-primary font-bold">Sign in</strong></>
+            )}
           </button>
         </form>
 
