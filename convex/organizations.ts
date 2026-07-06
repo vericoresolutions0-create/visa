@@ -24,7 +24,7 @@ export async function getMyOrgAdminMembershipOrThrow(ctx: QueryCtx | MutationCtx
 // near-duplicate mutations.
 export async function createOrganizationImpl(
   ctx: MutationCtx,
-  args: { name: string; type: "employer" | "household" },
+  args: { name: string; type: "employer" | "household" | "university" },
 ) {
   const user = await getCurrentUserOrThrow(ctx);
   if (!args.name.trim() || args.name.length > 200) {
@@ -32,7 +32,7 @@ export async function createOrganizationImpl(
       code: "BAD_REQUEST",
       message: args.type === "household"
         ? "Household name is required and must be under 200 characters."
-        : "Company name is required and must be under 200 characters.",
+        : "Organisation name is required and must be under 200 characters.",
     });
   }
 
@@ -47,7 +47,7 @@ export async function createOrganizationImpl(
       code: "ALREADY_MEMBER",
       message: existingType === "household"
         ? "Your account is already linked to a household. Multi-membership isn't supported yet."
-        : "Your account is already linked to an employer organisation. Multi-membership isn't supported yet.",
+        : "Your account is already linked to an organisation. Multi-membership isn't supported yet.",
     });
   }
 
@@ -67,8 +67,11 @@ export async function createOrganizationImpl(
 }
 
 export const createOrganization = mutation({
-  args: { name: v.string() },
-  handler: async (ctx, args) => createOrganizationImpl(ctx, { name: args.name, type: "employer" }),
+  args: {
+    name: v.string(),
+    orgType: v.optional(v.union(v.literal("employer"), v.literal("university"))),
+  },
+  handler: async (ctx, args) => createOrganizationImpl(ctx, { name: args.name, type: args.orgType ?? "employer" }),
 });
 
 export const getMyOrganization = query({

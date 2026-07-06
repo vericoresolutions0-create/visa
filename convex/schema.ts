@@ -600,7 +600,7 @@ export default defineSchema({
     // no value here, and every read site treats a missing value as
     // "employer" (org?.type ?? "employer") rather than requiring a
     // production data migration before this schema can deploy.
-    type: v.optional(v.union(v.literal("employer"), v.literal("household"))),
+    type: v.optional(v.union(v.literal("employer"), v.literal("household"), v.literal("university"))),
     createdByUserId: v.id("users"),
     createdAt: v.string(),
   })

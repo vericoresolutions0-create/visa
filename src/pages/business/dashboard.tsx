@@ -47,7 +47,7 @@ const STATUS_BADGE: Record<LinkStatus, string> = {
   revoked: "bg-muted text-muted-foreground border-border",
 };
 
-function InviteEmployeeForm() {
+function InviteEmployeeForm({ isUniversity }: { isUniversity: boolean }) {
   const { t } = useTranslation("business");
   const inviteEmployee = useMutation(api.employerCohort.inviteEmployee);
   const [email, setEmail] = useState("");
@@ -74,11 +74,19 @@ function InviteEmployeeForm() {
     }
   };
 
+  const placeholder = isUniversity
+    ? t("dashboard.invite_email_placeholder_student")
+    : t("dashboard.invite_email_placeholder_employee");
+
+  const inviteLabel = isUniversity
+    ? t("dashboard.invite_student")
+    : t("dashboard.invite_employee");
+
   return (
     <div className="flex flex-col sm:flex-row gap-2">
       <Input
         type="email"
-        placeholder={t("dashboard.invite_email_placeholder")}
+        placeholder={placeholder}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         disabled={submitting}
@@ -86,7 +94,7 @@ function InviteEmployeeForm() {
       />
       <Button onClick={() => { void handleInvite(); }} disabled={submitting} className="cursor-pointer font-semibold whitespace-nowrap">
         <UserPlus className="w-4 h-4 mr-1.5" />
-        {submitting ? t("dashboard.inviting") : t("dashboard.invite_employee")}
+        {submitting ? t("dashboard.inviting") : inviteLabel}
       </Button>
     </div>
   );
@@ -316,6 +324,10 @@ function DashboardInner() {
   }
   if (!myOrg) return null;
 
+  const isUniversity = myOrg.type === "university";
+  const memberColumnLabel = isUniversity ? t("dashboard.th_student") : t("dashboard.th_employee");
+  const emptyCohortKey = isUniversity ? "dashboard.empty_cohort_university" : "dashboard.empty_cohort_employer";
+
   const filtered = (cohort as CohortRow[]).filter((row) => {
     if (statusFilter !== "all" && row.status !== statusFilter) return false;
     if (search.trim()) {
@@ -372,7 +384,7 @@ function DashboardInner() {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4">
-        <InviteEmployeeForm />
+        <InviteEmployeeForm isUniversity={isUniversity} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -415,7 +427,7 @@ function DashboardInner() {
 
       {cohort.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-10 text-center text-sm text-muted-foreground">
-          {t("dashboard.empty_cohort")}
+          {t(emptyCohortKey)}
         </div>
       ) : view === "pipeline" ? (
         <PipelineBoard cohort={cohort as CohortRow[]} onAdvance={handleAdvance} />
@@ -438,7 +450,7 @@ function DashboardInner() {
             <table className="w-full text-sm">
               <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
                 <tr>
-                  <th className="text-left px-4 py-2.5">{t("dashboard.th_employee")}</th>
+                  <th className="text-left px-4 py-2.5">{memberColumnLabel}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_department")}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_status")}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_readiness")}</th>

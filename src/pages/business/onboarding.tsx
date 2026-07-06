@@ -12,13 +12,22 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { Globe, Building2, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils.ts";
+import { Globe, Building2, GraduationCap, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
+
+type OrgType = "employer" | "university";
+
+const ORG_TYPE_OPTIONS: { value: OrgType; icon: typeof Building2; labelKey: string; descKey: string }[] = [
+  { value: "employer", icon: Building2, labelKey: "onboarding.type_employer", descKey: "onboarding.type_employer_desc" },
+  { value: "university", icon: GraduationCap, labelKey: "onboarding.type_university", descKey: "onboarding.type_university_desc" },
+];
 
 function CreateOrgForm() {
   const { t } = useTranslation("business");
   const navigate = useNavigate();
   const myOrg = useQuery(api.organizations.getMyOrganization);
   const createOrganization = useMutation(api.organizations.createOrganization);
+  const [orgType, setOrgType] = useState<OrgType>("employer");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,7 +43,7 @@ function CreateOrgForm() {
     }
     setSubmitting(true);
     try {
-      await createOrganization({ name });
+      await createOrganization({ name, orgType });
       toast.success(t("onboarding.created"));
       navigate("/business/dashboard");
     } catch (err) {
@@ -49,22 +58,70 @@ function CreateOrgForm() {
   };
 
   if (myOrg === undefined) {
-    return <Skeleton className="h-48 w-full rounded-2xl" />;
+    return <Skeleton className="h-64 w-full rounded-2xl" />;
   }
 
+  const namePlaceholder = orgType === "university"
+    ? t("onboarding.company_name_placeholder_university")
+    : t("onboarding.company_name_placeholder_employer");
+
   return (
-    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-5">
-      <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-        <Building2 className="w-6 h-6 text-accent" />
+    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
+      {/* Org type selector */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-foreground">{t("onboarding.type_label")}</p>
+        <div className="grid grid-cols-2 gap-3">
+          {ORG_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setOrgType(opt.value)}
+              className={cn(
+                "flex flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-colors cursor-pointer",
+                orgType === opt.value
+                  ? "border-primary bg-primary/4"
+                  : "border-border hover:border-primary/40",
+              )}
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center",
+                orgType === opt.value ? "bg-primary/12" : "bg-muted",
+              )}>
+                <opt.icon className={cn("w-4 h-4", orgType === opt.value ? "text-primary" : "text-muted-foreground")} />
+              </div>
+              <span className={cn("text-sm font-semibold leading-snug", orgType === opt.value ? "text-primary" : "text-foreground")}>
+                {t(opt.labelKey)}
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-snug">{t(opt.descKey)}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Icon + heading */}
       <div>
+        <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4">
+          {orgType === "university" ? (
+            <GraduationCap className="w-6 h-6 text-accent" />
+          ) : (
+            <Building2 className="w-6 h-6 text-accent" />
+          )}
+        </div>
         <h1 className="font-serif text-2xl font-semibold text-primary mb-1.5">{t("onboarding.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("onboarding.subtitle")}</p>
       </div>
+
       <div className="space-y-1.5">
         <Label htmlFor="orgName">{t("onboarding.company_name_label")}</Label>
-        <Input id="orgName" placeholder={t("onboarding.company_name_placeholder")} value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input
+          id="orgName"
+          placeholder={namePlaceholder}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
       </div>
+
       <Button type="submit" size="lg" disabled={submitting} className="w-full cursor-pointer font-semibold disabled:opacity-60">
         {submitting ? t("onboarding.creating") : t("onboarding.create_org")}
         {!submitting && <ChevronRight className="w-4 h-4 ml-1" />}
@@ -75,7 +132,7 @@ function CreateOrgForm() {
 
 export default function BusinessOnboardingPage() {
   const { t } = useTranslation("business");
-  useSeo({ title: "Create Your Employer Account", description: "Set up your organisation on VisaClear to track your relocating employees' visa readiness." });
+  useSeo({ title: "Create Your Organisation", description: "Set up your company, university, or agency account on VisaClear to track your cohort's visa readiness." });
   const goBack = useSmartBack("/business");
 
   return (
@@ -93,7 +150,7 @@ export default function BusinessOnboardingPage() {
 
       <div className="max-w-md mx-auto px-4 py-10 sm:px-6 sm:py-16">
         <AuthLoading>
-          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
         </AuthLoading>
         <Unauthenticated>
           <div className="text-center py-8 sm:py-10 px-4 bg-card border border-border rounded-2xl">
