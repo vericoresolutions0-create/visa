@@ -16,8 +16,8 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { downloadComplianceCsv } from "@/lib/compliance-export.ts";
 import { cn } from "@/lib/utils.ts";
 import {
-  Globe, Building2, LogIn, UserPlus, Download, LayoutDashboard, Table2,
-  X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft,
+  Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
+  LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft,
 } from "lucide-react";
 
 type PipelineStage = "invited" | "accepted" | "in_progress" | "ready" | "relocated";
@@ -38,6 +38,89 @@ type CohortRow = {
   employerVisibleStatus: "Ready" | "Needs Attention" | "Not Started" | null;
 };
 
+type OrgCtx = {
+  memberLabel: string;
+  inviteLabel: string;
+  emailPlaceholder: string;
+  detailsTitle: string;
+  field1Label: string;
+  field2Label: string;
+  field3Label: string;
+  emptyCohort: string;
+  exportLabel: string;
+  headerTag: string;
+  headerIcon: typeof Building2;
+  pipelineLabels: Record<PipelineStage, string>;
+};
+
+function getOrgCtx(orgType?: string | null): OrgCtx {
+  switch (orgType) {
+    case "university":
+      return {
+        memberLabel: "Student",
+        inviteLabel: "Invite Student",
+        emailPlaceholder: "student@university.ac.uk",
+        detailsTitle: "Academic Details",
+        field1Label: "Faculty / School",
+        field2Label: "Programme / Course",
+        field3Label: "Target enrolment date",
+        emptyCohort: "Invite your first student to see your cohort build up here.",
+        exportLabel: "Export Student Report",
+        headerTag: "University Dashboard",
+        headerIcon: GraduationCap,
+        pipelineLabels: {
+          invited: "Invited",
+          accepted: "Accepted",
+          in_progress: "Visa Applied",
+          ready: "Visa Approved",
+          relocated: "Enrolled",
+        },
+      };
+    case "law_firm":
+      return {
+        memberLabel: "Client",
+        inviteLabel: "Invite Client",
+        emailPlaceholder: "client@example.com",
+        detailsTitle: "Case Details",
+        field1Label: "Case Type",
+        field2Label: "Matter Reference",
+        field3Label: "Target decision date",
+        emptyCohort: "Invite your first client to see your caseload build up here.",
+        exportLabel: "Export Case Report",
+        headerTag: "Client Dashboard",
+        headerIcon: Scale,
+        pipelineLabels: {
+          invited: "Invited",
+          accepted: "Onboarded",
+          in_progress: "Gathering Documents",
+          ready: "Application Submitted",
+          relocated: "Decision Received",
+        },
+      };
+    default:
+      return {
+        memberLabel: "Employee",
+        inviteLabel: "Invite Employee",
+        emailPlaceholder: "employee@company.com",
+        detailsTitle: "Business Details",
+        field1Label: "Department",
+        field2Label: "Role / Title",
+        field3Label: "Target relocation date",
+        emptyCohort: "Invite your first employee to see your cohort build up here.",
+        exportLabel: "Export Compliance Report",
+        headerTag: "Employer Dashboard",
+        headerIcon: Building2,
+        pipelineLabels: {
+          invited: "Invited",
+          accepted: "Accepted",
+          in_progress: "In Progress",
+          ready: "Ready",
+          relocated: "Relocated",
+        },
+      };
+  }
+}
+
 const PIPELINE_STAGES: PipelineStage[] = ["invited", "accepted", "in_progress", "ready", "relocated"];
 
 const STATUS_BADGE: Record<LinkStatus, string> = {
@@ -47,7 +130,7 @@ const STATUS_BADGE: Record<LinkStatus, string> = {
   revoked: "bg-muted text-muted-foreground border-border",
 };
 
-function InviteEmployeeForm({ isUniversity }: { isUniversity: boolean }) {
+function InviteEmployeeForm({ orgCtx }: { orgCtx: OrgCtx }) {
   const { t } = useTranslation("business");
   const inviteEmployee = useMutation(api.employerCohort.inviteEmployee);
   const [email, setEmail] = useState("");
@@ -74,19 +157,11 @@ function InviteEmployeeForm({ isUniversity }: { isUniversity: boolean }) {
     }
   };
 
-  const placeholder = isUniversity
-    ? t("dashboard.invite_email_placeholder_student")
-    : t("dashboard.invite_email_placeholder_employee");
-
-  const inviteLabel = isUniversity
-    ? t("dashboard.invite_student")
-    : t("dashboard.invite_employee");
-
   return (
     <div className="flex flex-col sm:flex-row gap-2">
       <Input
         type="email"
-        placeholder={placeholder}
+        placeholder={orgCtx.emailPlaceholder}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         disabled={submitting}
@@ -94,7 +169,7 @@ function InviteEmployeeForm({ isUniversity }: { isUniversity: boolean }) {
       />
       <Button onClick={() => { void handleInvite(); }} disabled={submitting} className="cursor-pointer font-semibold whitespace-nowrap">
         <UserPlus className="w-4 h-4 mr-1.5" />
-        {submitting ? t("dashboard.inviting") : inviteLabel}
+        {submitting ? t("dashboard.inviting") : orgCtx.inviteLabel}
       </Button>
     </div>
   );
@@ -123,7 +198,7 @@ function StatusBadge({ status }: { status: LinkStatus }) {
   );
 }
 
-function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => void }) {
+function EmployeeDetailPanel({ row, onClose, orgCtx }: { row: CohortRow; onClose: () => void; orgCtx: OrgCtx }) {
   const { t } = useTranslation("business");
   const notes = useQuery(api.employerCohort.listEmployeeNotes, { linkId: row.linkId });
   const updateDetails = useMutation(api.employerCohort.updateEmployeeDetails);
@@ -170,10 +245,10 @@ function EmployeeDetailPanel({ row, onClose }: { row: CohortRow; onClose: () => 
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("dashboard.business_details")}</h4>
-          <Input placeholder={t("dashboard.department_placeholder")} value={department} onChange={(e) => setDepartment(e.target.value)} />
-          <Input placeholder={t("dashboard.role_placeholder")} value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} />
-          <Input type="date" placeholder={t("dashboard.target_date_placeholder")} value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{orgCtx.detailsTitle}</h4>
+          <Input placeholder={orgCtx.field1Label} value={department} onChange={(e) => setDepartment(e.target.value)} />
+          <Input placeholder={orgCtx.field2Label} value={roleTitle} onChange={(e) => setRoleTitle(e.target.value)} />
+          <Input type="date" placeholder={orgCtx.field3Label} value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
           <Button size="sm" disabled={saving} onClick={() => { void handleSaveDetails(); }} className="cursor-pointer font-semibold">
             {saving ? t("dashboard.saving") : t("dashboard.save_details")}
           </Button>
@@ -211,11 +286,13 @@ function EmployeeCard({
   onView,
   onResend,
   onRevoke,
+  orgCtx,
 }: {
   row: CohortRow;
   onView: () => void;
   onResend: (id: Id<"org_employee_links">) => void;
   onRevoke: (id: Id<"org_employee_links">) => void;
+  orgCtx: OrgCtx;
 }) {
   const { t } = useTranslation("business");
   return (
@@ -229,7 +306,7 @@ function EmployeeCard({
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
         <div>
-          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{t("dashboard.th_department")}</span>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{orgCtx.field1Label}</span>
           <span className="text-foreground">{row.department ?? "—"}</span>
         </div>
         <div>
@@ -257,10 +334,10 @@ function EmployeeCard({
   );
 }
 
-function PipelineBoard({ cohort, onAdvance }: { cohort: CohortRow[]; onAdvance: (row: CohortRow, stage: PipelineStage) => void }) {
+function PipelineBoard({ cohort, onAdvance, orgCtx }: { cohort: CohortRow[]; onAdvance: (row: CohortRow, stage: PipelineStage) => void; orgCtx: OrgCtx }) {
   const { t } = useTranslation("business");
   const active = cohort.filter((r) => r.status === "pending" || r.status === "accepted");
-  const columns = PIPELINE_STAGES.map((stage) => ({ stage, label: t(`dashboard.column.${stage}`) }));
+  const columns = PIPELINE_STAGES.map((stage) => ({ stage, label: orgCtx.pipelineLabels[stage] }));
 
   return (
     <div className="-mx-4 sm:mx-0 overflow-x-auto">
@@ -324,9 +401,7 @@ function DashboardInner() {
   }
   if (!myOrg) return null;
 
-  const isUniversity = myOrg.type === "university";
-  const memberColumnLabel = isUniversity ? t("dashboard.th_student") : t("dashboard.th_employee");
-  const emptyCohortKey = isUniversity ? "dashboard.empty_cohort_university" : "dashboard.empty_cohort_employer";
+  const orgCtx = getOrgCtx(myOrg.type);
 
   const filtered = (cohort as CohortRow[]).filter((row) => {
     if (statusFilter !== "all" && row.status !== statusFilter) return false;
@@ -378,13 +453,13 @@ function DashboardInner() {
             className="cursor-pointer font-semibold"
           >
             <Download className="w-4 h-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">{t("dashboard.export_compliance")}</span>
+            <span className="hidden sm:inline">{orgCtx.exportLabel}</span>
           </Button>
         </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4">
-        <InviteEmployeeForm isUniversity={isUniversity} />
+        <InviteEmployeeForm orgCtx={orgCtx} />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -427,10 +502,10 @@ function DashboardInner() {
 
       {cohort.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-10 text-center text-sm text-muted-foreground">
-          {t(emptyCohortKey)}
+          {orgCtx.emptyCohort}
         </div>
       ) : view === "pipeline" ? (
-        <PipelineBoard cohort={cohort as CohortRow[]} onAdvance={handleAdvance} />
+        <PipelineBoard cohort={cohort as CohortRow[]} onAdvance={handleAdvance} orgCtx={orgCtx} />
       ) : (
         <>
           {/* Mobile cards */}
@@ -442,6 +517,7 @@ function DashboardInner() {
                 onView={() => setSelectedRow(row)}
                 onResend={(id) => { void handleResend(id); }}
                 onRevoke={(id) => { void handleRevoke(id); }}
+                orgCtx={orgCtx}
               />
             ))}
           </div>
@@ -450,8 +526,8 @@ function DashboardInner() {
             <table className="w-full text-sm">
               <thead className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
                 <tr>
-                  <th className="text-left px-4 py-2.5">{memberColumnLabel}</th>
-                  <th className="text-left px-4 py-2.5">{t("dashboard.th_department")}</th>
+                  <th className="text-left px-4 py-2.5">{orgCtx.memberLabel}</th>
+                  <th className="text-left px-4 py-2.5">{orgCtx.field1Label}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_status")}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_readiness")}</th>
                   <th className="text-left px-4 py-2.5">{t("dashboard.th_notes")}</th>
@@ -496,14 +572,14 @@ function DashboardInner() {
         </>
       )}
 
-      {selectedRow && <EmployeeDetailPanel row={selectedRow} onClose={() => setSelectedRow(null)} />}
+      {selectedRow && <EmployeeDetailPanel row={selectedRow} onClose={() => setSelectedRow(null)} orgCtx={orgCtx} />}
     </div>
   );
 }
 
 export default function BusinessDashboardPage() {
+  useSeo({ title: "Organisation Dashboard", description: "Track your cohort's visa readiness — employees, students, or clients — in one consent-first dashboard." });
   const { t } = useTranslation("business");
-  useSeo({ title: "Employer Dashboard", description: "Track your relocating employees' visa readiness in one dashboard." });
   const goBack = useSmartBack("/business");
 
   return (
@@ -516,7 +592,9 @@ export default function BusinessDashboardPage() {
           <Globe className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
         <span className="font-serif font-semibold text-primary">VisaClear</span>
-        <span className="text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-1"><Building2 className="w-3 h-3" /> {t("header_tag")}</span>
+        <span className="text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-1">
+          {t("header_tag")}
+        </span>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-10">

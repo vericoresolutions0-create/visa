@@ -13,13 +13,14 @@ import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
-import { Globe, Building2, GraduationCap, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
+import { Globe, Building2, GraduationCap, Scale, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
 
-type OrgType = "employer" | "university";
+type OrgType = "employer" | "university" | "law_firm";
 
 const ORG_TYPE_OPTIONS: { value: OrgType; icon: typeof Building2; labelKey: string; descKey: string }[] = [
   { value: "employer", icon: Building2, labelKey: "onboarding.type_employer", descKey: "onboarding.type_employer_desc" },
   { value: "university", icon: GraduationCap, labelKey: "onboarding.type_university", descKey: "onboarding.type_university_desc" },
+  { value: "law_firm", icon: Scale, labelKey: "onboarding.type_law_firm", descKey: "onboarding.type_law_firm_desc" },
 ];
 
 function CreateOrgForm() {
@@ -61,8 +62,9 @@ function CreateOrgForm() {
     return <Skeleton className="h-64 w-full rounded-2xl" />;
   }
 
-  const namePlaceholder = orgType === "university"
-    ? t("onboarding.company_name_placeholder_university")
+  const namePlaceholder =
+    orgType === "university" ? t("onboarding.company_name_placeholder_university")
+    : orgType === "law_firm" ? t("onboarding.company_name_placeholder_lawfirm")
     : t("onboarding.company_name_placeholder_employer");
 
   return (
@@ -70,7 +72,7 @@ function CreateOrgForm() {
       {/* Org type selector */}
       <div className="space-y-2">
         <p className="text-sm font-semibold text-foreground">{t("onboarding.type_label")}</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {ORG_TYPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -101,11 +103,9 @@ function CreateOrgForm() {
       {/* Icon + heading */}
       <div>
         <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4">
-          {orgType === "university" ? (
-            <GraduationCap className="w-6 h-6 text-accent" />
-          ) : (
-            <Building2 className="w-6 h-6 text-accent" />
-          )}
+          {orgType === "university" ? <GraduationCap className="w-6 h-6 text-accent" />
+            : orgType === "law_firm" ? <Scale className="w-6 h-6 text-accent" />
+            : <Building2 className="w-6 h-6 text-accent" />}
         </div>
         <h1 className="font-serif text-2xl font-semibold text-primary mb-1.5">{t("onboarding.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("onboarding.subtitle")}</p>

@@ -24,7 +24,7 @@ export async function getMyOrgAdminMembershipOrThrow(ctx: QueryCtx | MutationCtx
 // near-duplicate mutations.
 export async function createOrganizationImpl(
   ctx: MutationCtx,
-  args: { name: string; type: "employer" | "household" | "university" },
+  args: { name: string; type: "employer" | "household" | "university" | "law_firm" },
 ) {
   const user = await getCurrentUserOrThrow(ctx);
   if (!args.name.trim() || args.name.length > 200) {
@@ -69,7 +69,7 @@ export async function createOrganizationImpl(
 export const createOrganization = mutation({
   args: {
     name: v.string(),
-    orgType: v.optional(v.union(v.literal("employer"), v.literal("university"))),
+    orgType: v.optional(v.union(v.literal("employer"), v.literal("university"), v.literal("law_firm"))),
   },
   handler: async (ctx, args) => createOrganizationImpl(ctx, { name: args.name, type: args.orgType ?? "employer" }),
 });
