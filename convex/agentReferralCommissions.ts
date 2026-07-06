@@ -1,7 +1,8 @@
-import { query } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { getCurrentUser } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 
 // 15% of a Pro payment, 20% of an Expert payment — the founder's referral
 // promise to agents: refer a real client who upgrades, earn a cut of what
@@ -94,6 +95,84 @@ export const getMyReferralCommissionStatus = query({
       payingClientCount,
       referredSignupCount: referredSignups.length,
     };
+  },
+});
+
+// ─── Payout requests ──────────────────────────────────────────────────────────
+
+export const requestPayout = mutation({
+  args: {
+    amountCents: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    const profile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) throw new ConvexError({ code: "NOT_FOUND", message: "No agent profile found." });
+
+    if (args.amountCents < 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Minimum payout is $1.00." });
+    if (args.amountCents > 10_000_00)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Maximum single request is $10,000." });
+    if (args.notes && args.notes.length > 500)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Notes must be under 500 characters." });
+
+    // Block if a pending request already exists
+    const existing = await ctx.db
+      .query("payout_requests")
+      .withIndex("by_agent_status", (q) => q.eq("agentUserId", user._id).eq("status", "pending"))
+      .first();
+    if (existing) {
+      throw new ConvexError({ code: "CONFLICT", message: "You already have a pending payout request. Wait for it to be processed before requesting another." });
+    }
+
+    // Compute available balance: total earned minus already-paid amounts
+    const [commissions, paidRequests] = await Promise.all([
+      ctx.db
+        .query("agent_referral_commissions")
+        .withIndex("by_agent", (q) => q.eq("agentUserId", user._id))
+        .collect(),
+      ctx.db
+        .query("payout_requests")
+        .withIndex("by_agent_status", (q) => q.eq("agentUserId", user._id).eq("status", "paid"))
+        .collect(),
+    ]);
+
+    const totalEarned = commissions.reduce((sum, c) => sum + c.commissionCents, 0);
+    const totalPaid   = paidRequests.reduce((sum, r) => sum + r.amountCents, 0);
+    const available   = totalEarned - totalPaid;
+
+    if (args.amountCents > available) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: `Amount exceeds your available balance of $${(available / 100).toFixed(2)}.`,
+      });
+    }
+
+    await ctx.db.insert("payout_requests", {
+      agentUserId: user._id,
+      amountCents: args.amountCents,
+      status: "pending",
+      requestedAt: new Date().toISOString(),
+      notes: args.notes,
+    });
+  },
+});
+
+export const getMyPayoutRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    return await ctx.db
+      .query("payout_requests")
+      .withIndex("by_agent", (q) => q.eq("agentUserId", user._id))
+      .order("desc")
+      .take(20);
   },
 });
 

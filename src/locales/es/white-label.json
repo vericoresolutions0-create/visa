@@ -67,15 +67,8 @@
   "plans.enterprise.f5": "SLA y garantía de disponibilidad",
   "plans.enterprise.f6": "Acceso API para integración de sistemas",
   "plans.enterprise.cta": "Contáctanos",
-  "testimonials.eyebrow": "Ejemplos ilustrativos",
-  "testimonials.title": "Cómo puede verse la experiencia de una agencia",
-  "testimonials.subtitle": "Escenarios basados en situaciones comunes de agencias — no son testimonios verificados de clientes.",
-  "testimonials.t1.name": "Adaeze O.",
-  "testimonials.t1.role": "Directora, Prime Visa Consult, Lagos",
-  "testimonials.t1.quote": "Pasamos de gastar 3 horas por cliente en preparación de documentos a 20 minutos. Nuestra tasa de aprobación subió significativamente en el primer trimestre.",
-  "testimonials.t2.name": "James K.",
-  "testimonials.t2.role": "Fundador, ClearPath Immigration, Nairobi",
-  "testimonials.t2.quote": "La configuración del white-label tomó tres días. Los clientes piensan que lo construimos nosotros mismos. Ha cambiado completamente cómo presentamos nuestros servicios.",
+  "testimonials.eyebrow": "Capacidades de la plataforma",
+  "testimonials.title": "Qué obtienes con una licencia de marca blanca",
   "form.eyebrow": "Comenzar",
   "form.title": "Solicita tu licencia",
   "form.subtitle": "Revisamos cada solicitud personalmente. Te responderemos dentro de 24 horas.",
@@ -121,5 +114,9 @@
   "trust.gdpr": "Principios RGPD y NDPA",
   "trust.encrypted": "Cifrado de 256 bits",
   "trust.destinations": "24+ países de destino",
-  "trust.by": "Construido por Vericore"
+  "trust.by": "Construido por Vericore",
+  "testimonials.t1.headline": "Tu marca, tus clientes",
+  "testimonials.t1.text": "El nombre de tu agencia, tu logo y tu dominio. Los solicitantes ven tu producto — VisaClear gestiona la infraestructura. La configuración lleva unos días, no meses.",
+  "testimonials.t2.headline": "Una plataforma para todo tu pipeline",
+  "testimonials.t2.text": "Gestiona clientes potenciales, casos activos y clientes aprobados en un solo panel. Comparte listas, supervisa el progreso y comunícate sin cambiar de herramienta."
 }

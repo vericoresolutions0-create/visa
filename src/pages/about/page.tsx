@@ -58,10 +58,10 @@ export default function AboutPage() {
       </header>
 
       {/* Hero */}
-      <section className="py-24 px-6 text-center">
+      <section className="py-24 px-4 sm:px-6 text-center">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto">
           <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">{t("hero.eyebrow")}</p>
-          <h1 className="font-serif text-5xl font-semibold text-primary leading-tight mb-6">
+          <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-primary leading-tight mb-6">
             {t("hero.title1")}<br />{t("hero.title2")}
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
@@ -73,11 +73,11 @@ export default function AboutPage() {
       <StatsBar stats={STATS} />
 
       {/* Mission */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">{t("mission.eyebrow")}</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary mb-5">{t("mission.title")}</h2>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary mb-5">{t("mission.title")}</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
               {t("mission.p1")}
             </p>
@@ -107,11 +107,11 @@ export default function AboutPage() {
       </section>
 
       {/* Why VisaClear */}
-      <section className="py-20 px-6 bg-muted/20">
+      <section className="py-20 px-4 sm:px-6 bg-muted/20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">{t("why.eyebrow")}</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">{t("why.title")}</h2>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("why.title")}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {WHY_VISACLEAR.map((w) => (
@@ -132,10 +132,10 @@ export default function AboutPage() {
       </section>
 
       {/* Team */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">{t("team.eyebrow")}</p>
-          <h2 className="font-serif text-4xl font-semibold text-primary mb-10">{t("team.title")}</h2>
+          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary mb-10">{t("team.title")}</h2>
           {TEAM.map((member) => (
             <div key={member.name} className="bg-background rounded-2xl p-8 border border-border/50 text-left">
               <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center mb-4">
@@ -150,11 +150,11 @@ export default function AboutPage() {
       </section>
 
       {/* Compliance */}
-      <section className="py-20 px-6 bg-muted/30">
+      <section className="py-20 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">{t("compliance.eyebrow")}</p>
-            <h2 className="font-serif text-4xl font-semibold text-primary">{t("compliance.title")}</h2>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("compliance.title")}</h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-6">
             {COMPLIANCE_ITEMS.map((c) => (
@@ -169,7 +169,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-6">
+      <section className="py-16 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           <div className="bg-primary rounded-2xl p-12 text-center text-primary-foreground">
             <h2 className="font-serif text-3xl font-semibold mb-3">{t("cta.title")}</h2>

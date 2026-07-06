@@ -99,6 +99,8 @@ export default function Index() {
     { label: t("footer.links.white_label"), path: "/white-label", color: "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40" },
     { label: t("footer.links.for_employers"), path: "/business", color: "bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/70 border-indigo-700/40" },
     { label: t("footer.links.blog"), path: "/blog", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
+    { label: t("footer.links.community"), path: "/community", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
+    { label: t("footer.links.wall_of_fame"), path: "/wall-of-fame", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
     { label: t("footer.links.about"), path: "/about", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
     { label: t("footer.links.contact"), path: "/contact", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
     { label: t("footer.links.privacy_policy"), path: "/privacy", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
@@ -408,7 +410,7 @@ export default function Index() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="max-w-6xl mx-auto px-6 py-12 md:py-24">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-24">
         <motion.div
           className="text-center mb-8 md:mb-16"
           variants={fadeUp}
@@ -420,7 +422,7 @@ export default function Index() {
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
             {t("how.label")}
           </p>
-          <h2 className="font-serif text-4xl font-semibold text-primary">
+          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">
             {t("how.title")}
           </h2>
         </motion.div>
@@ -452,7 +454,7 @@ export default function Index() {
 
       {/* ── Features ── */}
       <section className="bg-primary">
-        <div className="max-w-6xl mx-auto px-6 py-12 md:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-24">
           <motion.div
             className="text-center mb-8 md:mb-16"
             variants={fadeUp}
@@ -467,7 +469,7 @@ export default function Index() {
             >
               {t("features.label")}
             </p>
-            <h2 className="font-serif text-4xl font-semibold text-primary-foreground">
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary-foreground">
               {t("features.title")}
             </h2>
           </motion.div>
@@ -506,7 +508,7 @@ export default function Index() {
       </section>
 
       {/* ── Why Applicants Choose VisaClear ── */}
-      <section className="max-w-6xl mx-auto px-6 py-12 md:py-24">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-24">
         <motion.div
           className="text-center mb-8 md:mb-16"
           variants={fadeUp}
@@ -518,7 +520,7 @@ export default function Index() {
           <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
             {t("testimonials.label")}
           </p>
-          <h2 className="font-serif text-4xl font-semibold text-primary">
+          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">
             {t("testimonials.title")}
           </h2>
         </motion.div>
@@ -545,7 +547,7 @@ export default function Index() {
 
       {/* ── Trust Bar ── */}
       <section className="bg-card border-y border-border">
-        <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             {TRUST_ITEMS.map((item) => (
               <div
@@ -566,7 +568,7 @@ export default function Index() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="max-w-3xl mx-auto px-6 py-12 md:py-24 text-center">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12 md:py-24 text-center">
         <motion.div
           variants={fadeUp}
           custom={0}
@@ -596,7 +598,7 @@ export default function Index() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-border bg-card">
-        <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <button onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">

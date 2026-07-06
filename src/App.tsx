@@ -59,6 +59,7 @@ const AgentsPage = lazy(() => import("./pages/agents/page.tsx"));
 const AgentRegisterPage = lazy(() => import("./pages/agents/register.tsx"));
 const AgentOnboardingPage = lazy(() => import("./pages/agents/onboarding.tsx"));
 const AgentDashboardPreviewPage = lazy(() => import("./pages/agents/dashboard.tsx"));
+const AgentProfilePage = lazy(() => import("./pages/agents/profile.tsx"));
 const ClientPortalPage = lazy(() => import("./pages/agents/client-portal.tsx"));
 const OnboardingPage = lazy(() => import("./pages/onboarding/page.tsx"));
 const TermsPage = lazy(() => import("./pages/terms/page.tsx"));
@@ -124,6 +125,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/agents/register",
       "/agents/onboarding",
       "/agents/dashboard",
+      "/agents/",
       "/client-portal",
       "/about",
       "/contact",
@@ -207,6 +209,7 @@ function AppRoutes() {
           <Route path="/agents/register" element={<AgentRegisterPage />} />
           <Route path="/agents/onboarding" element={<AgentOnboardingPage />} />
           <Route path="/agents/dashboard" element={<AgentDashboardPreviewPage />} />
+          <Route path="/agents/:profileId" element={<AgentProfilePage />} />
           <Route path="/client-portal/:token" element={<ClientPortalPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/terms" element={<TermsPage />} />

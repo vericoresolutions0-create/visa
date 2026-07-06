@@ -555,7 +555,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_status_category", ["status", "category"])
     .index("by_user", ["userId"])
-    .index("by_country", ["country"]),
+    .index("by_country", ["country"])
+    .index("by_featured_status", ["featured", "status"]),
 
   // Admin-authored blog articles stored in Convex so they can be created,
   // edited, published, and unpublished from the admin panel without a code
@@ -957,4 +958,27 @@ export default defineSchema({
     dateKey: v.string(),     // "YYYY-MM-DD"
     count: v.number(),
   }).index("by_user_resource_date", ["userId", "resource", "dateKey"]),
+
+  // Agent payout requests. One row per withdrawal request; status flows
+  // pending → paid (or declined) when an admin processes it. The available
+  // balance is derived at query-time by summing agent_referral_commissions
+  // minus all paid payout_requests for the same agent — never a mutable counter,
+  // so the ledger is always auditable.
+  payout_requests: defineTable({
+    agentUserId: v.id("users"),
+    amountCents: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("declined"),
+    ),
+    requestedAt: v.string(),
+    notes: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    processedAt: v.optional(v.string()),
+    processedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_agent", ["agentUserId"])
+    .index("by_status", ["status"])
+    .index("by_agent_status", ["agentUserId", "status"]),
 });

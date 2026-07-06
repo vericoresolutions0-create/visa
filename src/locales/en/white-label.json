@@ -67,15 +67,8 @@
   "plans.enterprise.f5": "SLA and uptime guarantee",
   "plans.enterprise.f6": "API access for system integration",
   "plans.enterprise.cta": "Contact Us",
-  "testimonials.eyebrow": "Illustrative Examples",
-  "testimonials.title": "What an agency's experience can look like",
-  "testimonials.subtitle": "Sample scenarios based on common agency situations — not verified customer quotes.",
-  "testimonials.t1.name": "Adaeze O.",
-  "testimonials.t1.role": "Director, Prime Visa Consult, Lagos",
-  "testimonials.t1.quote": "We went from spending 3 hours per client on document prep to 20 minutes. Our approval rate went up significantly in the first quarter.",
-  "testimonials.t2.name": "James K.",
-  "testimonials.t2.role": "Founder, ClearPath Immigration, Nairobi",
-  "testimonials.t2.quote": "The white-label setup took three days. Clients think we built this ourselves. It has completely changed how we present our services.",
+  "testimonials.eyebrow": "Platform capabilities",
+  "testimonials.title": "What you get with a white-label licence",
   "form.eyebrow": "Get Started",
   "form.title": "Apply for Your Licence",
   "form.subtitle": "We review every application personally. You will hear from us within 24 hours.",
@@ -121,5 +114,9 @@
   "trust.gdpr": "GDPR & NDPA Principles",
   "trust.encrypted": "256-bit Encrypted",
   "trust.destinations": "24+ Destination Countries",
-  "trust.by": "Built by Vericore"
+  "trust.by": "Built by Vericore",
+  "testimonials.t1.headline": "Your brand, your clients",
+  "testimonials.t1.text": "Your agency name, logo, and domain. Applicants see your product — VisaClear runs the infrastructure. Setup takes a few days, not months.",
+  "testimonials.t2.headline": "One platform for your whole pipeline",
+  "testimonials.t2.text": "Track leads, active cases, and approved clients in one dashboard. Share checklists, monitor progress, and communicate without switching tools."
 }

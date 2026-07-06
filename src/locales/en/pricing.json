@@ -65,12 +65,8 @@
   "agents.tier3.label": "Agency White-Label",
   "agents.register_cta": "Register as an agent",
   "agents.featured_cta": "Activate featured placement",
-  "testimonials.label": "Illustrative Examples",
-  "testimonials.title": "What an applicant's experience can look like",
-  "testimonials.subtitle": "Sample scenarios based on common applicant situations — not verified customer quotes.",
-  "testimonials.t1.text": "Got my UK Student visa approved first attempt. The checklist caught two documents I completely forgot about.",
-  "testimonials.t2.text": "The Sperrkonto tip alone saved my German student visa application. No other free tool told me that.",
-  "testimonials.t3.text": "As a Nigerian in Poland the specific Polish resident checklist was a game changer. Zero guesswork.",
+  "testimonials.label": "What VisaClear Does",
+  "testimonials.title": "Built around how decisions actually get made",
   "faq.title": "Common questions",
   "faq.q1.q": "Is the free plan really free?",
   "faq.q1.a": "Yes. No credit card required. You get 3 full checklists every month with document tips and embassy links at no cost.",
@@ -89,5 +85,11 @@
   "trust.ndpa": "NDPA-Aligned",
   "trust.cisa": "CISA Certified",
   "footer.tagline": "It's all about Privacy.",
-  "footer.disclaimer": "VisaClear is a guidance tool, not legal advice."
+  "footer.disclaimer": "VisaClear is a guidance tool, not legal advice.",
+  "testimonials.t1.headline": "Destination-specific documents, not a generic list",
+  "testimonials.t1.text": "Every checklist maps real requirements to each destination and visa type — what UK Visas & Immigration asks for is genuinely different from what the German consulate needs.",
+  "testimonials.t2.headline": "Know what each document actually proves",
+  "testimonials.t2.text": "Every requirement comes with a plain-English explanation of what officers check for, so you submit the right evidence — not just any document that fits the label.",
+  "testimonials.t3.headline": "Turn a rejection into a reapplication plan",
+  "testimonials.t3.text": "The Rejection Analyser reads your actual refusal reasons and maps each one to a specific fix. Not generic advice — a targeted action list."
 }

@@ -319,13 +319,16 @@ function EmployeeCard({
         <ReadinessBar percent={row.readinessPercent} />
       </div>
       {(row.status === "pending" || row.status === "accepted") && (
-        <div className="flex items-center gap-3 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onView} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border bg-card text-foreground hover:bg-muted/50 transition-colors cursor-pointer">
+            <ChevronRight className="w-3 h-3" /> View
+          </button>
           {row.status === "pending" && (
-            <button onClick={() => onResend(row.linkId)} className="flex items-center gap-1 text-xs font-semibold text-accent hover:underline cursor-pointer py-1">
+            <button onClick={() => onResend(row.linkId)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 transition-colors cursor-pointer">
               <Send className="w-3 h-3" /> {t("dashboard.resend")}
             </button>
           )}
-          <button onClick={() => onRevoke(row.linkId)} className="flex items-center gap-1 text-xs font-semibold text-destructive hover:underline cursor-pointer py-1 ml-auto">
+          <button onClick={() => onRevoke(row.linkId)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-destructive hover:bg-destructive/8 hover:border-destructive/20 transition-colors cursor-pointer ml-auto">
             <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
           </button>
         </div>
@@ -381,11 +384,15 @@ function DashboardInner() {
   const resendInvite = useMutation(api.employerCohort.resendInvite);
   const revokeInvite = useMutation(api.employerCohort.revokeInvite);
   const setPipelineStage = useMutation(api.employerCohort.setPipelineStage);
+  const renameOrg = useMutation(api.organizations.renameOrganization);
 
   const [view, setView] = useState<"table" | "pipeline">("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LinkStatus | "all">("all");
   const [selectedRow, setSelectedRow] = useState<CohortRow | null>(null);
+  const [showRenameForm, setShowRenameForm] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [renamingSaving, setRenamingSaving] = useState(false);
 
   useEffect(() => {
     if (myOrg === null) navigate("/business/onboarding", { replace: true });
@@ -436,6 +443,22 @@ function DashboardInner() {
       toast.success(t("dashboard.access_revoked"));
     } catch {
       toast.error(t("dashboard.revoke_failed"));
+    }
+  };
+
+  const handleRename = async () => {
+    if (!newOrgName.trim()) return;
+    setRenamingSaving(true);
+    try {
+      await renameOrg({ name: newOrgName.trim() });
+      toast.success("Organisation name updated.");
+      setShowRenameForm(false);
+      setNewOrgName("");
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Could not save. Try again.");
+    } finally {
+      setRenamingSaving(false);
     }
   };
 
@@ -547,22 +570,31 @@ function DashboardInner() {
                     <td className="px-4 py-3 text-muted-foreground">
                       <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" />{row.noteCount}</span>
                     </td>
-                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      {row.status === "pending" && (
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => { void handleResend(row.linkId); }} className="text-accent hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end items-center gap-1.5">
+                        <button
+                          onClick={() => setSelectedRow(row)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border bg-card text-foreground hover:bg-muted/50 hover:border-primary/30 transition-colors cursor-pointer"
+                        >
+                          <ChevronRight className="w-3 h-3" /> View
+                        </button>
+                        {row.status === "pending" && (
+                          <button
+                            onClick={() => { void handleResend(row.linkId); }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 transition-colors cursor-pointer"
+                          >
                             <Send className="w-3 h-3" /> {t("dashboard.resend")}
                           </button>
-                          <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer">
+                        )}
+                        {(row.status === "pending" || row.status === "accepted") && (
+                          <button
+                            onClick={() => { void handleRevoke(row.linkId); }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-destructive hover:bg-destructive/8 hover:border-destructive/20 transition-colors cursor-pointer"
+                          >
                             <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
                           </button>
-                        </div>
-                      )}
-                      {row.status === "accepted" && (
-                        <button onClick={() => { void handleRevoke(row.linkId); }} className="text-destructive hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer ml-auto">
-                          <Ban className="w-3 h-3" /> {t("dashboard.revoke")}
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -573,6 +605,49 @@ function DashboardInner() {
       )}
 
       {selectedRow && <EmployeeDetailPanel row={selectedRow} onClose={() => setSelectedRow(null)} orgCtx={orgCtx} />}
+
+      {/* Organisation settings */}
+      {myOrg.orgRole === "org_admin" && (
+        <div className="mt-8 border-t border-border/60 pt-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Organisation Settings</p>
+            {!showRenameForm && (
+              <button
+                onClick={() => { setNewOrgName(myOrg.name); setShowRenameForm(true); }}
+                className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+              >
+                Rename
+              </button>
+            )}
+          </div>
+          {showRenameForm ? (
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <label className="block text-xs font-semibold text-foreground">Organisation name</label>
+              <Input
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                placeholder="Enter new name"
+                maxLength={200}
+                className="w-full"
+                onKeyDown={(e) => { if (e.key === "Enter") void handleRename(); }}
+              />
+              <div className="flex gap-2">
+                <Button disabled={renamingSaving || !newOrgName.trim()} onClick={() => { void handleRename(); }} className="cursor-pointer font-semibold" size="sm">
+                  {renamingSaving ? "Saving…" : "Save"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setShowRenameForm(false); setNewOrgName(""); }} className="cursor-pointer">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{myOrg.name}</span>
+              {myOrg.type && <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded">{myOrg.type.replace("_", " ")}</span>}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

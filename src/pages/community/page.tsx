@@ -18,6 +18,9 @@ import {
   X,
   Clock,
   Lock,
+  Award,
+  ChevronRight,
+  Zap,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
@@ -228,7 +231,7 @@ function MyPostsPanel() {
   );
 }
 
-function CommunityFeed() {
+function CommunityFeed({ isPaidUser }: { isPaidUser: boolean }) {
   const { isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState<Category | "all">("all");
   const [showForm, setShowForm] = useState(false);
@@ -275,11 +278,20 @@ function CommunityFeed() {
           ))}
         </div>
 
-        {isAuthenticated && (
+        {isAuthenticated && isPaidUser && (
           <Button size="sm" onClick={() => setShowForm((v) => !v)} className="cursor-pointer">
             <Plus className="w-4 h-4" />
             Post
           </Button>
+        )}
+        {isAuthenticated && !isPaidUser && (
+          <button
+            type="button"
+            onClick={() => toast.info("Community posting is available on Pro and Expert plans.")}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-accent/30 text-accent bg-accent/5 hover:bg-accent/10 transition-colors cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5" /> Upgrade to Post
+          </button>
         )}
       </div>
 
@@ -337,10 +349,13 @@ export default function CommunityPage() {
   });
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
+  const { isAuthenticated } = useAuth();
+  const currentUser = useQuery(api.users.getCurrentUser, isAuthenticated ? {} : "skip");
+  const isPaidUser = currentUser?.plan === "pro" || currentUser?.plan === "expert";
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/40 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur">
+      <header className="border-b border-border/40 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur">
         <div className="flex items-center gap-3">
           <button onClick={goBack} className="p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
@@ -356,10 +371,10 @@ export default function CommunityPage() {
         </Button>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-3">Real People. Real Journeys.</p>
-          <h1 className="font-serif text-4xl font-semibold text-primary mb-3">VisaClear Community</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-primary mb-3">VisaClear Community</h1>
           <p className="text-muted-foreground max-w-xl leading-relaxed">
             Experiences, questions, and tips from people who have been through the process. Everything here is anonymous. No names, no contact details — just honest, useful stories.
           </p>
@@ -367,6 +382,16 @@ export default function CommunityPage() {
             <Lock className="w-3.5 h-3.5 text-accent" />
             Posting open to Pro and Expert members only. Reading is open to everyone.
           </div>
+          {/* Wall of Fame crosslink */}
+          <button
+            type="button"
+            onClick={() => navigate("/wall-of-fame")}
+            className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent/80 transition-colors cursor-pointer underline-offset-4 hover:underline"
+          >
+            <Award className="w-3.5 h-3.5" />
+            Refusal → Approval stories
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         </motion.div>
 
         <AuthLoading>
@@ -390,11 +415,11 @@ export default function CommunityPage() {
               <AuthAccessPanel returnPath="/community" hideDemoOption />
             </div>
           </div>
-          <CommunityFeed />
+          <CommunityFeed isPaidUser={false} />
         </Unauthenticated>
 
         <Authenticated>
-          <CommunityFeed />
+          <CommunityFeed isPaidUser={isPaidUser} />
         </Authenticated>
       </main>
     </div>

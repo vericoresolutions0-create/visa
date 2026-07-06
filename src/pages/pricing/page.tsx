@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { useCountryName } from "@/hooks/use-country-name.ts";
 import {
   Globe,
   ArrowLeft,
@@ -21,7 +20,6 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
-import { StarRating } from "@/components/star-rating.tsx";
 
 // ─── Plan data ───────────────────────────────────────────────────────────────
 type BillingCycle = "monthly" | "yearly";
@@ -36,7 +34,6 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
   const { t } = useTranslation("pricing");
-  const translateCountry = useCountryName();
   const [billing, setBilling] = useState<BillingCycle>("monthly");
 
   const PLANS = [
@@ -120,10 +117,10 @@ export default function PricingPage() {
     { icon: <Shield className="w-5 h-5" />, title: t("highlights.h6.title"), desc: t("highlights.h6.desc") },
   ];
 
-  const TESTIMONIALS = [
-    { name: "Amara O.", origin: "Nigeria → UK", text: t("testimonials.t1.text"), stars: 5 },
-    { name: "Kwame A.", origin: "Ghana → Germany", text: t("testimonials.t2.text"), stars: 5 },
-    { name: "Blessing E.", origin: "Nigeria (living in Poland) → Schengen", text: t("testimonials.t3.text"), stars: 5 },
+  const WHY_ITEMS = [
+    { icon: <FileText className="w-5 h-5" />, headline: t("testimonials.t1.headline"), text: t("testimonials.t1.text") },
+    { icon: <CheckCircle2 className="w-5 h-5" />, headline: t("testimonials.t2.headline"), text: t("testimonials.t2.text") },
+    { icon: <Zap className="w-5 h-5" />, headline: t("testimonials.t3.headline"), text: t("testimonials.t3.text") },
   ];
 
   const FAQ_ITEMS = [
@@ -212,7 +209,7 @@ export default function PricingPage() {
             <Zap className="w-3 h-3" />
             {t("hero.badge")}
           </div>
-          <h1 className="font-serif text-5xl font-semibold text-primary mb-4 text-balance">
+          <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-primary mb-4 text-balance">
             {t("hero.title1")}
             <br />
             {t("hero.title2")}
@@ -491,38 +488,30 @@ export default function PricingPage() {
           </div>
         </motion.section>
 
-        {/* Testimonials */}
+        {/* Why VisaClear */}
         <div className="mb-20">
           <div className="text-center mb-10">
             <p className="text-xs tracking-widest uppercase text-accent font-medium mb-3">
               {t("testimonials.label")}
             </p>
-            <h2 className="font-serif text-3xl font-semibold text-primary mb-3">
+            <h2 className="font-serif text-3xl font-semibold text-primary">
               {t("testimonials.title")}
             </h2>
-            <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-              {t("testimonials.subtitle")}
-            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t, i) => (
+            {WHY_ITEMS.map((item, i) => (
               <motion.div
-                key={t.name}
+                key={item.headline}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 className="bg-card border border-border rounded-xl p-6"
               >
-                <div className="mb-4">
-                  <StarRating count={t.stars} className="w-4 h-4 text-accent fill-current" />
+                <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-accent mb-4">
+                  {item.icon}
                 </div>
-                <p className="text-sm text-foreground leading-relaxed mb-5 italic">{`"${t.text}"`}</p>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {t.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t.origin.split(" → ").map(translateCountry).join(" → ")}</p>
-                </div>
+                <h3 className="font-semibold text-foreground mb-2">{item.headline}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.text}</p>
               </motion.div>
             ))}
           </div>

@@ -355,68 +355,76 @@ function AdminInner() {
 
           {/* Agents */}
           {tab === "agents" && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-              {agents === undefined ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-                </div>
-              ) : agents.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground text-sm">{t("agents.empty")}</div>
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50/60">
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Agent</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Specialisations</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
-                        <th className="px-5 py-3.5" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {agents.map((agent) => (
-                        <tr key={agent._id} className="hover:bg-gray-50/40 transition-colors">
-                          <td className="px-5 py-4">
-                            <div className="font-medium text-[#0f2040]">{agent.fullName}</div>
-                            <div className="text-xs text-gray-400">{agent.email} · {agent.country}</div>
-                          </td>
-                          <td className="px-5 py-4 hidden md:table-cell">
-                            <div className="text-xs text-gray-500">{agent.specialisations.slice(0, 3).join(", ")}</div>
-                          </td>
-                          <td className="px-5 py-4">
-                            {agent.verified ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">
-                                <CheckCircle2 className="w-3 h-3" /> {t("agents.verified")}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
-                                <AlertCircle className="w-3 h-3" /> {t("agents.pending")}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            {!agent.verified ? (
-                              <button
-                                onClick={() => { void handleVerifyAgent(agent._id, true); }}
-                                className="text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
-                              >
-                                {t("agents.verify")}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => { void handleVerifyAgent(agent._id, false); }}
-                                className="text-xs font-semibold text-gray-400 hover:text-red-500 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
-                              >
-                                {t("agents.unverify")}
-                              </button>
-                            )}
-                          </td>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              {/* Agent profiles */}
+              <div>
+                {agents === undefined ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+                  </div>
+                ) : agents.length === 0 ? (
+                  <div className="text-center py-20 text-muted-foreground text-sm">{t("agents.empty")}</div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/60">
+                          <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Agent</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">Specialisations</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                          <th className="px-5 py-3.5" />
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {agents.map((agent) => (
+                          <tr key={agent._id} className="hover:bg-gray-50/40 transition-colors">
+                            <td className="px-5 py-4">
+                              <div className="font-medium text-[#0f2040]">{agent.fullName}</div>
+                              <div className="text-xs text-gray-400">{agent.email} · {agent.country}</div>
+                            </td>
+                            <td className="px-5 py-4 hidden md:table-cell">
+                              <div className="text-xs text-gray-500">{agent.specialisations.slice(0, 3).join(", ")}</div>
+                            </td>
+                            <td className="px-5 py-4">
+                              {agent.verified ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">
+                                  <CheckCircle2 className="w-3 h-3" /> {t("agents.verified")}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full">
+                                  <AlertCircle className="w-3 h-3" /> {t("agents.pending")}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              {!agent.verified ? (
+                                <button
+                                  onClick={() => { void handleVerifyAgent(agent._id, true); }}
+                                  className="text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                                >
+                                  {t("agents.verify")}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { void handleVerifyAgent(agent._id, false); }}
+                                  className="text-xs font-semibold text-gray-400 hover:text-red-500 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                                >
+                                  {t("agents.unverify")}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Payout requests */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <PayoutRequestsAdminPanel />
+              </div>
             </motion.div>
           )}
 
@@ -458,6 +466,7 @@ type HealthData = {
   STRIPE_SECRET_KEY: boolean;
   STRIPE_WEBHOOK_SECRET: boolean;
   PAYSTACK_SECRET_KEY: boolean;
+  AUTH_GOOGLE_ID: boolean;
   AUTH_GOOGLE_SECRET: boolean;
   TELEGRAM_BOT_TOKEN: boolean;
   TWILIO_ACCOUNT_SID: boolean;
@@ -563,12 +572,21 @@ function SetupPanel({ health }: { health: HealthData }) {
       howToGet: "Log into dashboard.paystack.com → Settings → API Keys → Secret Key.",
     },
     {
+      name: "AUTH_GOOGLE_ID",
+      label: "Google OAuth Client ID",
+      isSet: Boolean(health?.AUTH_GOOGLE_ID),
+      critical: false,
+      description: "Required together with AUTH_GOOGLE_SECRET to enable 'Sign in with Google'. Both must be set — setting only one leaves Google login broken.",
+      howToGet: "Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs → Client ID field.",
+      example: "1234567890-abc123.apps.googleusercontent.com",
+    },
+    {
       name: "AUTH_GOOGLE_SECRET",
-      label: "Google OAuth Secret",
+      label: "Google OAuth Client Secret",
       isSet: Boolean(health?.AUTH_GOOGLE_SECRET),
       critical: false,
-      description: "Enables 'Sign in with Google'. Users can still sign in with email/password without this — but Google login will fail.",
-      howToGet: "Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs → client_secret.",
+      description: "Required together with AUTH_GOOGLE_ID to enable 'Sign in with Google'. Both must be set — the ID alone does nothing.",
+      howToGet: "Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs → Client Secret field (same screen as the ID).",
     },
     {
       name: "TELEGRAM_BOT_TOKEN",
@@ -1702,6 +1720,100 @@ function LeadsAdminPanel() {
   );
 }
 
+function PayoutRequestsAdminPanel() {
+  const requests = useQuery(api.admin.listPayoutRequests, {});
+  const process = useMutation(api.admin.processPayoutRequest);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
+
+  const handleProcess = async (id: Id<"payout_requests">, decision: "paid" | "declined") => {
+    setProcessingId(id);
+    try {
+      await process({ requestId: id, decision, adminNotes: adminNotes[id] ?? undefined });
+      toast.success(decision === "paid" ? "Marked as paid." : "Request declined.");
+    } catch {
+      toast.error("Failed to process request.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
+            Payout Requests — Pending ({requests?.length ?? 0})
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Commission withdrawal requests from agents. Confirm bank transfer before marking paid.
+          </p>
+        </div>
+      </div>
+      {requests === undefined ? (
+        <Skeleton className="h-32 w-full rounded-xl" />
+      ) : requests.length === 0 ? (
+        <div className="border border-dashed border-border rounded-xl p-6 text-center text-sm text-muted-foreground">
+          No pending payout requests.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((req) => (
+            <div key={req._id} className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-[#0f2040]">{req.agentName}</span>
+                    {req.agentEmail && (
+                      <a href={`mailto:${req.agentEmail}`} className="text-xs text-accent hover:underline">{req.agentEmail}</a>
+                    )}
+                  </div>
+                  <div className="text-2xl font-semibold text-[#0f2040] mt-1">
+                    ${(req.amountCents / 100).toFixed(2)}
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {new Date(req.requestedAt).toLocaleString("en-GB")}
+                </span>
+              </div>
+              {req.notes && (
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed bg-white/60 rounded-lg px-3 py-2">
+                  {req.notes}
+                </p>
+              )}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="Admin notes (optional)"
+                  value={adminNotes[req._id] ?? ""}
+                  onChange={(e) => setAdminNotes((prev) => ({ ...prev, [req._id]: e.target.value }))}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    disabled={processingId === req._id}
+                    onClick={() => { void handleProcess(req._id, "paid"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                  </button>
+                  <button
+                    disabled={processingId === req._id}
+                    onClick={() => { void handleProcess(req._id, "declined"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Decline
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmployersAdminPanel() {
   const { t } = useTranslation("admin");
   const orgs = useQuery(api.adminOrgs.listOrganizations, {});
@@ -1727,7 +1839,10 @@ function EmployersAdminPanel() {
               <div>
                 <span className="text-sm font-semibold text-primary">{org.name}</span>
                 <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  {org.type === "household" ? t("employers.household") : t("employers.employer")}
+                  {org.type === "household" ? t("employers.household") :
+                   org.type === "university" ? "University" :
+                   org.type === "law_firm" ? "Law Firm" :
+                   t("employers.employer")}
                 </span>
                 <div className="text-[10px] text-muted-foreground">{new Date(org.createdAt).toLocaleDateString("en-GB")} · {t(org.memberCount === 1 ? "employers.admin_one" : "employers.admin_other", { count: org.memberCount })}</div>
               </div>
@@ -2108,6 +2223,7 @@ export default function AdminPage() {
   const { t } = useTranslation("admin");
   const navigate = useNavigate();
   const currentUser = useQuery(api.users.getCurrentUser, {});
+  const adminExists = useQuery(api.admin.checkAdminExists, {});
   const claimFirstAdmin = useMutation(api.admin.claimFirstAdmin);
   const [claiming, setClaiming] = useState(false);
 
@@ -2212,21 +2328,34 @@ export default function AdminPage() {
               <AlertCircle className="w-12 h-12 text-red-300 mx-auto mb-4" />
               <h2 className="font-serif text-2xl font-semibold text-[#0f2040] mb-2">{t("page.access_denied")}</h2>
               <p className="text-gray-500 text-sm mb-4">{t("page.access_denied_body")}</p>
-              <p className="text-gray-400 text-xs mb-6">
-                If this is a brand-new deployment and no admin exists yet, you can claim the first admin seat below.
-              </p>
-              <div className="flex flex-col gap-3">
-                <Button
-                  onClick={() => { void handleClaimAdmin(); }}
-                  disabled={claiming}
-                  className="cursor-pointer bg-[#0f2040] hover:bg-[#0f2040]/90"
-                >
-                  {claiming ? "Claiming..." : "Claim first admin seat"}
-                </Button>
-                <Button variant="ghost" onClick={() => navigate("/")} className="cursor-pointer text-gray-500">
-                  {t("page.go_home")}
-                </Button>
-              </div>
+              {adminExists === false ? (
+                <>
+                  <p className="text-gray-400 text-xs mb-6">
+                    No admin has been set up yet. You can claim the first admin seat below.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      onClick={() => { void handleClaimAdmin(); }}
+                      disabled={claiming}
+                      className="cursor-pointer bg-[#0f2040] hover:bg-[#0f2040]/90"
+                    >
+                      {claiming ? "Claiming..." : "Claim first admin seat"}
+                    </Button>
+                    <Button variant="ghost" onClick={() => navigate("/")} className="cursor-pointer text-gray-500">
+                      {t("page.go_home")}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <p className="text-gray-400 text-xs mb-2">
+                    Contact the platform admin to have your account granted access.
+                  </p>
+                  <Button variant="ghost" onClick={() => navigate("/")} className="cursor-pointer text-gray-500">
+                    {t("page.go_home")}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         ) : (

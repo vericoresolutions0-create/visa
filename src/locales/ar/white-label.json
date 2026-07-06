@@ -67,15 +67,8 @@
   "plans.enterprise.f5": "اتفاقية مستوى الخدمة وضمان التشغيل",
   "plans.enterprise.f6": "وصول API لتكامل الأنظمة",
   "plans.enterprise.cta": "تواصل معنا",
-  "testimonials.eyebrow": "أمثلة توضيحية",
-  "testimonials.title": "كيف يمكن أن تبدو تجربة الوكالة",
-  "testimonials.subtitle": "سيناريوهات مبنية على حالات وكالات شائعة — ليست شهادات عملاء موثقة.",
-  "testimonials.t1.name": "أدايزي أو.",
-  "testimonials.t1.role": "مديرة، Prime Visa Consult، لاغوس",
-  "testimonials.t1.quote": "انتقلنا من 3 ساعات لكل عميل في تحضير المستندات إلى 20 دقيقة. ارتفع معدل موافقتنا بشكل ملحوظ في الربع الأول.",
-  "testimonials.t2.name": "جيمس ك.",
-  "testimonials.t2.role": "مؤسس، ClearPath Immigration، نيروبي",
-  "testimonials.t2.quote": "استغرق إعداد white-label ثلاثة أيام. يعتقد العملاء أننا بنيناه بأنفسنا. لقد غيّر كلياً طريقة تقديم خدماتنا.",
+  "testimonials.eyebrow": "قدرات المنصة",
+  "testimonials.title": "ما تحصل عليه مع ترخيص العلامة البيضاء",
   "form.eyebrow": "ابدأ",
   "form.title": "تقدم للحصول على ترخيصك",
   "form.subtitle": "نراجع كل طلب شخصياً. ستتلقى رداً منا خلال 24 ساعة.",
@@ -121,5 +114,9 @@
   "trust.gdpr": "مبادئ GDPR و NDPA",
   "trust.encrypted": "تشفير 256 بت",
   "trust.destinations": "24+ دولة وجهة",
-  "trust.by": "مبني من Vericore"
+  "trust.by": "مبني من Vericore",
+  "testimonials.t1.headline": "علامتك التجارية، عملاؤك",
+  "testimonials.t1.text": "اسم وكالتك وشعارك ونطاقك. يرى المتقدمون منتجك — ويدير VisaClear البنية التحتية. الإعداد يستغرق بضعة أيام، لا أشهراً.",
+  "testimonials.t2.headline": "منصة واحدة لكامل مسار عملك",
+  "testimonials.t2.text": "تتبع العملاء المحتملين والحالات النشطة والعملاء الموافق عليهم في لوحة تحكم واحدة. شارك القوائم وراقب التقدم وتواصل دون التبديل بين الأدوات."
 }

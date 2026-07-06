@@ -151,21 +151,20 @@ export const listFeaturedPosts = query({
   handler: async (ctx) => {
     const posts = await ctx.db
       .query("community_posts")
-      .withIndex("by_status", (q) => q.eq("status", "approved"))
+      .withIndex("by_featured_status", (q) =>
+        q.eq("featured", true).eq("status", "approved"),
+      )
       .order("desc")
-      .take(500);
+      .take(6);
 
-    return posts
-      .filter((p) => p.featured)
-      .slice(0, 6)
-      .map((p) => ({
-        _id: p._id,
-        title: p.title,
-        body: p.body,
-        category: p.category,
-        country: p.country,
-        createdAt: p.createdAt,
-      }));
+    return posts.map((p) => ({
+      _id: p._id,
+      title: p.title,
+      body: p.body,
+      category: p.category,
+      country: p.country,
+      createdAt: p.createdAt,
+    }));
   },
 });
 
@@ -179,7 +178,7 @@ export const getMyPosts = query({
       .query("community_posts")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
+      .take(50);
   },
 });
 

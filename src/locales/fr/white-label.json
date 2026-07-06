@@ -67,15 +67,8 @@
   "plans.enterprise.f5": "SLA et garantie de disponibilité",
   "plans.enterprise.f6": "Accès API pour intégration système",
   "plans.enterprise.cta": "Nous contacter",
-  "testimonials.eyebrow": "Exemples illustratifs",
-  "testimonials.title": "À quoi peut ressembler l'expérience d'une agence",
-  "testimonials.subtitle": "Scénarios basés sur des situations d'agences courantes — pas des témoignages clients vérifiés.",
-  "testimonials.t1.name": "Adaeze O.",
-  "testimonials.t1.role": "Directrice, Prime Visa Consult, Lagos",
-  "testimonials.t1.quote": "Nous sommes passés de 3 heures par client pour la préparation des documents à 20 minutes. Notre taux d'approbation a considérablement augmenté au premier trimestre.",
-  "testimonials.t2.name": "James K.",
-  "testimonials.t2.role": "Fondateur, ClearPath Immigration, Nairobi",
-  "testimonials.t2.quote": "La mise en place du white-label a pris trois jours. Les clients pensent que nous l'avons construit nous-mêmes. Cela a complètement changé notre façon de présenter nos services.",
+  "testimonials.eyebrow": "Capacités de la plateforme",
+  "testimonials.title": "Ce que vous obtenez avec une licence marque blanche",
   "form.eyebrow": "Commencer",
   "form.title": "Demandez votre licence",
   "form.subtitle": "Nous examinons chaque candidature personnellement. Vous aurez de nos nouvelles dans les 24 heures.",
@@ -121,5 +114,9 @@
   "trust.gdpr": "Principes RGPD et NDPA",
   "trust.encrypted": "Chiffrement 256 bits",
   "trust.destinations": "24+ pays de destination",
-  "trust.by": "Construit par Vericore"
+  "trust.by": "Construit par Vericore",
+  "testimonials.t1.headline": "Votre marque, vos clients",
+  "testimonials.t1.text": "Le nom de votre agence, votre logo et votre domaine. Les candidats voient votre produit — VisaClear gère l'infrastructure. La configuration prend quelques jours, pas des mois.",
+  "testimonials.t2.headline": "Une seule plateforme pour tout votre pipeline",
+  "testimonials.t2.text": "Suivez les prospects, les dossiers actifs et les clients approuvés dans un seul tableau de bord. Partagez des listes, suivez les progrès et communiquez sans changer d'outil."
 }

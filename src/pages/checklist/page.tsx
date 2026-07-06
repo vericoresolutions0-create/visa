@@ -708,7 +708,7 @@ export default function ChecklistPage() {
               transition={{ duration: 0.3 }}
             >
               <div className="text-center mb-10">
-                <h1 className="font-serif text-4xl font-semibold text-primary mb-3">
+                <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-primary mb-3">
                   {t("selector.title")}
 
                 </h1>

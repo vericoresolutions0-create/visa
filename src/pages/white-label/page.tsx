@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { StatsBar } from "@/components/stats-bar.tsx";
-import { StarRating } from "@/components/star-rating.tsx";
 import {
   Globe, ArrowLeft, CheckCircle2, Shield, Building2, Users,
   Palette, Link2, LayoutDashboard, Zap, ChevronRight,
@@ -101,9 +100,9 @@ export default function WhiteLabelPage() {
     },
   ];
 
-  const TESTIMONIALS = [
-    { name: t("testimonials.t1.name"), role: t("testimonials.t1.role"), quote: t("testimonials.t1.quote"), stars: 5 },
-    { name: t("testimonials.t2.name"), role: t("testimonials.t2.role"), quote: t("testimonials.t2.quote"), stars: 5 },
+  const WHY_ITEMS = [
+    { icon: <Palette className="w-5 h-5" />, headline: t("testimonials.t1.headline"), text: t("testimonials.t1.text") },
+    { icon: <LayoutDashboard className="w-5 h-5" />, headline: t("testimonials.t2.headline"), text: t("testimonials.t2.text") },
   ];
 
   const FAQ = [
@@ -346,27 +345,21 @@ export default function WhiteLabelPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Platform capabilities */}
       <section className="py-14 sm:py-20 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10 sm:mb-12">
             <p className="text-xs tracking-widest uppercase font-semibold text-accent mb-2">{t("testimonials.eyebrow")}</p>
             <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-primary">{t("testimonials.title")}</h2>
-            <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-3">
-              {t("testimonials.subtitle")}
-            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            {TESTIMONIALS.map((item) => (
-              <div key={item.name} className="bg-background rounded-2xl p-6 sm:p-8 border border-border/50">
-                <div className="mb-4">
-                  <StarRating count={item.stars} />
+            {WHY_ITEMS.map((item) => (
+              <div key={item.headline} className="bg-background rounded-2xl p-6 sm:p-8 border border-border/50">
+                <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center text-accent mb-5">
+                  {item.icon}
                 </div>
-                <p className="text-foreground leading-relaxed mb-6 italic">"{item.quote}"</p>
-                <div>
-                  <div className="font-semibold text-primary text-sm">{item.name}</div>
-                  <div className="text-xs text-muted-foreground">{item.role}</div>
-                </div>
+                <h3 className="font-semibold text-primary text-base mb-2">{item.headline}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.text}</p>
               </div>
             ))}
           </div>

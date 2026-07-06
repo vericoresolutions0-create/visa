@@ -6,7 +6,7 @@ import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import {
-  Globe, ArrowLeft, Award, CheckCircle2, XCircle, Plus, Clock,
+  Globe, ArrowLeft, Award, CheckCircle2, XCircle, Plus, Clock, MessageSquare, ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
@@ -164,9 +164,19 @@ export default function WallOfFamePage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-12">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <h1 className="font-serif text-3xl font-semibold text-primary mb-2">{t("page.title")}</h1>
-        <p className="text-sm text-muted-foreground mb-8">{t("page.subtitle")}</p>
+        <p className="text-sm text-muted-foreground mb-4">{t("page.subtitle")}</p>
+        {/* Community crosslink */}
+        <button
+          type="button"
+          onClick={() => navigate("/community")}
+          className="mb-8 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent/80 transition-colors cursor-pointer underline-offset-4 hover:underline"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          General visa experiences, questions &amp; tips
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
 
         <div className="flex items-center justify-between gap-3 mb-6">
           <select

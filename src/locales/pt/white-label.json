@@ -67,15 +67,8 @@
   "plans.enterprise.f5": "SLA e garantia de disponibilidade",
   "plans.enterprise.f6": "Acesso API para integração de sistemas",
   "plans.enterprise.cta": "Fale conosco",
-  "testimonials.eyebrow": "Exemplos ilustrativos",
-  "testimonials.title": "Como pode ser a experiência de uma agência",
-  "testimonials.subtitle": "Cenários baseados em situações comuns de agências — não são depoimentos verificados de clientes.",
-  "testimonials.t1.name": "Adaeze O.",
-  "testimonials.t1.role": "Diretora, Prime Visa Consult, Lagos",
-  "testimonials.t1.quote": "Passamos de 3 horas por cliente na preparação de documentos para 20 minutos. Nossa taxa de aprovação subiu significativamente no primeiro trimestre.",
-  "testimonials.t2.name": "James K.",
-  "testimonials.t2.role": "Fundador, ClearPath Immigration, Nairobi",
-  "testimonials.t2.quote": "A configuração do white-label levou três dias. Os clientes acham que construímos isso nós mesmos. Mudou completamente como apresentamos nossos serviços.",
+  "testimonials.eyebrow": "Capacidades da plataforma",
+  "testimonials.title": "O que obtém com uma licença de marca branca",
   "form.eyebrow": "Começar",
   "form.title": "Solicite sua licença",
   "form.subtitle": "Analisamos cada solicitação pessoalmente. Você terá nossa resposta em até 24 horas.",
@@ -121,5 +114,9 @@
   "trust.gdpr": "Princípios RGPD e NDPA",
   "trust.encrypted": "Criptografia de 256 bits",
   "trust.destinations": "24+ países de destino",
-  "trust.by": "Construído pela Vericore"
+  "trust.by": "Construído pela Vericore",
+  "testimonials.t1.headline": "A sua marca, os seus clientes",
+  "testimonials.t1.text": "O nome da sua agência, o seu logotipo e o seu domínio. Os candidatos veem o seu produto — o VisaClear gere a infraestrutura. A configuração demora alguns dias, não meses.",
+  "testimonials.t2.headline": "Uma plataforma para todo o seu pipeline",
+  "testimonials.t2.text": "Acompanhe potenciais clientes, casos ativos e clientes aprovados num único painel. Partilhe listas, monitorize o progresso e comunique sem mudar de ferramenta."
 }

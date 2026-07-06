@@ -65,12 +65,8 @@
   "agents.tier3.label": "Marca branca para agência",
   "agents.register_cta": "Registrar-se como agente",
   "agents.featured_cta": "Ativar posicionamento em destaque",
-  "testimonials.label": "Exemplos ilustrativos",
-  "testimonials.title": "Como pode ser a experiência de um candidato",
-  "testimonials.subtitle": "Cenários de exemplo baseados em situações comuns de candidatos — não são depoimentos de clientes verificados.",
-  "testimonials.t1.text": "Consegui meu visto de estudante do Reino Unido aprovado na primeira tentativa. A lista identificou dois documentos que eu havia esquecido completamente.",
-  "testimonials.t2.text": "A dica sobre o Sperrkonto, por si só, salvou minha solicitação de visto de estudante alemão. Nenhuma outra ferramenta gratuita me disse isso.",
-  "testimonials.t3.text": "Como nigeriano vivendo na Polônia, a lista específica para residentes poloneses foi um divisor de águas. Zero suposições.",
+  "testimonials.label": "O que o VisaClear faz",
+  "testimonials.title": "Criado para a forma como as decisões realmente são tomadas",
   "faq.title": "Perguntas comuns",
   "faq.q1.q": "O plano gratuito é realmente gratuito?",
   "faq.q1.a": "Sim. Nenhum cartão de crédito necessário. Você recebe 3 listas completas todos os meses com dicas de documentos e links de embaixadas, sem custo.",
@@ -89,5 +85,11 @@
   "trust.ndpa": "Alinhado à NDPA",
   "trust.cisa": "Certificado CISA",
   "footer.tagline": "Tudo é sobre privacidade.",
-  "footer.disclaimer": "A VisaClear é uma ferramenta de orientação, não aconselhamento jurídico."
+  "footer.disclaimer": "A VisaClear é uma ferramenta de orientação, não aconselhamento jurídico.",
+  "testimonials.t1.headline": "Documentos específicos por destino, não uma lista genérica",
+  "testimonials.t1.text": "Cada lista mapeia os requisitos reais a cada destino e tipo de visto — os documentos exigidos pelo UK Visas & Immigration são diferentes dos pedidos pelo consulado alemão.",
+  "testimonials.t2.headline": "Saiba o que cada documento realmente prova",
+  "testimonials.t2.text": "Cada requisito vem com uma explicação em linguagem simples do que os oficiais verificam, para que envie a evidência certa da primeira vez.",
+  "testimonials.t3.headline": "Transforme uma carta de recusa num plano de ação",
+  "testimonials.t3.text": "O Analisador de Recusas lê os seus motivos reais de recusa e mapeia cada um para uma solução específica — não conselhos genéricos, mas uma lista de ações direcionadas."
 }

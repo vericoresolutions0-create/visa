@@ -141,7 +141,7 @@ function formatCents(cents: number) {
 
 // ─── Shared: send-link buttons ────────────────────────────────────────────────
 
-function SendLinkButtons({ token, clientName, clientPhone }: { token: string; clientName: string; clientPhone?: string }) {
+function SendLinkButtons({ token, clientName, clientPhone, compact }: { token: string; clientName: string; clientPhone?: string; compact?: boolean }) {
   const { t } = useTranslation("agent-dashboard");
   const [copied, setCopied] = useState(false);
   const link = `${window.location.origin}/client-portal/${token}`;
@@ -151,22 +151,23 @@ function SendLinkButtons({ token, clientName, clientPhone }: { token: string; cl
     : `https://wa.me/?text=${encodeURIComponent(msg)}`;
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex items-center gap-1.5 shrink-0">
       <a
         href={waHref} target="_blank" rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border border-[#25D366]/30 bg-[#25D366]/10 text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors"
+        className={cn("flex items-center gap-1.5 rounded-lg font-semibold border border-[#25D366]/30 bg-[#25D366]/10 text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors", compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm")}
         title={t("send.whatsapp")}
       >
-        <MessageCircle className="w-4 h-4" />
-        <span className="hidden sm:inline">{t("send.whatsapp")}</span>
+        <MessageCircle className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+        {!compact && <span className="hidden sm:inline">{t("send.whatsapp")}</span>}
       </a>
       <button
         type="button"
         onClick={() => navigator.clipboard.writeText(link).then(() => { setCopied(true); toast.success(t("send.toast_copied")); setTimeout(() => setCopied(false), 2000); }).catch(() => toast.error(t("send.toast_copy_failed")))}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+        className={cn("flex items-center gap-1.5 rounded-lg font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors", compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm")}
+        title={copied ? t("send.copied") : t("send.copy_link")}
       >
-        {copied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-        <span className="hidden sm:inline">{copied ? t("send.copied") : t("send.copy_link")}</span>
+        {copied ? <CheckCircle2 className={cn("text-green-500", compact ? "w-3.5 h-3.5" : "w-4 h-4")} /> : <Copy className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />}
+        {!compact && <span className="hidden sm:inline">{copied ? t("send.copied") : t("send.copy_link")}</span>}
       </button>
     </div>
   );
@@ -471,7 +472,18 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
         </td>
         {/* Actions */}
         <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-          <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
+          <div className="flex items-center justify-end gap-1.5">
+            <a
+              href={`/client-portal/${intake.token}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border bg-card text-foreground hover:bg-muted/50 hover:border-primary/30 transition-colors"
+              title="Open client portal"
+            >
+              Open <ChevronRight className="w-3 h-3" />
+            </a>
+            <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} compact />
+          </div>
         </td>
         {/* Expand toggle */}
         <td className="px-4 py-4 w-8">
@@ -626,7 +638,7 @@ function ClientsSection({
                     <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</th>
                     <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Docs</th>
                     <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden lg:table-cell">Age</th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">Send Link</th>
+                    <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-widest text-muted-foreground">Actions</th>
                     <th className="w-8" />
                   </tr>
                 </thead>
@@ -848,7 +860,40 @@ function ReferralsSection() {
   const { t } = useTranslation("agent-dashboard");
   const stats = useQuery(api.agentReferralCommissions.getMyReferralCommissionStatus, {});
   const ledger = useQuery(api.agentReferralCommissions.getMyReferralCommissionLedger, {});
+  const payoutHistory = useQuery(api.agentReferralCommissions.getMyPayoutRequests, {});
+  const requestPayout = useMutation(api.agentReferralCommissions.requestPayout);
   const [copied, setCopied] = useState(false);
+  const [showPayoutForm, setShowPayoutForm] = useState(false);
+  const [payoutAmountStr, setPayoutAmountStr] = useState("");
+  const [payoutNotes, setPayoutNotes] = useState("");
+  const [submittingPayout, setSubmittingPayout] = useState(false);
+
+  const totalPaid = payoutHistory
+    ?.filter((r) => r.status === "paid")
+    .reduce((sum, r) => sum + r.amountCents, 0) ?? 0;
+  const availableCents = Math.max(0, (stats?.totalCommissionCents ?? 0) - totalPaid);
+  const hasPendingRequest = payoutHistory?.some((r) => r.status === "pending") ?? false;
+
+  const handleRequestPayout = async () => {
+    const amountCents = Math.round(parseFloat(payoutAmountStr || "0") * 100);
+    if (!amountCents || amountCents < 100) {
+      toast.error("Enter an amount of at least $1.00.");
+      return;
+    }
+    setSubmittingPayout(true);
+    try {
+      await requestPayout({ amountCents, notes: payoutNotes.trim() || undefined });
+      toast.success("Payout request submitted. The team will process it within 3–5 business days.");
+      setShowPayoutForm(false);
+      setPayoutAmountStr("");
+      setPayoutNotes("");
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Could not submit request. Try again.");
+    } finally {
+      setSubmittingPayout(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -889,6 +934,110 @@ function ReferralsSection() {
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("referral.commission_earned")}</p>
             <p className="text-3xl font-semibold text-accent">{formatCents(stats.totalCommissionCents)}</p>
           </div>
+        </div>
+      )}
+
+      {/* Payout section */}
+      {stats && stats.totalCommissionCents > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Available to withdraw</p>
+              <p className="text-3xl font-semibold text-primary">{formatCents(availableCents)}</p>
+              {totalPaid > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{formatCents(totalPaid)} already paid out</p>
+              )}
+            </div>
+            {!hasPendingRequest && availableCents >= 100 && !showPayoutForm && (
+              <button
+                onClick={() => setShowPayoutForm(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/90 transition-colors cursor-pointer shrink-0"
+              >
+                <CircleDollarSign className="w-3.5 h-3.5" /> Request payout
+              </button>
+            )}
+            {hasPendingRequest && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+                <Clock3 className="w-3 h-3" /> Request pending
+              </span>
+            )}
+          </div>
+
+          {showPayoutForm && (
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Confirm your payout details. Make sure your bank or mobile money account is set in profile settings before requesting.
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted-foreground">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={payoutAmountStr}
+                  onChange={(e) => setPayoutAmountStr(e.target.value)}
+                  placeholder={`Max ${formatCents(availableCents)}`}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <textarea
+                value={payoutNotes}
+                onChange={(e) => setPayoutNotes(e.target.value)}
+                placeholder="Optional note for the team (account name, preferred method…)"
+                maxLength={500}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring min-h-[80px] resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  disabled={submittingPayout}
+                  onClick={() => { void handleRequestPayout(); }}
+                  className="flex-1 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {submittingPayout ? "Submitting…" : "Submit request"}
+                </button>
+                <button
+                  onClick={() => { setShowPayoutForm(false); setPayoutAmountStr(""); setPayoutNotes(""); }}
+                  className="px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Payout history */}
+          {payoutHistory && payoutHistory.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Payout history</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b border-border">
+                    <th className="pb-2 text-xs font-semibold text-muted-foreground">Amount</th>
+                    <th className="pb-2 text-xs font-semibold text-muted-foreground">Requested</th>
+                    <th className="pb-2 text-xs font-semibold text-muted-foreground text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {payoutHistory.map((req) => (
+                    <tr key={req._id}>
+                      <td className="py-2.5 font-semibold tabular-nums text-foreground">{formatCents(req.amountCents)}</td>
+                      <td className="py-2.5 text-muted-foreground">{new Date(req.requestedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
+                      <td className="py-2.5 text-right">
+                        <span className={cn(
+                          "text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border",
+                          req.status === "paid" ? "bg-green-50 text-green-700 border-green-200" :
+                          req.status === "declined" ? "bg-red-50 text-red-600 border-red-200" :
+                          "bg-amber-50 text-amber-700 border-amber-200",
+                        )}>
+                          {req.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -1013,6 +1162,7 @@ function OverviewSection({
   newUploads,
   agentName,
   onConvertToClient,
+  onGoToClients,
 }: {
   intakes: Intake[];
   contactRequests: ContactRequest[];
@@ -1020,6 +1170,7 @@ function OverviewSection({
   newUploads: number;
   agentName?: string;
   onConvertToClient: (payload: ConvertPayload) => void;
+  onGoToClients: () => void;
 }) {
   const { t } = useTranslation("agent-dashboard");
   const markRead = useMutation(api.agents.markContactRequestRead);
@@ -1208,7 +1359,7 @@ function OverviewSection({
                       {action.priority}
                     </span>
                   </div>
-                  {isEnquiry && req && (
+                  {isEnquiry && req ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
@@ -1232,6 +1383,14 @@ function OverviewSection({
                         Mark read
                       </button>
                     </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onGoToClients}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border border-border text-foreground hover:bg-muted/50 hover:border-primary/20 transition-colors cursor-pointer"
+                    >
+                      Go to Client <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
               );
@@ -1537,7 +1696,7 @@ function DashboardInner() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} />}
+              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} />}
               {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
               {section === "pipeline"  && <PipelineSection intakes={intakes} />}
               {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} />}

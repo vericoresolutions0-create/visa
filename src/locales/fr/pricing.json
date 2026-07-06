@@ -65,12 +65,8 @@
   "agents.tier3.label": "Marque blanche agence",
   "agents.register_cta": "S'inscrire comme agent",
   "agents.featured_cta": "Activer le placement en vedette",
-  "testimonials.label": "Exemples illustratifs",
-  "testimonials.title": "Ce que peut être l'expérience d'un candidat",
-  "testimonials.subtitle": "Scénarios types basés sur des situations courantes de candidats — pas des témoignages clients vérifiés.",
-  "testimonials.t1.text": "J'ai obtenu mon visa étudiant britannique dès la première tentative. La liste a relevé deux documents que j'avais complètement oubliés.",
-  "testimonials.t2.text": "Le conseil sur le Sperrkonto a sauvé à lui seul ma demande de visa étudiant allemand. Aucun autre outil gratuit ne me l'avait dit.",
-  "testimonials.t3.text": "En tant que Nigérian vivant en Pologne, la liste spécifique pour résidents polonais a tout changé. Aucun hasard.",
+  "testimonials.label": "Ce que fait VisaClear",
+  "testimonials.title": "Conçu pour la façon dont les décisions se prennent vraiment",
   "faq.title": "Questions fréquentes",
   "faq.q1.q": "Le plan gratuit est-il vraiment gratuit ?",
   "faq.q1.a": "Oui. Aucune carte bancaire requise. Vous obtenez 3 listes complètes chaque mois avec conseils documentaires et liens d'ambassade, sans frais.",
@@ -89,5 +85,11 @@
   "trust.ndpa": "Aligné NDPA",
   "trust.cisa": "Certifié CISA",
   "footer.tagline": "La confidentialité avant tout.",
-  "footer.disclaimer": "VisaClear est un outil de guidance, pas un conseil juridique."
+  "footer.disclaimer": "VisaClear est un outil de guidance, pas un conseil juridique.",
+  "testimonials.t1.headline": "Documents spécifiques à la destination, pas une liste générique",
+  "testimonials.t1.text": "Chaque liste associe les exigences réelles à chaque destination et type de visa — les documents demandés par UK Visas & Immigration sont différents de ceux du consulat allemand.",
+  "testimonials.t2.headline": "Comprenez ce que chaque document prouve réellement",
+  "testimonials.t2.text": "Chaque exigence est accompagnée d'une explication en langage simple de ce que les agents vérifient, pour soumettre les preuves adéquates dès la première fois.",
+  "testimonials.t3.headline": "Transformez un refus en plan de réponse",
+  "testimonials.t3.text": "L'Analyseur de refus lit vos motifs réels de refus et associe chacun à une solution précise — pas de conseils génériques, mais une liste d'actions ciblées."
 }

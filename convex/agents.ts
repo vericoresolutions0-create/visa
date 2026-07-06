@@ -250,6 +250,21 @@ export const searchAgents = query({
   },
 });
 
+// ─── Public: individual agent profile page ────────────────────────────────────
+// Takes a raw string (same resilience pattern as getTrip) — a stale link,
+// a bad bookmark, or an unverified agent ID all return null cleanly.
+// Unverified profiles are never surfaced: they're pending admin review.
+export const getAgentPublicProfile = query({
+  args: { profileId: v.string() },
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("agent_profiles", args.profileId);
+    if (!id) return null;
+    const profile = await ctx.db.get(id);
+    if (!profile || !profile.verified) return null;
+    return profile;
+  },
+});
+
 // ─── Public: log a search event for demand signal tracking ───────────────────
 // Silent, no auth required. Global daily cap (10k/day) prevents abuse.
 export const logSearchEvent = mutation({

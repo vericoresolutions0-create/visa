@@ -256,12 +256,85 @@ export const getSystemHealth = query({
       STRIPE_SECRET_KEY:     check("STRIPE_SECRET_KEY"),
       STRIPE_WEBHOOK_SECRET: check("STRIPE_WEBHOOK_SECRET"),
       PAYSTACK_SECRET_KEY:   check("PAYSTACK_SECRET_KEY"),
+      AUTH_GOOGLE_ID:        check("AUTH_GOOGLE_ID"),
       AUTH_GOOGLE_SECRET:    check("AUTH_GOOGLE_SECRET"),
       TELEGRAM_BOT_TOKEN:    check("TELEGRAM_BOT_TOKEN"),
       TWILIO_ACCOUNT_SID:    check("TWILIO_ACCOUNT_SID"),
       TWILIO_AUTH_TOKEN:     check("TWILIO_AUTH_TOKEN"),
       TWILIO_WHATSAPP_NUMBER:check("TWILIO_WHATSAPP_NUMBER"),
     };
+  },
+});
+
+// ─── One-time bootstrap gate: has any admin been claimed? ────────────────────
+// Public (no auth required) — the only information disclosed is a boolean.
+// Used by the admin page to hide the "Claim first admin seat" button once an
+// admin already exists, so non-admin users see a clean "access denied" rather
+// than a button that immediately errors on click.
+export const checkAdminExists = query({
+  args: {},
+  handler: async (ctx): Promise<boolean> => {
+    const admin = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .first();
+    return admin !== null;
+  },
+});
+
+// ─── Payout request admin queries / mutations ────────────────────────────────
+
+export const listPayoutRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const pending = await ctx.db
+      .query("payout_requests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("asc")
+      .take(100);
+    // Hydrate with agent name for display
+    return await Promise.all(
+      pending.map(async (req) => {
+        const agent = await ctx.db.get(req.agentUserId);
+        return {
+          _id: req._id,
+          agentUserId: req.agentUserId,
+          agentName: agent?.name ?? agent?.email ?? "Unknown agent",
+          agentEmail: agent?.email ?? null,
+          amountCents: req.amountCents,
+          status: req.status,
+          requestedAt: req.requestedAt,
+          notes: req.notes ?? null,
+        };
+      }),
+    );
+  },
+});
+
+export const processPayoutRequest = mutation({
+  args: {
+    requestId: v.id("payout_requests"),
+    decision: v.union(v.literal("paid"), v.literal("declined")),
+    adminNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const req = await ctx.db.get(args.requestId);
+    if (!req) throw new ConvexError({ code: "NOT_FOUND", message: "Payout request not found." });
+    if (req.status !== "pending") {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "This request has already been processed." });
+    }
+    await ctx.db.patch(args.requestId, {
+      status: args.decision,
+      processedAt: new Date().toISOString(),
+      processedByUserId: admin._id,
+      adminNotes: args.adminNotes,
+    });
+    await logAdminAction(
+      ctx, admin, "processPayoutRequest", args.requestId,
+      `${args.decision} $${(req.amountCents / 100).toFixed(2)} — ${args.adminNotes ?? "no notes"}`,
+    );
   },
 });
 

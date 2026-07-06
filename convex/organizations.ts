@@ -89,3 +89,17 @@ export const getMyOrganization = query({
     return { _id: org._id, name: org.name, type: org.type, orgRole: membership.orgRole };
   },
 });
+
+export const renameOrganization = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    if (!args.name.trim() || args.name.length > 200) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Organisation name is required and must be under 200 characters.",
+      });
+    }
+    await ctx.db.patch(organizationId, { name: args.name.trim() });
+  },
+});

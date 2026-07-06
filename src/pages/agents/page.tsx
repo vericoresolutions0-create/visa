@@ -137,6 +137,13 @@ function AgentCard({ agent, isFeatured = false }: { agent: AgentProfile; isFeatu
       </div>
       <div className="mt-4 flex gap-2">
         <button
+          onClick={() => navigate(`/agents/${agent._id}`)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+          title="View full profile"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button
           onClick={() => { void handleContact(); }}
           disabled={contacted || sending}
           className={cn(
