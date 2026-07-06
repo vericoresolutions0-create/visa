@@ -16,7 +16,8 @@ export type AnalyticsEvent =
   | "pricing_page_viewed"
   | "agents_page_viewed"
   | "blog_article_opened"
-  | "risk_score_completed";
+  | "risk_score_completed"
+  | "agent_link_clicked";
 
 type EventRecord = {
   event: AnalyticsEvent;

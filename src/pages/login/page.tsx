@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Globe, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
@@ -18,6 +18,8 @@ export default function LoginPage() {
   const location = useLocation();
   const goBack = useSmartBack("/");
   const { isDemoAuthenticated } = useDemoAuth();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo") ?? "/dashboard";
   const { t } = useTranslation("login");
   const hasAccess = isDemoAuthenticated;
   const isSignup = location.pathname === "/signup";
@@ -108,7 +110,7 @@ export default function LoginPage() {
                 </Button>
               </div>
             ) : (
-              <AuthAccessPanel returnPath="/dashboard" />
+              <AuthAccessPanel returnPath={returnTo} />
             )}
           </section>
         </div>

@@ -19,6 +19,7 @@ import {
   Download, FileText, MessageSquare, Send, Bot,
   TrendingUp, X, Share2, Copy, Check,
   ThumbsUp, ThumbsDown, LayoutDashboard, Settings, LogOut,
+  Users, UserPlus,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { downloadChecklistPDF, downloadBankLetterPDF } from "@/lib/pdf-export.ts";
@@ -491,6 +492,9 @@ export default function ChecklistPage() {
   const saveChecklist = useMutation(api.checklists.saveChecklist);
   const currentUser = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
   const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (currentUser?.plan ?? "free");
+  // True only once the auth query has fully resolved with no user — avoids a
+  // flash during the loading window where currentUser is still undefined.
+  const isAnonymous = !isDemoAuthenticated && currentUser === null;
 
   // Keep local state in sync if URL changes (e.g. browser back)
   useEffect(() => {
@@ -966,6 +970,68 @@ export default function ChecklistPage() {
                     </div>
                   </div>
 
+                  {/* ── Save prompt — anonymous visitors only ── */}
+                  {isAnonymous && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                      className="bg-card border-2 border-primary/20 rounded-xl p-5 flex gap-4 items-start"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0 mt-0.5">
+                        <UserPlus className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-foreground mb-1">Save this checklist — free account, 30 seconds</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                          Create a free account to save your progress, set deadline reminders, and come back where you left off. Your checklist stays exactly as you built it.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/checklist?from=${origin}&to=${destination}&type=${visaType as string}`)}`)}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            Create free account
+                          </button>
+                          <button
+                            onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/checklist?from=${origin}&to=${destination}&type=${visaType as string}`)}`)}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors rounded-lg px-3 py-2 cursor-pointer"
+                          >
+                            Already have an account? Sign in
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* ── Agent connection — route-specific, always visible ── */}
+                  <div className="bg-gradient-to-br from-accent/5 to-card border border-accent/25 rounded-xl p-5 flex gap-4 items-start">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Users className="w-5 h-5 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent mb-1">Verified agents available</p>
+                      <p className="font-semibold text-sm text-foreground mb-1">
+                        Expert help for {visaType} → {translateCountry(destination)}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                        Verified consultants who specialise in this exact route. They know what officers look for and can review your documents before you apply.
+                      </p>
+                      <button
+                        onClick={() => {
+                          trackEvent("agent_link_clicked", { destination, visaType: visaType as string });
+                          navigate(`/agents?type=${encodeURIComponent(visaType as string)}&to=${encodeURIComponent(destination)}`);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold border border-accent/40 text-accent hover:bg-accent/5 transition-colors rounded-lg px-3 py-2 cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        Find agents for this route
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
                   {/* ── Readiness Score Card ── */}
                   <div className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-4">
@@ -1014,33 +1080,73 @@ export default function ChecklistPage() {
                   {/* ── PDF & Bank Letter Downloads ── */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Checklist PDF */}
-                    <div className="bg-card border border-border rounded-xl p-5">
-                      <div className="flex items-center gap-2.5 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
-                          <Download className="w-4 h-4 text-primary" />
+                    <div className="bg-card border border-border rounded-xl overflow-hidden">
+                      {/* Preview mockup for free users — shows real item names, dimmed */}
+                      {!canDownloadPDF(plan) && checklist && (
+                        <div className="relative px-5 pt-5 pb-3 select-none" aria-hidden="true">
+                          <div className="space-y-2 opacity-30 pointer-events-none">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <div className="w-3 h-3 rounded-sm bg-primary/60" />
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70">VisaClear</span>
+                            </div>
+                            <div className="h-2.5 bg-primary/70 rounded w-4/5" />
+                            <div className="text-[9px] text-muted-foreground">
+                              {translateCountry(destination)} · {visaType} Visa · Applied from {translateCountry(origin)}
+                            </div>
+                            <div className="pt-1 space-y-2">
+                              {checklist.items.slice(0, 5).map((item) => (
+                                <div key={item.id} className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded border-2 border-muted-foreground/50 shrink-0" />
+                                  <span className="text-[10px] text-foreground/80 truncate">{item.title}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {checklist.items.length > 5 && (
+                              <div className="text-[9px] text-muted-foreground/60 italic">
+                                + {checklist.items.length - 5} more items · embassy address · fee schedule
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent" />
                         </div>
-                        <div>
-                          <div className="font-semibold text-sm text-foreground">{t("pdf.title")}</div>
-                          <div className="text-[11px] text-muted-foreground">{t("pdf.subtitle")}</div>
+                      )}
+                      <div className={cn("p-5", !canDownloadPDF(plan) && "pt-3 border-t border-border/40")}>
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+                            <Download className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm text-foreground">{t("pdf.title")}</div>
+                            <div className="text-[11px] text-muted-foreground">{t("pdf.subtitle")}</div>
+                          </div>
                         </div>
+                        {canDownloadPDF(plan) ? (
+                          <>
+                            <p className="text-xs text-muted-foreground leading-relaxed mb-4">{t("pdf.desc")}</p>
+                            <button
+                              onClick={() => { void handleDownloadPDF(); }}
+                              disabled={pdfLoading}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer disabled:opacity-60"
+                            >
+                              {pdfLoading ? <Spinner /> : <Download className="w-3.5 h-3.5" />}
+                              {pdfLoading ? t("pdf.generating") : t("pdf.download")}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                              All {checklist?.items.length} requirements, embassy address, processing time, and fee schedule — formatted for your application file.
+                            </p>
+                            <button
+                              onClick={() => setShowUpgradeModal(true)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer"
+                            >
+                              <Lock className="w-3.5 h-3.5" />
+                              Unlock PDF — Pro plan
+                            </button>
+                          </>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                        {t("pdf.desc")}
-                      </p>
-                      <button
-                        onClick={() => {
-                          if (!canDownloadPDF(plan)) {
-                            toast.error(t("pdf.upgrade_toast"));
-                            return;
-                          }
-                          void handleDownloadPDF();
-                        }}
-                        disabled={pdfLoading}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-lg px-3 py-2 cursor-pointer disabled:opacity-60"
-                      >
-                        {pdfLoading ? <Spinner /> : canDownloadPDF(plan) ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                        {pdfLoading ? t("pdf.generating") : canDownloadPDF(plan) ? t("pdf.download") : t("pdf.pro_feature")}
-                      </button>
                     </div>
 
                     {/* Bank Letter Template */}
