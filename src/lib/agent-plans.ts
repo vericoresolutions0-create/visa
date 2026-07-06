@@ -27,8 +27,8 @@ export const AGENT_PLANS: AgentPlan[] = [
     id: "agent_listing",
     name: "Verified Listing",
     badge: "Start here",
-    monthlyPrice: 29,
-    yearlyPrice: 290,
+    monthlyPrice: 49,
+    yearlyPrice: 490,
     description:
       "A verified profile, trust badge, and direct applicant enquiries for solo consultants.",
     audience: "Solo consultants",
@@ -46,8 +46,8 @@ export const AGENT_PLANS: AgentPlan[] = [
     id: "agent_featured",
     name: "Featured Placement",
     badge: "Growth plan",
-    monthlyPrice: 79,
-    yearlyPrice: 790,
+    monthlyPrice: 149,
+    yearlyPrice: 1490,
     description:
       "Priority marketplace visibility for agents who want more qualified demand.",
     audience: "Growing agencies",
@@ -65,8 +65,8 @@ export const AGENT_PLANS: AgentPlan[] = [
     id: "agency_white_label",
     name: "Agency White-Label",
     badge: "Scale",
-    monthlyPrice: 149,
-    yearlyPrice: 1490,
+    monthlyPrice: 349,
+    yearlyPrice: 3490,
     description:
       "A branded workspace for agencies that want to run VisaClear under their own identity.",
     audience: "Multi-consultant teams",

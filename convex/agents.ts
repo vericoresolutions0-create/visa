@@ -70,6 +70,7 @@ export const upsertProfile = mutation({
     bio: v.string(),
     yearsExperience: v.number(),
     languages: v.array(v.string()),
+    destinations: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -97,13 +98,31 @@ export const upsertProfile = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args });
+      await ctx.db.patch(existing._id, {
+        fullName: args.fullName,
+        email: args.email,
+        phone: args.phone,
+        country: args.country,
+        specialisations: args.specialisations,
+        bio: args.bio,
+        yearsExperience: args.yearsExperience,
+        languages: args.languages,
+        destinations: args.destinations,
+      });
       return existing._id;
     }
 
     const id = await ctx.db.insert("agent_profiles", {
       userId: user._id,
-      ...args,
+      fullName: args.fullName,
+      email: args.email,
+      phone: args.phone,
+      country: args.country,
+      specialisations: args.specialisations,
+      bio: args.bio,
+      yearsExperience: args.yearsExperience,
+      languages: args.languages,
+      destinations: args.destinations,
       verified: false,
       createdAt: new Date().toISOString(),
       // Backfill from users.agentPlan in case this agent paid for Featured
@@ -187,5 +206,117 @@ export const markDashboardViewed = mutation({
   handler: async (ctx) => {
     const profile = await getMyAgentProfileOrThrow(ctx);
     await ctx.db.patch(profile._id, { lastDashboardViewAt: new Date().toISOString() });
+  },
+});
+
+// ─── Public: search agents by visa type and destination ───────────────────────
+// No auth required. Featured/White-Label agents surface first within results.
+// Matching logic: visa type must match specialisations; if an agent has
+// declared destinations, destination must match one of them — otherwise the
+// agent is treated as serving all destinations.
+export const searchAgents = query({
+  args: {
+    visaType: v.optional(v.string()),
+    destination: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const visaType = args.visaType?.trim();
+    const destination = args.destination?.trim();
+    if (!visaType && !destination) return { featured: [], listed: [] };
+
+    const FEATURED_TIERS = new Set(["agent_featured", "agency_white_label"]);
+
+    const allVerified = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_verified", (q) => q.eq("verified", true))
+      .collect();
+
+    const matches = allVerified.filter((a) => {
+      const matchesVisa =
+        !visaType ||
+        a.specialisations.some((s) => s.toLowerCase() === visaType.toLowerCase());
+      const matchesDest =
+        !destination ||
+        !a.destinations ||
+        a.destinations.length === 0 ||
+        a.destinations.some((d) => d.toLowerCase() === destination.toLowerCase());
+      return matchesVisa && matchesDest;
+    });
+
+    return {
+      featured: matches.filter((a) => FEATURED_TIERS.has(a.tier ?? "")),
+      listed:   matches.filter((a) => !FEATURED_TIERS.has(a.tier ?? "")),
+    };
+  },
+});
+
+// ─── Public: log a search event for demand signal tracking ───────────────────
+// Silent, no auth required. Global daily cap (10k/day) prevents abuse.
+export const logSearchEvent = mutation({
+  args: {
+    visaType: v.optional(v.string()),
+    destination: v.optional(v.string()),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.visaType && !args.destination) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const row = await ctx.db
+      .query("agent_search_daily_usage")
+      .withIndex("by_date", (q) => q.eq("dateKey", today))
+      .unique();
+
+    if (row) {
+      if (row.count >= 10000) return;
+      await ctx.db.patch(row._id, { count: row.count + 1 });
+    } else {
+      await ctx.db.insert("agent_search_daily_usage", { dateKey: today, count: 1 });
+    }
+
+    await ctx.db.insert("agent_search_events", {
+      visaType: args.visaType,
+      destination: args.destination,
+      sessionId: args.sessionId,
+      createdAt: new Date().toISOString(),
+    });
+  },
+});
+
+// ─── Agent: demand signals — searches for their declared visa types ───────────
+// Returns how many applicants searched specialisations this agent covers
+// in the last 30 days. Drives the "real demand is flowing past you" prompt
+// that converts listing agents to featured.
+export const getMyDemandSignals = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const profile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) return null;
+
+    const FEATURED_TIERS = new Set(["agent_featured", "agency_white_label"]);
+
+    // Last 30 days — capped to avoid full-table scans at early stage
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) + "T00:00:00.000Z";
+    const events = await ctx.db
+      .query("agent_search_events")
+      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
+      .take(10000);
+
+    const mySpecs = new Set(profile.specialisations.map((s) => s.toLowerCase()));
+
+    const matching = events.filter(
+      (e) => e.visaType && mySpecs.has(e.visaType.toLowerCase())
+    );
+
+    return {
+      totalSearches: matching.length,
+      isFeatured: FEATURED_TIERS.has(profile.tier ?? ""),
+      specialisations: profile.specialisations,
+    };
   },
 });

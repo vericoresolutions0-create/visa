@@ -157,13 +157,13 @@ export default function BlogArticlePage() {
             {article.title}
           </h1>
 
-          <p className="text-lg text-muted-foreground border-l-4 border-accent/40 pl-5 italic mb-10 leading-relaxed">
+          <p className="text-base md:text-lg text-muted-foreground border-s-4 border-accent/40 ps-5 italic mb-8 md:mb-10 leading-relaxed">
             {article.excerpt}
           </p>
 
           <div>{renderBody(article.body)}</div>
 
-          <div className="mt-14 bg-primary rounded-2xl p-8 text-center text-primary-foreground">
+          <div className="mt-10 md:mt-14 bg-primary rounded-2xl p-6 sm:p-8 text-center text-primary-foreground">
             <h2 className="font-serif text-2xl font-semibold mb-2">{t("article.cta_title")}</h2>
             <p className="text-primary-foreground/65 text-sm mb-5">{t("article.cta_subtitle")}</p>
             <Button

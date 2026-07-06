@@ -73,7 +73,7 @@ export default function AgentOnboardingPage() {
       <main className="max-w-6xl mx-auto px-4 py-10 md:py-14">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.95fr] gap-8 items-start">
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
-            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-accent mb-4">
               <Shield className="w-3.5 h-3.5" /> {t("onboarding.eyebrow")}
             </div>
             <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">{t("onboarding.h1")}</h1>

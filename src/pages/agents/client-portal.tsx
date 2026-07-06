@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
@@ -10,21 +10,18 @@ import { type VisaType } from "@/lib/visa-data.ts";
 import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
 import { PreSubmissionAuditCard } from "@/components/checklist/pre-submission-audit.tsx";
 import {
   Globe,
-  Shield,
   CheckCircle2,
   UploadCloud,
-  LogIn,
   FileWarning,
   Loader2,
   ArrowLeft,
 } from "lucide-react";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB, matches document-scan use case
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 function PortalHeader() {
@@ -170,7 +167,7 @@ function ClientPortalInner({
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
                   {item.required && (
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("item.required")}</span>
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{t("item.required")}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
@@ -242,37 +239,12 @@ export default function ClientPortalPage() {
           </div>
         )}
         {intake && token && (
-          <>
-            <AuthLoading>
-              <div className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-              </div>
-            </AuthLoading>
-            <Unauthenticated>
-              <div className="text-center py-16">
-                <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
-                  <LogIn className="w-7 h-7 text-primary" />
-                </div>
-                <h2 className="font-serif text-3xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
-                <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-                  {t("signin.body")}
-                </p>
-                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("signin.cta")} />
-                <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                  <Shield className="w-3.5 h-3.5" />
-                  {t("signin.footer")}
-                </div>
-              </div>
-            </Unauthenticated>
-            <Authenticated>
-              <ClientPortalInner
-                token={token}
-                destination={intake.destination}
-                visaType={intake.visaType}
-                clientName={undefined}
-              />
-            </Authenticated>
-          </>
+          <ClientPortalInner
+            token={token}
+            destination={intake.destination}
+            visaType={intake.visaType}
+            clientName={intake.clientName}
+          />
         )}
       </div>
     </div>

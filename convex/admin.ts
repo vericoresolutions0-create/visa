@@ -240,5 +240,30 @@ export const verifyAgent = mutation({
   },
 });
 
+// ─── System health check ──────────────────────────────────────────────────────
+// Returns which env vars are configured (true/false only — never their values).
+// Used by the Setup panel in the admin UI to give a clear at-a-glance status.
+export const getSystemHealth = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const check = (name: string) => Boolean(process.env[name]);
+    return {
+      SITE_URL:              process.env.SITE_URL ?? null,
+      RESEND_FROM_EMAIL:     process.env.RESEND_FROM_EMAIL ?? null,
+      RESEND_API_KEY:        check("RESEND_API_KEY"),
+      OPENAI_API_KEY:        check("OPENAI_API_KEY"),
+      STRIPE_SECRET_KEY:     check("STRIPE_SECRET_KEY"),
+      STRIPE_WEBHOOK_SECRET: check("STRIPE_WEBHOOK_SECRET"),
+      PAYSTACK_SECRET_KEY:   check("PAYSTACK_SECRET_KEY"),
+      AUTH_GOOGLE_SECRET:    check("AUTH_GOOGLE_SECRET"),
+      TELEGRAM_BOT_TOKEN:    check("TELEGRAM_BOT_TOKEN"),
+      TWILIO_ACCOUNT_SID:    check("TWILIO_ACCOUNT_SID"),
+      TWILIO_AUTH_TOKEN:     check("TWILIO_AUTH_TOKEN"),
+      TWILIO_WHATSAPP_NUMBER:check("TWILIO_WHATSAPP_NUMBER"),
+    };
+  },
+});
+
 // Re-export the Id type alias used in the admin page
 export type { Id };

@@ -253,6 +253,9 @@ export default defineSchema({
     bio: v.string(),
     yearsExperience: v.number(),
     languages: v.array(v.string()),
+    // Which destination countries this agent actively serves.
+    // Optional so existing profiles stay valid. Empty/absent = not yet declared.
+    destinations: v.optional(v.array(v.string())),
     verified: v.boolean(),
     rating: v.optional(v.number()),
     reviewCount: v.optional(v.number()),
@@ -326,7 +329,7 @@ export default defineSchema({
     fileName: v.string(),
     fileSize: v.number(),
     mimeType: v.string(),
-    uploadedByUserId: v.id("users"),
+    uploadedByUserId: v.optional(v.id("users")),
     uploadedAt: v.string(),
   }).index("by_intake", ["intakeId"]),
 
@@ -913,6 +916,37 @@ export default defineSchema({
   })
     .index("by_agent", ["agentUserId"])
     .index("by_paying_user", ["payingUserId"]),
+
+  // One row per destination — the live, admin-editable override of the static
+  // LAST_VERIFIED_DATES in visa-data.ts. When an admin clicks "Mark Reviewed"
+  // in the Data Freshness panel, this row is upserted with today's date and
+  // the verifying admin's userId. getFreshnessReport uses this table first,
+  // falling back to the static seed date for any destination not yet reviewed.
+  visa_freshness: defineTable({
+    destination: v.string(),
+    lastVerified: v.string(),       // ISO date "YYYY-MM-DD"
+    verifiedByUserId: v.id("users"),
+    verifiedAt: v.string(),         // ISO datetime
+  }).index("by_destination", ["destination"]),
+
+  // One row per marketplace search event. Used to calculate per-agent
+  // demand signals ("X applicants searched your routes this month").
+  // Global daily write cap enforced in logSearchEvent to prevent abuse.
+  agent_search_events: defineTable({
+    destination: v.optional(v.string()),
+    visaType: v.optional(v.string()),
+    sessionId: v.string(),
+    createdAt: v.string(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_visa_type_created", ["visaType", "createdAt"]),
+
+  // Global daily backstop for agent_search_events. Same pattern as
+  // photo_check_daily_usage — caps total event inserts per day.
+  agent_search_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
 
   // Per-user per-resource daily write cap. One row per (user, resource, date).
   // Keyed by dateKey ("YYYY-MM-DD") so rows expire naturally — nothing to clean

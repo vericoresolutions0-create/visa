@@ -1,30 +1,29 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { useQuery, useMutation, usePaginatedQuery, useConvexAuth } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
-import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Globe, ArrowLeft, Users, Star, MapPin, ChevronRight,
-  Plus, Check, Shield, LogIn, MessageCircle,
+  Plus, Check, Shield, MessageCircle, Search, Zap,
   Languages, Briefcase, Phone, BadgeCheck, LayoutDashboard,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { AGENT_PLANS, SPECIALISATIONS, LANGUAGES_LIST } from "@/lib/agent-plans.ts";
-
-const DEST_COUNTRIES = ["Nigeria", "Ghana", "Kenya", "Pakistan", "India", "Philippines", "Bangladesh", "Brazil", "Mexico", "Nigeria (living in Poland)"];
+import { AVAILABLE_DESTINATIONS } from "@/lib/visa-data.ts";
 
 // ─── Agent Card ───────────────────────────────────────────────────────────────
+
 type AgentProfile = {
   _id: string;
   fullName: string;
@@ -32,6 +31,7 @@ type AgentProfile = {
   country: string;
   bio: string;
   specialisations: string[];
+  destinations?: string[];
   yearsExperience: number;
   languages: string[];
   verified: boolean;
@@ -44,13 +44,20 @@ function toWhatsAppNumber(phone: string): string {
   return phone.replace(/[^\d]/g, "");
 }
 
-function AgentCard({ agent }: { agent: AgentProfile }) {
+function AgentCard({ agent, isFeatured = false }: { agent: AgentProfile; isFeatured?: boolean }) {
   const { t } = useTranslation("agents");
+  const { isAuthenticated } = useConvexAuth();
+  const navigate = useNavigate();
   const [contacted, setContacted] = useState(false);
   const [sending, setSending] = useState(false);
   const contactAgent = useMutation(api.agents.contactAgent);
 
   const handleContact = async () => {
+    if (!isAuthenticated) {
+      toast.info("Sign in to contact this agent");
+      navigate("/login");
+      return;
+    }
     setSending(true);
     try {
       await contactAgent({ agentProfileId: agent._id as Id<"agent_profiles"> });
@@ -74,9 +81,19 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
     : null;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors">
+    <div className={cn(
+      "bg-card border rounded-xl p-5 hover:shadow-md transition-all",
+      isFeatured
+        ? "border-amber-300/60 ring-1 ring-amber-200/50 shadow-sm"
+        : "border-border hover:border-primary/20",
+    )}>
+      {isFeatured && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-600">Featured</span>
+        </div>
+      )}
       <div className="flex items-start gap-4">
-        {/* Avatar */}
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 font-bold text-primary text-lg font-serif">
           {agent.fullName.charAt(0)}
         </div>
@@ -105,7 +122,6 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
             {t("card.exp", { n: agent.yearsExperience })}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{agent.bio}</p>
-          {/* Specialisations */}
           <div className="flex flex-wrap gap-1.5 mb-3">
             {agent.specialisations.slice(0, 4).map((s) => (
               <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/8 text-primary font-medium border border-primary/15">
@@ -113,7 +129,6 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
               </span>
             ))}
           </div>
-          {/* Languages */}
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Languages className="w-3 h-3" />
             {agent.languages.join(", ")}
@@ -128,10 +143,16 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
             "flex-1 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer",
             contacted
               ? "bg-accent/10 text-accent border border-accent/20"
-              : "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
         >
-          {contacted ? <><Check className="w-3.5 h-3.5 inline mr-1" /> {t("card.enquiry_sent")}</> : sending ? t("card.sending") : t("card.contact")}
+          {contacted
+            ? <><Check className="w-3.5 h-3.5 inline mr-1" /> {t("card.enquiry_sent")}</>
+            : sending
+            ? t("card.sending")
+            : isAuthenticated
+            ? t("card.contact")
+            : "Sign in to contact"}
         </button>
         {whatsappHref && (
           <a
@@ -159,12 +180,16 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
 }
 
 // ─── Register Agent form ──────────────────────────────────────────────────────
+
 function RegisterAgentForm({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("agents");
   const upsert = useMutation(api.agents.upsertProfile);
   const [form, setForm] = useState({
     fullName: "", email: "", phone: "", country: "", bio: "",
-    yearsExperience: 1, specialisations: [] as string[], languages: [] as string[],
+    yearsExperience: 1,
+    specialisations: [] as string[],
+    languages: [] as string[],
+    destinations: [] as string[],
   });
   const [saving, setSaving] = useState(false);
 
@@ -187,6 +212,7 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
         yearsExperience: form.yearsExperience,
         specialisations: form.specialisations,
         languages: form.languages,
+        destinations: form.destinations.length > 0 ? form.destinations : undefined,
       });
       toast.success(t("form.toast_success"));
       onClose();
@@ -235,9 +261,7 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.years_exp")}</label>
             <input
-              type="number"
-              min={1}
-              max={40}
+              type="number" min={1} max={40}
               value={form.yearsExperience}
               onChange={(e) => setForm((prev) => ({ ...prev, yearsExperience: parseInt(e.target.value) || 1 }))}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -258,17 +282,38 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
             <div className="flex flex-wrap gap-2">
               {SPECIALISATIONS.map((s) => (
                 <button
-                  key={s}
-                  type="button"
+                  key={s} type="button"
                   onClick={() => setForm((prev) => ({ ...prev, specialisations: toggleItem(prev.specialisations, s) }))}
                   className={cn(
                     "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
                     form.specialisations.includes(s)
                       ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:border-primary/40"
+                      : "border-border text-muted-foreground hover:border-primary/40",
                   )}
                 >
                   {s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">
+              Destination countries you serve <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground mb-2">Leave blank to appear in all searches. Select specific countries to show only for those routes.</p>
+            <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+              {AVAILABLE_DESTINATIONS.map((d) => (
+                <button
+                  key={d} type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, destinations: toggleItem(prev.destinations, d) }))}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
+                    form.destinations.includes(d)
+                      ? "bg-accent/15 text-accent border-accent/30"
+                      : "border-border text-muted-foreground hover:border-accent/30",
+                  )}
+                >
+                  {d}
                 </button>
               ))}
             </div>
@@ -278,14 +323,13 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
             <div className="flex flex-wrap gap-2">
               {LANGUAGES_LIST.map((l) => (
                 <button
-                  key={l}
-                  type="button"
+                  key={l} type="button"
                   onClick={() => setForm((prev) => ({ ...prev, languages: toggleItem(prev.languages, l) }))}
                   className={cn(
                     "text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer",
                     form.languages.includes(l)
                       ? "bg-accent/15 text-accent border-accent/30"
-                      : "border-border text-muted-foreground hover:border-accent/30"
+                      : "border-border text-muted-foreground hover:border-accent/30",
                   )}
                 >
                   {l}
@@ -305,29 +349,76 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Agents Inner ─────────────────────────────────────────────────────────────
-function AgentsInner() {
+// ─── Marketplace ──────────────────────────────────────────────────────────────
+
+function AgentSkeleton() {
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
+      <div className="flex gap-4">
+        <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-36 bg-muted rounded" />
+          <div className="h-3 w-24 bg-muted rounded" />
+          <div className="h-3 w-full bg-muted rounded" />
+        </div>
+      </div>
+      <div className="h-8 w-full bg-muted rounded-lg" />
+    </div>
+  );
+}
+
+function AgentsMarketplace({ myProfile, onShowRegister }: {
+  myProfile: { verified: boolean } | null | undefined;
+  onShowRegister: () => void;
+}) {
   const { t } = useTranslation("agents");
   const navigate = useNavigate();
-  const { results: agents, status, loadMore } = usePaginatedQuery(
+  const sessionId = useRef(crypto.randomUUID()).current;
+  const loggedRef = useRef(new Set<string>());
+
+  const [searchVisa, setSearchVisa] = useState("");
+  const [searchDest, setSearchDest] = useState("");
+
+  const isSearching = Boolean(searchVisa || searchDest);
+  const logSearch = useMutation(api.agents.logSearchEvent);
+
+  // Reactive search — fires whenever visa or destination changes
+  const searchResults = useQuery(
+    api.agents.searchAgents,
+    isSearching ? { visaType: searchVisa || undefined, destination: searchDest || undefined } : "skip",
+  );
+
+  // Log each unique search combination once per session
+  useEffect(() => {
+    if (!searchVisa && !searchDest) return;
+    const key = `${searchVisa}|${searchDest}`;
+    if (loggedRef.current.has(key)) return;
+    loggedRef.current.add(key);
+    void logSearch({
+      visaType: searchVisa || undefined,
+      destination: searchDest || undefined,
+      sessionId,
+    });
+  }, [searchVisa, searchDest, logSearch, sessionId]);
+
+  // Paginated list for "browse all" mode
+  const { results: allAgents, status, loadMore } = usePaginatedQuery(
     api.agents.listAgents,
     {},
     { initialNumItems: 20 },
   );
   const featuredAgents = useQuery(api.agents.getFeaturedAgents, {});
-  const myProfile = useQuery(api.agents.getMyProfile, {});
-  const [showRegister, setShowRegister] = useState(false);
   const [filterSpec, setFilterSpec] = useState("");
 
-  if (status === "LoadingFirstPage") {
-    return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}</div>;
-  }
-
   const featuredIds = new Set((featuredAgents ?? []).map((a) => a._id));
-  const filtered = (filterSpec
-    ? agents.filter((a) => a.specialisations.includes(filterSpec))
-    : agents
+  const filteredAll = (filterSpec
+    ? allAgents.filter((a) => a.specialisations.includes(filterSpec))
+    : allAgents
   ).filter((a) => !featuredIds.has(a._id));
+
+  const totalSearchResults = isSearching && searchResults
+    ? searchResults.featured.length + searchResults.listed.length
+    : null;
 
   return (
     <div className="space-y-6">
@@ -336,7 +427,9 @@ function AgentsInner() {
         <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 flex items-center gap-3">
           <Check className="w-5 h-5 text-accent shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-foreground">Your agent profile is {myProfile.verified ? t("profile.live") : t("profile.pending")}</p>
+            <p className="text-sm font-semibold text-foreground">
+              Your agent profile is {myProfile.verified ? t("profile.live") : t("profile.pending")}
+            </p>
             <p className="text-xs text-muted-foreground">
               {myProfile.verified ? t("profile.live_body") : t("profile.pending_body")}
             </p>
@@ -344,68 +437,189 @@ function AgentsInner() {
         </div>
       )}
 
-      {/* Featured agents (real paid-tier ranking) */}
-      {featuredAgents && featuredAgents.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-4 h-4 text-accent fill-accent" />
-            <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
-          </div>
-          <div className="space-y-3">
-            {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Filter row */}
-      <div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          <button
-            onClick={() => setFilterSpec("")}
-            className={cn("shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap",
-              filterSpec === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
-            )}
-          >
-            {t("inner.all")}
-          </button>
-          {SPECIALISATIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterSpec(filterSpec === s ? "" : s)}
-              className={cn("shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap",
-                filterSpec === s ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
-              )}
+      {/* Search bar */}
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">Find an agent for your route</p>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Visa type</label>
+            <select
+              value={searchVisa}
+              onChange={(e) => { setSearchVisa(e.target.value); setFilterSpec(""); }}
+              className="w-full px-3 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
             >
-              {s}
+              <option value="">Any type</option>
+              {SPECIALISATIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Destination country</label>
+            <select
+              value={searchDest}
+              onChange={(e) => { setSearchDest(e.target.value); setFilterSpec(""); }}
+              className="w-full px-3 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+            >
+              <option value="">Any destination</option>
+              {AVAILABLE_DESTINATIONS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+          {isSearching && (
+            <button
+              type="button"
+              onClick={() => { setSearchVisa(""); setSearchDest(""); }}
+              className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              Clear
             </button>
-          ))}
+          )}
         </div>
+        {isSearching && totalSearchResults !== null && (
+          <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+            <Search className="w-3 h-3" />
+            {totalSearchResults === 0
+              ? "No agents found for this combination yet — the network is growing."
+              : `${totalSearchResults} agent${totalSearchResults !== 1 ? "s" : ""} found`}
+            {searchResults && searchResults.featured.length > 0 && (
+              <span className="text-amber-600 font-semibold">
+                · {searchResults.featured.length} featured
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
-      {/* Agent list */}
-      {filtered.length > 0 ? (
-        <div className="space-y-3">
-          {filtered.map((a) => <AgentCard key={a._id} agent={a} />)}
-        </div>
-      ) : (
-        <div className="border border-dashed border-border rounded-xl p-10 text-center">
-          <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="font-semibold text-foreground mb-1">{t("inner.empty_title")}</p>
-          <p className="text-sm text-muted-foreground mb-4">{t("inner.empty_body")}</p>
-        </div>
+      {/* ── SEARCH MODE ── */}
+      {isSearching && (
+        <>
+          {searchResults === undefined ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <AgentSkeleton key={i} />)}
+            </div>
+          ) : (
+            <>
+              {/* Featured results */}
+              {searchResults.featured.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <span className="font-semibold text-sm text-primary uppercase tracking-widest">Featured agents</span>
+                  </div>
+                  <div className="space-y-3">
+                    {searchResults.featured.map((a) => (
+                      <AgentCard key={a._id} agent={a} isFeatured />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Listed results */}
+              {searchResults.listed.length > 0 && (
+                <div>
+                  {searchResults.featured.length > 0 && (
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">Other agents</p>
+                  )}
+                  <div className="space-y-3">
+                    {searchResults.listed.map((a) => <AgentCard key={a._id} agent={a} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty search state */}
+              {searchResults.featured.length === 0 && searchResults.listed.length === 0 && (
+                <div className="border border-dashed border-border rounded-xl p-10 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="font-semibold text-foreground mb-1">No agents on this route yet</p>
+                  <p className="text-sm text-muted-foreground mb-5">We're adding verified agents every week. Register your profile to be the first for this route.</p>
+                  <Button size="sm" className="cursor-pointer" onClick={onShowRegister}>
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Register as agent
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
 
-      {(status === "CanLoadMore" || status === "LoadingMore") && (
-        <div className="text-center">
-          <Button
-            variant="secondary"
-            disabled={status === "LoadingMore"}
-            onClick={() => loadMore(20)}
-            className="cursor-pointer"
-          >
-            {status === "LoadingMore" ? t("inner.loading") : t("inner.load_more")}
-          </Button>
-        </div>
+      {/* ── BROWSE ALL MODE ── */}
+      {!isSearching && (
+        <>
+          {/* Featured agents */}
+          {featuredAgents && featuredAgents.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
+              </div>
+              <div className="space-y-3">
+                {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} isFeatured />)}
+              </div>
+            </div>
+          )}
+
+          {/* Visa type filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            <button
+              onClick={() => setFilterSpec("")}
+              className={cn(
+                "shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap",
+                filterSpec === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30",
+              )}
+            >
+              {t("inner.all")}
+            </button>
+            {SPECIALISATIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterSpec(filterSpec === s ? "" : s)}
+                className={cn(
+                  "shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer whitespace-nowrap",
+                  filterSpec === s ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30",
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Loading */}
+          {status === "LoadingFirstPage" && (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <AgentSkeleton key={i} />)}
+            </div>
+          )}
+
+          {/* Agent list */}
+          {status !== "LoadingFirstPage" && (
+            filteredAll.length > 0 ? (
+              <div className="space-y-3">
+                {filteredAll.map((a) => <AgentCard key={a._id} agent={a} />)}
+              </div>
+            ) : (
+              <div className="border border-dashed border-border rounded-xl p-10 text-center">
+                <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="font-semibold text-foreground mb-1">{t("inner.empty_title")}</p>
+                <p className="text-sm text-muted-foreground mb-4">{t("inner.empty_body")}</p>
+              </div>
+            )
+          )}
+
+          {(status === "CanLoadMore" || status === "LoadingMore") && (
+            <div className="text-center">
+              <Button
+                variant="secondary"
+                disabled={status === "LoadingMore"}
+                onClick={() => loadMore(20)}
+                className="cursor-pointer"
+              >
+                {status === "LoadingMore" ? t("inner.loading") : t("inner.load_more")}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Register CTA */}
@@ -415,11 +629,9 @@ function AgentsInner() {
             <Briefcase className="w-4 h-4 text-primary" />
             <span className="font-semibold text-sm text-primary">{t("inner.agent_cta.title")}</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            {t("inner.agent_cta.body")}
-          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-4">{t("inner.agent_cta.body")}</p>
           <div className="flex flex-wrap gap-3">
-            <Button size="sm" className="cursor-pointer" onClick={() => setShowRegister(true)}>
+            <Button size="sm" className="cursor-pointer" onClick={onShowRegister}>
               <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("inner.agent_cta.register")}
             </Button>
             <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => navigate("/agents/dashboard")}>
@@ -431,18 +643,22 @@ function AgentsInner() {
           </div>
         </div>
       )}
-
-      {showRegister && <RegisterAgentForm onClose={() => setShowRegister(false)} />}
     </div>
   );
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
+
 export default function AgentsPage() {
   const { t } = useTranslation("agents");
-  useSeo({ title: "Agents Marketplace", description: "Find trusted visa agents and immigration consultants on VisaClear. Connect with verified experts who know your destination country inside out." });
+  useSeo({
+    title: "Agents Marketplace",
+    description: "Find trusted visa agents and immigration consultants on VisaClear. Search by visa type and destination — connect with verified experts who know your route inside out.",
+  });
   const navigate = useNavigate();
   const goBack = useSmartBack("/");
+  const myProfile = useQuery(api.agents.getMyProfile, {});
+  const [showRegister, setShowRegister] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -469,17 +685,19 @@ export default function AgentsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-10 space-y-8">
+
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-accent mb-4">
             <Shield className="w-3.5 h-3.5" /> {t("hero.eyebrow")}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
-            <div className="text-left md:text-left">
+            <div>
               <h1 className="font-serif text-4xl md:text-5xl font-semibold text-primary mb-3">
                 {t("hero.title")}
               </h1>
@@ -490,11 +708,7 @@ export default function AgentsPage() {
                 <Button className="cursor-pointer" onClick={() => navigate("/agents/dashboard")}>
                   {t("hero.open_dashboard")} <ChevronRight className="w-4 h-4 ml-1.5" />
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => navigate("/agents/register")}
-                >
+                <Button variant="secondary" className="cursor-pointer" onClick={() => navigate("/agents/register")}>
                   {t("hero.register")}
                 </Button>
               </div>
@@ -506,12 +720,12 @@ export default function AgentsPage() {
             </div>
             <div className="grid gap-3">
               {[
-                { label: t("hero.stats.specialists"), value: '24h' },
-                { label: t("hero.stats.trust"), value: 'CISA-led' },
-                { label: t("hero.stats.support"), value: 'Direct contact' },
+                { label: t("hero.stats.specialists"), value: "24h" },
+                { label: t("hero.stats.trust"), value: "CISA-led" },
+                { label: t("hero.stats.support"), value: "Direct contact" },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                  <div className="text-[10px] uppercase tracking-[0.26em] text-muted-foreground mb-1">{stat.label}</div>
+                  <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-1">{stat.label}</div>
                   <div className="text-xl font-semibold text-primary">{stat.value}</div>
                 </div>
               ))}
@@ -519,6 +733,7 @@ export default function AgentsPage() {
           </div>
         </motion.div>
 
+        {/* Pricing */}
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -535,12 +750,12 @@ export default function AgentsPage() {
                   : "border-border bg-card",
               )}
             >
-              <p className={cn("text-[10px] uppercase tracking-[0.28em] font-semibold", tier.highlight ? "text-accent" : "text-accent")}>
-                {tier.badge}
-              </p>
+              <p className="eyebrow">{tier.badge}</p>
               <h2 className={cn("mt-2 font-serif text-xl font-semibold", tier.highlight ? "text-primary-foreground" : "text-primary")}>{tier.name}</h2>
               <p className={cn("mt-2 text-sm leading-relaxed", tier.highlight ? "text-primary-foreground/70" : "text-muted-foreground")}>{tier.description}</p>
-              <div className={cn("mt-4 text-2xl font-semibold", tier.highlight ? "text-primary-foreground" : "text-primary")}>${tier.monthlyPrice}<span className="text-sm font-normal opacity-70">/mo</span></div>
+              <div className={cn("mt-4 text-2xl font-semibold", tier.highlight ? "text-primary-foreground" : "text-primary")}>
+                ${tier.monthlyPrice}<span className="text-sm font-normal opacity-70">/mo</span>
+              </div>
               <p className={cn("mt-1 text-xs", tier.highlight ? "text-primary-foreground/60" : "text-muted-foreground")}>{tier.leadTarget}</p>
               <ul className="mt-4 space-y-2 flex-1">
                 {tier.features.slice(0, 3).map((feature) => (
@@ -562,13 +777,14 @@ export default function AgentsPage() {
           ))}
         </motion.section>
 
+        {/* Why section */}
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
           className="rounded-3xl border border-border bg-card p-6 shadow-sm"
         >
-          <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">{t("why.eyebrow")}</p>
+          <p className="eyebrow">{t("why.eyebrow")}</p>
           <h2 className="mt-2 font-serif text-2xl font-semibold text-primary">{t("why.title")}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-muted-foreground">
             <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p1")}</div>
@@ -578,47 +794,64 @@ export default function AgentsPage() {
           </div>
         </motion.section>
 
+        {/* Marketplace — public, no auth wall */}
         <section className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">{t("marketplace.eyebrow")}</p>
+              <p className="eyebrow">{t("marketplace.eyebrow")}</p>
               <h2 className="mt-2 font-serif text-3xl font-semibold text-primary">{t("marketplace.title")}</h2>
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                {t("marketplace.subtitle")}
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{t("marketplace.subtitle")}</p>
             </div>
             <Button variant="secondary" className="cursor-pointer md:w-auto" onClick={() => navigate("/agents/register")}>
               {t("marketplace.partner_onboarding")}
             </Button>
           </div>
 
-        <AuthLoading>
-          <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}</div>
-        </AuthLoading>
-        <Unauthenticated>
-          <div className="py-10">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto mb-5">
-                <LogIn className="w-7 h-7 text-primary" />
-              </div>
-              <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("signin.title")}</h2>
-              <p className="text-muted-foreground text-sm">{t("signin.subtitle")}</p>
-            </div>
-            <div className="max-w-sm mx-auto">
-              <AuthAccessPanel returnPath="/agents" hideDemoOption />
-            </div>
-          </div>
-        </Unauthenticated>
-        <Authenticated>
-          <AgentsInner />
-        </Authenticated>
+          <AgentsMarketplace myProfile={myProfile} onShowRegister={() => setShowRegister(true)} />
         </section>
+
+        {/* Demand transparency callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-3xl bg-[#0f2040] p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6"
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-[#d4a726]" />
+              <span className="text-xs uppercase tracking-[0.14em] font-semibold text-white/60">For registered agents</span>
+            </div>
+            <h3 className="font-serif text-2xl font-semibold mb-2">See the demand flowing past you</h3>
+            <p className="text-white/70 text-sm leading-relaxed max-w-lg">
+              Every time an applicant searches your visa type, we log it. Your dashboard shows exactly how many searches hit your routes each month — and whether you appeared at the top or below featured agents.
+            </p>
+          </div>
+          <div className="shrink-0 flex flex-col gap-3">
+            <Button
+              className="cursor-pointer bg-[#d4a726] text-[#0f2040] hover:bg-[#d4a726]/90 font-bold"
+              onClick={() => navigate("/agents/dashboard")}
+            >
+              <Zap className="w-4 h-4 mr-1.5" /> Open dashboard
+            </Button>
+            <Button
+              variant="secondary"
+              className="cursor-pointer bg-white/10 text-white hover:bg-white/20 border-white/20"
+              onClick={() => navigate(`/payment?product=agent&plan=agent_featured&billing=monthly`)}
+            >
+              Get Featured
+            </Button>
+          </div>
+        </motion.div>
+
       </div>
 
       <footer className="border-t border-border mt-10 py-6 px-6 text-center">
         <p className="text-xs text-muted-foreground italic mb-1">&ldquo;It&apos;s all about Privacy.&rdquo;</p>
         <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Vericore Ltd.</p>
       </footer>
+
+      {showRegister && <RegisterAgentForm onClose={() => setShowRegister(false)} />}
     </div>
   );
 }

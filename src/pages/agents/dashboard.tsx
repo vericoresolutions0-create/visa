@@ -44,10 +44,12 @@ import {
   Send,
   Shield,
   Star,
+  TrendingUp,
   UploadCloud,
   UserPlus,
   Users,
   X,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -662,7 +664,7 @@ function PipelineSection({ intakes }: { intakes: Intake[] }) {
     <div className="space-y-5">
       <div>
         <h2 className="font-serif text-2xl font-semibold text-primary">Pipeline</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Drag clients between stages to update their status</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Use the buttons on each card to move clients between stages</p>
       </div>
 
       {intakes.length === 0 ? (
@@ -1021,6 +1023,7 @@ function OverviewSection({
 }) {
   const { t } = useTranslation("agent-dashboard");
   const markRead = useMutation(api.agents.markContactRequestRead);
+  const demandSignals = useQuery(api.agents.getMyDemandSignals, {});
 
   const actions = useMemo(() => {
     const items: { key: string; title: string; detail: string; priority: string; urgent: boolean }[] = [];
@@ -1115,6 +1118,47 @@ function OverviewSection({
           );
         })}
       </div>
+
+      {/* Demand signals */}
+      {demandSignals && (
+        <div className={cn(
+          "rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4",
+          demandSignals.isFeatured
+            ? "border-amber-300/60 bg-amber-50/60"
+            : "border-border bg-[#0f2040] text-white",
+        )}>
+          <div className="flex items-start gap-4">
+            <div className={cn(
+              "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+              demandSignals.isFeatured ? "bg-amber-100 text-amber-600" : "bg-white/10 text-[#d4a726]",
+            )}>
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <p className={cn("text-sm font-semibold mb-0.5", demandSignals.isFeatured ? "text-amber-800" : "text-white")}>
+                {demandSignals.totalSearches > 0
+                  ? `${demandSignals.totalSearches.toLocaleString()} applicant${demandSignals.totalSearches !== 1 ? "s" : ""} searched your routes this month`
+                  : "No searches recorded for your routes yet — it's early."}
+              </p>
+              <p className={cn("text-xs leading-relaxed", demandSignals.isFeatured ? "text-amber-700" : "text-white/70")}>
+                {demandSignals.isFeatured
+                  ? "Your profile appears at the top of these search results."
+                  : demandSignals.totalSearches > 0
+                  ? "Your profile is listed below featured agents in these results. Upgrade to appear first."
+                  : `We track every search for ${demandSignals.specialisations.join(", ")}. You'll see demand here as it builds.`}
+              </p>
+            </div>
+          </div>
+          {!demandSignals.isFeatured && (
+            <button
+              onClick={() => { window.location.href = "/payment?product=agent&plan=agent_featured&billing=monthly"; }}
+              className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#d4a726] text-[#0f2040] text-xs font-bold hover:bg-[#d4a726]/90 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Zap className="w-3.5 h-3.5" /> Get Featured
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Today's actions */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">

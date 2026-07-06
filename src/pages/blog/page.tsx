@@ -197,7 +197,7 @@ export default function BlogPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-primary rounded-2xl p-10 mb-12 cursor-pointer group"
+            className="bg-primary rounded-2xl p-6 md:p-10 mb-8 md:mb-12 cursor-pointer group"
             onClick={() => navigate(`/blog/${featured.slug}`)}
           >
             <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -260,7 +260,7 @@ export default function BlogPage() {
                 onClick={() => navigate(`/blog/${post.slug}`)}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="bg-accent/10 text-accent text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-widest flex items-center gap-1">
+                  <span className="bg-accent/10 text-accent text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-[0.12em] flex items-center gap-1">
                     <Tag className="w-2.5 h-2.5" />{post.category}
                   </span>
                 </div>
@@ -283,7 +283,7 @@ export default function BlogPage() {
         </> /* end articles tab */}
 
         {/* Newsletter CTA */}
-        <div className="mt-16 bg-primary rounded-2xl p-10 text-center text-primary-foreground">
+        <div className="mt-12 md:mt-16 bg-primary rounded-2xl p-6 sm:p-10 text-center text-primary-foreground">
           <BookOpen className="w-8 h-8 text-accent mx-auto mb-4" />
           <h2 className="font-serif text-2xl font-semibold mb-2">{t("newsletter.title")}</h2>
           <p className="text-primary-foreground/65 text-sm mb-6 max-w-sm mx-auto">

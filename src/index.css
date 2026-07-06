@@ -139,3 +139,19 @@
     min-height: 100vh;
   }
 }
+
+@layer utilities {
+  /* Section eyebrow labels — the small uppercase labels above headings.
+     Minimum 12px across all viewports; readable on every screen size. */
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-accent;
+    /* 12px is the hard floor — below this letters merge on retina mobile */
+    font-size: max(0.75rem, 12px);
+  }
+
+  /* Tier / plan badge chips inside cards */
+  .plan-badge {
+    @apply inline-flex items-center text-[11px] font-bold uppercase tracking-[0.12em] text-accent;
+    font-size: max(0.6875rem, 11px);
+  }
+}

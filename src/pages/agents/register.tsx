@@ -136,7 +136,7 @@ export default function AgentRegisterPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm lg:sticky lg:top-24"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-accent mb-4">
               <Shield className="w-3.5 h-3.5" /> {t("register.eyebrow")}
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-primary mb-4">{t("register.h1")}</h1>
@@ -160,7 +160,7 @@ export default function AgentRegisterPage() {
             <div className="mt-6 rounded-2xl border border-border bg-background/80 p-4">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-accent font-semibold">{t("register.partner_plan_label")}</p>
+                  <p className="eyebrow">{t("register.partner_plan_label")}</p>
                   <h2 className="font-serif text-2xl font-semibold text-primary">{t("register.monetize_title")}</h2>
                 </div>
                 <div className="flex rounded-full border border-border bg-card p-1 text-xs font-semibold">
@@ -227,7 +227,7 @@ export default function AgentRegisterPage() {
           >
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">{t("register.step_of", { step })}</p>
+                <p className="eyebrow">{t("register.step_of", { step })}</p>
                 <h2 className="font-serif text-2xl font-semibold text-primary">{t("register.create_account")}</h2>
               </div>
               <div className="hidden sm:block rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
@@ -379,7 +379,7 @@ export default function AgentRegisterPage() {
                 <div className="rounded-2xl border border-primary/20 bg-primary/8 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.24em] text-accent font-semibold">{t("register.selected_plan")}</p>
+                      <p className="eyebrow">{t("register.selected_plan")}</p>
                       <h3 className="mt-1 font-serif text-2xl font-semibold text-primary">{selectedPlan.name}</h3>
                       <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{selectedPlan.description}</p>
                     </div>

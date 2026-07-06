@@ -48,7 +48,7 @@ export function PartnerWelcomeBanner() {
           <Icon className="w-6 h-6 text-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent mb-1">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent mb-1">
             Made for {partner.name} {copy.audience}
           </p>
           <p className="text-base sm:text-lg font-semibold text-primary leading-snug">

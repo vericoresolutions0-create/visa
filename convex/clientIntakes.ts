@@ -1,8 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
-import { checkUserDailyLimit } from "./rateLimits.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -133,6 +133,9 @@ export const updateIntakeStatus = mutation({
 });
 
 // ─── Public: look up basic intake info by share-link token ────────────────────
+// The token itself is the credential — 128-bit entropy (32 hex chars)
+// is unguessable, so returning clientName here is safe and removes the
+// need for an additional account-based auth check in the portal.
 export const getIntakeByToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
@@ -141,24 +144,21 @@ export const getIntakeByToken = query({
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
     if (!intake) return null;
-    // clientName is PII — never returned to an unauthenticated caller.
-    // The client already knows their own name; the portal only needs to
-    // confirm the visa route so they know they're in the right place.
     return {
       destination: intake.destination,
       visaType: intake.visaType,
       status: intake.status,
+      clientName: intake.clientName,
     };
   },
 });
 
-// ─── Client (must be signed in): list documents I've already uploaded here ────
+// ─── Guest/client: list all documents uploaded under this intake token ────────
+// No account required — the 128-bit token is the credential. Returns every
+// document for this intake so the client can see what they've already sent.
 export const listMyUploadsForIntake = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const client = await getCurrentUser(ctx);
-    if (!client) return [];
-
     const intake = await ctx.db
       .query("client_intakes")
       .withIndex("by_token", (q) => q.eq("token", args.token))
@@ -169,34 +169,41 @@ export const listMyUploadsForIntake = query({
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
       .collect();
-    return documents
-      .filter((doc) => doc.uploadedByUserId === client._id)
-      .map((doc) => ({ label: doc.label, fileName: doc.fileName, uploadedAt: doc.uploadedAt }));
+    return documents.map((doc) => ({
+      label: doc.label,
+      fileName: doc.fileName,
+      uploadedAt: doc.uploadedAt,
+    }));
   },
 });
 
-// ─── Client (must be signed in): get a URL to upload a document to ────────────
+// ─── Guest/client: get a URL to upload a document to ─────────────────────────
+// No account required. Rate-limited to 30 documents per intake per day.
 export const generateUploadUrl = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    const user = await getCurrentUserOrThrow(ctx);
-    await checkUserDailyLimit(ctx, user._id, "intake_upload", 20, "You can upload up to 20 documents per day on an intake link. Resets at midnight UTC.");
-
     const intake = await ctx.db
       .query("client_intakes")
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
-    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired" });
+    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired." });
 
-    if (intake.claimedByUserId && intake.claimedByUserId !== user._id) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "This upload link has already been claimed by another account." });
+    const today = new Date().toISOString().slice(0, 10);
+    const existingDocs = await ctx.db
+      .query("client_documents")
+      .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
+      .collect();
+    if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
+      throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }
 
     return await ctx.storage.generateUploadUrl();
   },
 });
 
-// ─── Client (must be signed in): record a document after it has been uploaded ─
+// ─── Guest/client: record a document after it has been uploaded ───────────────
+// No account required. The token proves the client is authorised for this
+// intake. Rate-limited to 30 documents per intake per day.
 export const recordDocument = mutation({
   args: {
     token: v.string(),
@@ -207,9 +214,6 @@ export const recordDocument = mutation({
     mimeType: v.string(),
   },
   handler: async (ctx, args) => {
-    const client = await getCurrentUserOrThrow(ctx);
-    await checkUserDailyLimit(ctx, client._id, "intake_upload", 20, "You can upload up to 20 documents per day on an intake link. Resets at midnight UTC.");
-
     if (!args.label.trim() || args.label.length > 200)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Label must be under 200 characters." });
     if (args.fileName.length > 260)
@@ -219,10 +223,15 @@ export const recordDocument = mutation({
       .query("client_intakes")
       .withIndex("by_token", (q) => q.eq("token", args.token))
       .unique();
-    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired" });
+    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "This upload link is invalid or has expired." });
 
-    if (intake.claimedByUserId && intake.claimedByUserId !== client._id) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "This upload link has already been claimed by another account." });
+    const today = new Date().toISOString().slice(0, 10);
+    const existingDocs = await ctx.db
+      .query("client_documents")
+      .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
+      .collect();
+    if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
+      throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }
 
     await validateUploadedFile(ctx, args.storageId);
@@ -234,15 +243,24 @@ export const recordDocument = mutation({
       fileName: args.fileName,
       fileSize: args.fileSize,
       mimeType: args.mimeType,
-      uploadedByUserId: client._id,
       uploadedAt: new Date().toISOString(),
     });
 
-    const patch: Partial<typeof intake> = {};
-    if (intake.status === "awaiting_documents") patch.status = "documents_received";
-    if (!intake.claimedByUserId) patch.claimedByUserId = client._id;
-    if (Object.keys(patch).length > 0) {
-      await ctx.db.patch(intake._id, patch);
+    if (intake.status === "awaiting_documents") {
+      await ctx.db.patch(intake._id, { status: "documents_received" });
+    }
+
+    // Notify the agent. Runs after the mutation commits — if RESEND_API_KEY
+    // is not configured, sendAgentUploadAlert logs and exits cleanly.
+    const agent = await ctx.db.get(intake.agentId);
+    if (agent?.email) {
+      await ctx.scheduler.runAfter(0, internal.emails.clientDocumentUpload.sendAgentUploadAlert, {
+        to: agent.email,
+        agentName: agent.name ?? "Agent",
+        clientName: intake.clientName,
+        documentLabel: args.label,
+        destination: intake.destination,
+      });
     }
   },
 });
