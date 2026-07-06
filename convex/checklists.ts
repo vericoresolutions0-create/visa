@@ -255,6 +255,25 @@ export const getTrip = query({
   },
 });
 
+// ─── Checklists belonging to a managed dependent ─────────────────────────────
+// Used by the household page to let a parent open any child's checklists
+// without a full table scan — scoped to the calling parent's userId so a
+// user can only see dependents they own.
+export const getChecklistsForDependent = query({
+  args: { dependentId: v.id("managed_dependents") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    const all = await ctx.db
+      .query("saved_checklists")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    return all
+      .filter((c) => c.managedDependentId === args.dependentId)
+      .sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
 // ─── Delete saved checklist ───────────────────────────────────────────────────
 export const deleteChecklist = mutation({
   args: { id: v.id("saved_checklists") },
