@@ -68,6 +68,7 @@ const PrivacyPage = lazy(() => import("./pages/privacy/page.tsx"));
 const AdminPage = lazy(() => import("./pages/admin/page.tsx"));
 const WhiteLabelPage = lazy(() => import("./pages/white-label/page.tsx"));
 const BusinessLandingPage = lazy(() => import("./pages/business/page.tsx"));
+const BusinessLoginPage = lazy(() => import("./pages/business/login.tsx"));
 const BusinessOnboardingPage = lazy(() => import("./pages/business/onboarding.tsx"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/dashboard.tsx"));
 const BusinessInvitePage = lazy(() => import("./pages/business/invite.tsx"));
@@ -134,6 +135,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/blog",
       "/white-label",
       "/business",
+      "/business/login",
       "/checklist",
       "/dashboard",
       "/rejection-analyser",
@@ -220,6 +222,7 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/white-label" element={<WhiteLabelPage />} />
           <Route path="/business" element={<BusinessLandingPage />} />
+          <Route path="/business/login" element={<BusinessLoginPage />} />
           <Route path="/business/onboarding" element={<BusinessOnboardingPage />} />
           <Route path="/business/dashboard" element={<BusinessDashboardPage />} />
           <Route path="/business/invite/:token" element={<BusinessInvitePage />} />

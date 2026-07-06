@@ -9,6 +9,19 @@ const http = httpRouter();
 
 auth.addHttpRoutes(http);
 
+// Public health check — no auth required. Used by uptime monitors (UptimeRobot,
+// BetterUptime, etc.) to confirm the backend is reachable. Returns 200 + JSON.
+http.route({
+  path: "/health",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response(
+      JSON.stringify({ status: "ok", service: "visaclear-api" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }),
+});
+
 // Stripe signs every webhook body with HMAC-SHA256 over "{timestamp}.{body}"
 // — verified here with the Web Crypto API (no Node runtime available in an
 // httpAction) instead of the Stripe SDK's own verifier, which assumes Node.
