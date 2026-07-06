@@ -28,7 +28,7 @@ export const requestEmailChange = mutation({
   handler: async (ctx, args): Promise<{ requested: true }> => {
     const user = await getCurrentUserOrThrow(ctx);
     const newEmail = args.newEmail.trim().toLowerCase();
-    if (!newEmail || !newEmail.includes("@")) {
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail) || newEmail.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
     if (newEmail === user.email?.toLowerCase()) {

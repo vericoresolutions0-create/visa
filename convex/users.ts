@@ -129,6 +129,12 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    if (!args.name.trim() || args.name.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Name must be under 200 characters." });
+    if (args.phone && args.phone.length > 30)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Phone number is too long." });
+    if (args.country && args.country.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Country is too long." });
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
       phone: args.phone?.trim() || undefined,
@@ -155,6 +161,10 @@ export const updatePayoutSetup = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    if (!args.accountName.trim() || args.accountName.length > 200)
+      throw new ConvexError({ code: "INVALID_PAYOUT", message: "Account name is required and must be under 200 characters." });
+    if (!args.country.trim() || args.country.length > 100)
+      throw new ConvexError({ code: "INVALID_PAYOUT", message: "Country is required." });
     const accountNumberDigits = args.accountNumber?.replace(/\D/g, "") ?? "";
     const mobileDigits = args.mobileMoneyNumber?.replace(/\D/g, "") ?? "";
     const existingPayout = user.payoutSetup;
@@ -186,7 +196,7 @@ export const updatePayoutSetup = mutation({
     }
     if (
       args.method === "paypal" &&
-      (!args.paypalEmail || !args.paypalEmail.includes("@"))
+      (!args.paypalEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(args.paypalEmail.trim()) || args.paypalEmail.length > 254)
     ) {
       throw new ConvexError({
         code: "INVALID_PAYOUT",
@@ -358,7 +368,7 @@ export const completeCheckout = mutation({
         message: "Enter the name on the card.",
       });
     }
-    if (!args.paymentMethod.billingEmail.includes("@")) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(args.paymentMethod.billingEmail.trim()) || args.paymentMethod.billingEmail.length > 254) {
       throw new ConvexError({
         code: "INVALID_PAYMENT_METHOD",
         message: "Enter a valid billing email.",
@@ -484,7 +494,7 @@ export const completeAgentCheckout = mutation({
         message: "Enter the name on the card.",
       });
     }
-    if (!args.paymentMethod.billingEmail.includes("@")) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(args.paymentMethod.billingEmail.trim()) || args.paymentMethod.billingEmail.length > 254) {
       throw new ConvexError({
         code: "INVALID_PAYMENT_METHOD",
         message: "Enter a valid billing email.",

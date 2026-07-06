@@ -39,7 +39,7 @@ export const inviteHouseholdMember = mutation({
     }
 
     const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@") || email.length > 254) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
     if (!args.relationship.trim() || args.relationship.length > 100) {

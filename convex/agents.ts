@@ -77,7 +77,7 @@ export const upsertProfile = mutation({
 
     if (!args.fullName.trim() || args.fullName.length > 200)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Full name must be under 200 characters." });
-    if (!args.email.includes("@") || args.email.length > 254)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(args.email.trim()) || args.email.length > 254)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     if (args.phone && args.phone.length > 30)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Phone number is too long." });
@@ -260,6 +260,7 @@ export const logSearchEvent = mutation({
   },
   handler: async (ctx, args) => {
     if (!args.visaType && !args.destination) return;
+    if (args.sessionId.length > 100) return;
 
     const today = new Date().toISOString().slice(0, 10);
     const row = await ctx.db

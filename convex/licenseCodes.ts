@@ -44,7 +44,7 @@ export const issueLicenseCode = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
 
