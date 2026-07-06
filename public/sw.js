@@ -1,4 +1,4 @@
-const CACHE_NAME = "visaclear-v3";
+const CACHE_NAME = "visaclear-v4";
 const urlsToCache = ["/", "/icon/icon-192.png", "/icon/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -29,23 +29,19 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
-    // Stale-while-revalidate for the HTML shell: return the cached version
-    // immediately (near-instant on repeat visits) while fetching an update
-    // in the background. The SPA always fetches live data from Convex, so
-    // an HTML shell that is one deploy old is never a problem in practice.
+    // Network-first for the HTML shell: always fetch the latest index.html
+    // so a new deploy is visible immediately without clearing cache. Falls
+    // back to the cached copy only when the network is genuinely unavailable.
     event.respondWith(
-      caches.match("/").then((cached) => {
-        const networkFetch = fetch(event.request)
-          .then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put("/", clone));
-            }
-            return response;
-          })
-          .catch(() => null);
-        return cached ?? networkFetch;
-      })
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/", clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match("/").then((cached) => cached ?? new Response("", { status: 503, statusText: "Service Unavailable" })))
     );
     return;
   }

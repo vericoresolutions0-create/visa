@@ -75,7 +75,7 @@ export function InstallAppPrompt() {
           <X className="h-4 w-4" />
         </button>
         <div className="pr-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">Install VisaClear</p>
+          <p className="eyebrow">Install VisaClear</p>
           <h3 className="mt-1 text-base font-semibold text-foreground">Use it like a native app.</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Save checklists, reminders and agent tools on your home screen for faster access.
@@ -107,7 +107,7 @@ export function InstallAppPrompt() {
           <X className="h-4 w-4" />
         </button>
         <div className="pr-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-accent font-semibold">Install VisaClear</p>
+          <p className="eyebrow">Install VisaClear</p>
           <h3 className="mt-1 text-base font-semibold text-foreground">Add to your Home Screen</h3>
         </div>
         <ol className="mt-3 space-y-2 text-sm text-muted-foreground">

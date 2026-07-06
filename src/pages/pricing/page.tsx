@@ -454,7 +454,7 @@ export default function PricingPage() {
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_0.85fr] md:items-center">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent mb-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-accent mb-4">
                 <Briefcase className="w-3.5 h-3.5" /> {t("agents.badge")}
               </div>
               <h2 className="font-serif text-3xl font-semibold text-primary mb-3">
