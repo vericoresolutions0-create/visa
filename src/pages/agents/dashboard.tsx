@@ -1613,7 +1613,7 @@ export default function AgentDashboardPreviewPage() {
               >
                 <ArrowLeft className="w-4 h-4" /> Back to VisaClear
               </button>
-              <p className="text-white/40 text-xs pt-2">© {new Date().getFullYear()} Vericore Ltd.</p>
+              <p className="text-white/60 text-xs pt-2">© {new Date().getFullYear()} Vericore Ltd.</p>
             </div>
           </div>
           <div className="flex-1 flex flex-col px-6 py-8 bg-gray-50">

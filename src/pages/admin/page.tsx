@@ -125,7 +125,7 @@ function AdminInner() {
           </div>
           <div className="text-left">
             <div className="font-serif text-base font-semibold text-white leading-tight">VisaClear</div>
-            <div className="text-[9px] text-white/40 tracking-widest uppercase">Admin Panel</div>
+            <div className="text-[9px] text-white/65 tracking-widest uppercase">Admin Panel</div>
           </div>
         </button>
       </div>
@@ -152,14 +152,14 @@ function AdminInner() {
       <div className="px-4 py-4 border-t border-white/10 flex flex-col gap-2">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs text-white/60 hover:text-white/90 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to site
         </button>
         <button
           onClick={async () => { await signOut(); navigate("/"); }}
-          className="flex items-center gap-2 text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-xs text-white/60 hover:text-red-400 transition-colors cursor-pointer"
         >
           <LogOut className="w-3.5 h-3.5" />
           Sign out
@@ -2148,7 +2148,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <div className="font-serif text-lg font-semibold text-white leading-tight">VisaClear</div>
-                  <div className="text-[9px] text-white/40 tracking-widest uppercase">by Vericore</div>
+                  <div className="text-[9px] text-white/65 tracking-widest uppercase">by Vericore</div>
                 </div>
               </button>
               <div className="mb-6">
@@ -2164,12 +2164,12 @@ export default function AdminPage() {
                 {["User & agent management", "Blog & content publishing", "Platform analytics & audit log"].map((item) => (
                   <div key={item} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#b8a06a]" />
-                    <span className="text-white/40 text-xs">{item}</span>
+                    <span className="text-white/65 text-xs">{item}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} Vericore Ltd.</p>
+            <p className="text-white/50 text-xs">&copy; {new Date().getFullYear()} Vericore Ltd.</p>
           </div>
 
           {/* Right — login form */}
