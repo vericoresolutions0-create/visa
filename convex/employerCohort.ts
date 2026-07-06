@@ -27,7 +27,7 @@ export const inviteEmployee = mutation({
   handler: async (ctx, args) => {
     const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
     const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@") || email.length > 254) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     }
 
@@ -99,6 +99,15 @@ export const updateEmployeeDetails = mutation({
   handler: async (ctx, args) => {
     const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
     await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+    if (args.department !== undefined && args.department.length > 200) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Field value too long (max 200 characters)." });
+    }
+    if (args.roleTitle !== undefined && args.roleTitle.length > 200) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Field value too long (max 200 characters)." });
+    }
+    if (args.targetRelocationDate !== undefined && args.targetRelocationDate.length > 20) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Invalid date value." });
+    }
     await ctx.db.patch(args.linkId, {
       department: args.department,
       roleTitle: args.roleTitle,

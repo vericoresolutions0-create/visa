@@ -449,7 +449,7 @@ function DashboardInner() {
         <div className="flex gap-2 shrink-0">
           <Button
             variant="outline"
-            onClick={() => downloadComplianceCsv(cohort as CohortRow[], myOrg.name)}
+            onClick={() => downloadComplianceCsv(cohort as CohortRow[], myOrg.name, myOrg.type)}
             className="cursor-pointer font-semibold"
           >
             <Download className="w-4 h-4 sm:mr-1.5" />
