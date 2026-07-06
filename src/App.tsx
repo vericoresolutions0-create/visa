@@ -56,6 +56,7 @@ const RejectionAnalyserPage = lazy(
   () => import("./pages/rejection-analyser/page.tsx"),
 );
 const AgentsPage = lazy(() => import("./pages/agents/page.tsx"));
+const AgentLoginPage = lazy(() => import("./pages/agents/login.tsx"));
 const AgentRegisterPage = lazy(() => import("./pages/agents/register.tsx"));
 const AgentOnboardingPage = lazy(() => import("./pages/agents/onboarding.tsx"));
 const AgentDashboardPreviewPage = lazy(() => import("./pages/agents/dashboard.tsx"));
@@ -123,6 +124,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/settings",
       "/agents",
       "/agents/register",
+      "/agents/login",
       "/agents/onboarding",
       "/agents/dashboard",
       "/agents/",
@@ -206,6 +208,7 @@ function AppRoutes() {
             element={<RejectionAnalyserPage />}
           />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents/login" element={<AgentLoginPage />} />
           <Route path="/agents/register" element={<AgentRegisterPage />} />
           <Route path="/agents/onboarding" element={<AgentOnboardingPage />} />
           <Route path="/agents/dashboard" element={<AgentDashboardPreviewPage />} />

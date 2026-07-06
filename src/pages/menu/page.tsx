@@ -18,6 +18,9 @@ import {
   Shield,
   FileText,
   ArrowLeft,
+  BadgeCheck,
+  LogIn,
+  Briefcase,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -53,6 +56,13 @@ const SECTIONS = [
     label: "Your Account",
     items: [
       {
+        icon: LogIn,
+        title: "Sign In",
+        desc: "Sign in or create a free account to access your dashboard.",
+        href: "/login",
+        color: "text-blue-600 bg-blue-50 dark:bg-blue-900/30",
+      },
+      {
         icon: LayoutDashboard,
         title: "Dashboard",
         desc: "Your saved checklists, trips and progress at a glance.",
@@ -79,6 +89,13 @@ const SECTIONS = [
         color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30",
       },
       {
+        icon: BadgeCheck,
+        title: "Agent Portal",
+        desc: "Sign in to your agent account — manage clients and earnings.",
+        href: "/agents/login",
+        color: "text-violet-600 bg-violet-50 dark:bg-violet-900/30",
+      },
+      {
         icon: Tag,
         title: "White-Label",
         desc: "License VisaClear under your own brand.",
@@ -90,6 +107,13 @@ const SECTIONS = [
         title: "For Employers",
         desc: "Visa support tools for your international hires.",
         href: "/business",
+        color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30",
+      },
+      {
+        icon: Briefcase,
+        title: "Business Portal",
+        desc: "Sign in to your employer or organisation dashboard.",
+        href: "/business/dashboard",
         color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30",
       },
     ],
