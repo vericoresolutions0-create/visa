@@ -1,7 +1,8 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Globe, Shield, Users, BadgeCheck, TrendingUp, Lock } from "lucide-react";
+import { Globe, Shield, Users, BadgeCheck, TrendingUp, Lock, ArrowLeft } from "lucide-react";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 const FEATURES = [
   { icon: BadgeCheck, text: "Get verified — applicants trust your profile" },
@@ -19,20 +20,30 @@ export default function AgentLoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/agents/dashboard";
+  const goBack = useSmartBack("/agents");
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* ── Left panel — agent brand ── */}
       <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-shrink-0 flex-col justify-between p-10 xl:p-14" style={{ background: "linear-gradient(160deg, #0f2040 0%, #1a1060 100%)" }}>
-        <button onClick={() => navigate("/agents")} className="flex items-center gap-3 cursor-pointer group">
-          <div className="w-9 h-9 rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center">
-            <Globe className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <span className="font-serif text-xl font-bold text-white">VisaClear</span>
-            <span className="text-[10px] text-white/40 ml-2 tracking-widest uppercase">Agent Portal</span>
-          </div>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goBack}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white cursor-pointer flex-shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <button onClick={() => navigate("/agents")} className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-9 h-9 rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center">
+              <Globe className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <span className="font-serif text-xl font-bold text-white">VisaClear</span>
+              <span className="text-[10px] text-white/40 ml-2 tracking-widest uppercase">Agent Portal</span>
+            </div>
+          </button>
+        </div>
 
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-400/20 mb-6">
@@ -77,15 +88,24 @@ export default function AgentLoginPage() {
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
           <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
-            <button onClick={() => navigate("/agents")} className="flex items-center gap-2.5 cursor-pointer">
-              <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(160deg, #0f2040 0%, #1a1060 100%)" }}>
-                <Globe className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <span className="font-serif text-base font-bold text-primary">VisaClear</span>
-                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Agent Portal</span>
-              </div>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={goBack}
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground cursor-pointer flex-shrink-0"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => navigate("/agents")} className="flex items-center gap-2.5 cursor-pointer">
+                <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(160deg, #0f2040 0%, #1a1060 100%)" }}>
+                  <Globe className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <span className="font-serif text-base font-bold text-primary">VisaClear</span>
+                  <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Agent Portal</span>
+                </div>
+              </button>
+            </div>
             <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
               <BadgeCheck className="w-3.5 h-3.5" />
               Verified agents

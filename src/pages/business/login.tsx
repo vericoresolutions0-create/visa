@@ -1,7 +1,8 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Globe, Shield, Users, FileText, Clock, Lock } from "lucide-react";
+import { Globe, Shield, Users, FileText, Clock, Lock, ArrowLeft } from "lucide-react";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 const FEATURES = [
   { icon: Users, text: "Invite employees and track their visa progress in real time" },
@@ -19,6 +20,7 @@ export default function BusinessLoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/business/dashboard";
+  const goBack = useSmartBack("/business");
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -36,15 +38,27 @@ export default function BusinessLoginPage() {
           }}
         />
 
-        <button onClick={() => navigate("/business")} className="flex items-center gap-3 cursor-pointer group relative">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.2)" }}>
-            <Globe className="w-5 h-5 text-emerald-300" />
-          </div>
-          <div>
-            <span className="font-serif text-xl font-bold text-white">VisaClear</span>
-            <span className="text-[10px] text-white/30 ml-2 tracking-widest uppercase">Business Portal</span>
-          </div>
-        </button>
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={goBack}
+            className="p-2 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+            style={{ color: "rgba(255,255,255,0.45)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(16,185,129,0.12)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <button onClick={() => navigate("/business")} className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <Globe className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div>
+              <span className="font-serif text-xl font-bold text-white">VisaClear</span>
+              <span className="text-[10px] text-white/30 ml-2 tracking-widest uppercase">Business Portal</span>
+            </div>
+          </button>
+        </div>
 
         <div className="relative">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6" style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.2)" }}>
@@ -89,15 +103,24 @@ export default function BusinessLoginPage() {
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
           <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
-            <button onClick={() => navigate("/business")} className="flex items-center gap-2.5 cursor-pointer">
-              <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(150deg, #0a2818 0%, #0d3d2e 100%)" }}>
-                <Globe className="w-4 h-4 text-emerald-300" />
-              </div>
-              <div>
-                <span className="font-serif text-base font-bold text-primary">VisaClear</span>
-                <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Business</span>
-              </div>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={goBack}
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground cursor-pointer flex-shrink-0"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => navigate("/business")} className="flex items-center gap-2.5 cursor-pointer">
+                <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(150deg, #0a2818 0%, #0d3d2e 100%)" }}>
+                  <Globe className="w-4 h-4 text-emerald-300" />
+                </div>
+                <div>
+                  <span className="font-serif text-base font-bold text-primary">VisaClear</span>
+                  <span className="text-[10px] text-muted-foreground ml-1.5 tracking-widest uppercase">Business</span>
+                </div>
+              </button>
+            </div>
             <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
               Secure
