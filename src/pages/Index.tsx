@@ -159,7 +159,7 @@ export default function Index() {
               className="cursor-pointer font-bold hidden lg:flex border-primary/20 hover:border-primary/40"
               size="sm"
             >
-              Sign In
+              {t("nav.sign_in")}
             </Button>
             <Button
               onClick={() => navigate("/checklist")}

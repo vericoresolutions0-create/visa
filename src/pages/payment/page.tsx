@@ -474,6 +474,7 @@ export default function PaymentPage() {
               </div>
               <AuthAccessPanel
                 returnPath={`/payment?product=${selectedPlan.product}&plan=${selectedPlan.id}&billing=${billing}`}
+                hideDemoOption={true}
               />
             </div>
           </Unauthenticated>

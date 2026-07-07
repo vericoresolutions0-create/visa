@@ -18,7 +18,7 @@ export default function AgentLoginPage() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") ?? "/agents/dashboard";
+  const returnTo = searchParams.get("returnTo") || "/agents/dashboard";
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">

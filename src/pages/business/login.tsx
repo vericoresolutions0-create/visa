@@ -18,7 +18,7 @@ export default function BusinessLoginPage() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") ?? "/business/dashboard";
+  const returnTo = searchParams.get("returnTo") || "/business/dashboard";
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">

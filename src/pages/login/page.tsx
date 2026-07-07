@@ -24,7 +24,7 @@ export default function LoginPage() {
   const location = useLocation();
   const { isDemoAuthenticated } = useDemoAuth();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") ?? "/dashboard";
+  const returnTo = searchParams.get("returnTo") || "/dashboard";
   const { t } = useTranslation("login");
   const isSignup = location.pathname === "/signup";
 
@@ -37,7 +37,7 @@ export default function LoginPage() {
           </div>
           <h2 className="text-xl font-bold text-primary mb-2">{t("active.title")}</h2>
           <p className="text-sm text-muted-foreground mb-6">{t("active.body")}</p>
-          <Button size="lg" className="w-full cursor-pointer font-bold" onClick={() => navigate("/dashboard")}>
+          <Button size="lg" className="w-full cursor-pointer font-bold" onClick={() => navigate(returnTo)}>
             {t("active.cta")}
           </Button>
         </div>
@@ -125,7 +125,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <AuthAccessPanel returnPath={returnTo} />
+            <AuthAccessPanel returnPath={returnTo} initialMode={isSignup ? "signUp" : "signIn"} />
 
             <p className="text-center text-xs text-muted-foreground mt-6">
               Protected by Convex Auth · End-to-end encrypted

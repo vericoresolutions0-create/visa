@@ -1,16 +1,11 @@
 {
-  "header.account_access": "Acesso à conta",
-  "eyebrow": "Fluxo de acesso",
-  "steps.s1": "Escolha Google, email/senha ou acesso de demonstração.",
-  "steps.s2": "Conclua a etapa da conta.",
-  "steps.s3": "Acesse diretamente o seu painel.",
   "signup.eyebrow": "Criar uma conta",
   "signup.title": "Crie sua conta VisaClear",
-  "signup.subtitle": "Registre-se com email/senha, use Google ou continue com a conta de demonstração.",
-  "login.eyebrow": "Cadastro / Login",
-  "login.title": "Crie ou acesse sua conta",
-  "login.subtitle": "Use a conta de demonstração por enquanto, ou inicie o fluxo de autenticação real quando o provedor externo estiver pronto.",
-  "active.title": "O acesso à conta está ativo",
-  "active.body": "Continue para o seu painel para gerenciar listas, lembretes, configurações de perfil e pagamento.",
+  "signup.subtitle": "Registe-se com email ou Google para começar — menos de um minuto.",
+  "login.eyebrow": "Entrar",
+  "login.title": "Bem-vindo de volta",
+  "login.subtitle": "Inicie sessão na sua conta para aceder às suas listas, lembretes e documentos.",
+  "active.title": "Está conectado",
+  "active.body": "Continue para o seu painel para gerir listas, lembretes e o seu progresso de visto.",
   "active.cta": "Ir para o painel"
 }

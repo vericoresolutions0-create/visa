@@ -19,19 +19,24 @@ type AuthAccessPanelProps = {
    * identity rather than an instant placeholder account.
    */
   hideDemoOption?: boolean;
+  /** Override the initial auth mode. Defaults to "signIn". Pass "signUp" on /signup routes. */
+  initialMode?: "signIn" | "signUp";
 };
 
 export function AuthAccessPanel({
   returnPath = "/dashboard",
   onAuthStart,
   hideDemoOption = false,
+  initialMode = "signIn",
 }: AuthAccessPanelProps) {
   const { signIn, isLoading } = useAuth();
   const isGoogleConfigured = useQuery(api.auth.isGoogleConfigured);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
+  const [authMode, setAuthMode] = useState<"signIn" | "signUp">(initialMode);
+  // Reject external/protocol-relative URLs — only allow same-origin relative paths.
+  const safeReturn = /^\/(?!\/)/.test(returnPath) ? returnPath : "/dashboard";
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -39,7 +44,7 @@ export function AuthAccessPanel({
 
   const startGoogleAuth = async () => {
     setError(null);
-    sessionStorage.setItem("authReturnPath", returnPath);
+    sessionStorage.setItem("authReturnPath", safeReturn);
 
     if (!isGoogleConfigured) {
       navigate("/google-login");
@@ -48,7 +53,7 @@ export function AuthAccessPanel({
 
     onAuthStart?.();
     try {
-      await signIn("google", { redirectTo: returnPath });
+      await signIn("google", { redirectTo: safeReturn });
     } catch {
       setError("Could not start Google sign-in. Please try again.");
       toast.error("Could not start Google sign-in. Please try again.");
@@ -71,7 +76,7 @@ export function AuthAccessPanel({
       return;
     }
 
-    sessionStorage.setItem("authReturnPath", returnPath);
+    sessionStorage.setItem("authReturnPath", safeReturn);
     setSubmitting(true);
     try {
       const partnerReferralSlug = authMode === "signUp" ? getStoredPartnerSlug() : null;
@@ -85,7 +90,7 @@ export function AuthAccessPanel({
       onAuthStart?.();
       toast.success(authMode === "signUp" ? "Account created." : "Signed in successfully.");
       // replace: true — same reasoning as startDemoAccess above.
-      navigate(returnPath, { replace: true });
+      navigate(safeReturn, { replace: true });
     } catch (err) {
       const message =
         err instanceof ConvexError
@@ -226,9 +231,9 @@ export function AuthAccessPanel({
 
         {!hideDemoOption && (
           <DemoSignInButton
-            redirectTo={returnPath}
+            redirectTo={safeReturn}
             onSignedIn={() => {
-              sessionStorage.setItem("authReturnPath", returnPath);
+              sessionStorage.setItem("authReturnPath", safeReturn);
               onAuthStart?.();
             }}
             className="w-full cursor-pointer font-semibold"
