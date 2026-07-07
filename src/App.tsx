@@ -17,6 +17,7 @@ import { useAnalytics } from "@/hooks/use-analytics.ts";
 import { usePartnerReferralCapture } from "@/hooks/use-partner-referral.ts";
 import { useInfluencerReferralCapture } from "@/hooks/use-influencer-referral.ts";
 import { useCreatorReferralCapture } from "@/hooks/use-creator-referral.ts";
+import { useAgentReferralCapture } from "@/hooks/use-agent-referral.ts";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top.ts";
 import { NavigationDepthProvider } from "@/hooks/use-navigation-depth.tsx";
 import CookieBanner from "@/components/cookie-banner.tsx";
@@ -165,6 +166,7 @@ function AppRoutes() {
   usePartnerReferralCapture();
   useInfluencerReferralCapture();
   useCreatorReferralCapture();
+  useAgentReferralCapture();
 
   return (
     <NavigationDepthProvider>

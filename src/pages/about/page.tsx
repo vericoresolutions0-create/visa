@@ -149,6 +149,47 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* Founder Stories */}
+      <section className="py-24 px-4 sm:px-6" style={{ background: "#0f2040" }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-14">
+            <p className="text-xs tracking-widest uppercase font-semibold mb-3" style={{ color: "#b8a06a" }}>Why I Built This</p>
+            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-white leading-tight" style={{ textWrap: "balance" as const }}>
+              It happened to me. Twice.
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-12">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="pl-6"
+              style={{ borderLeft: "2px solid #b8a06a" }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest mb-5" style={{ color: "rgba(184,160,106,0.6)" }}>Poland — Masters Degree Application</p>
+              <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.78)", fontSize: "15px", lineHeight: "1.8" }}>
+                I was applying for a Polish study residence permit for my masters. My agent lost documents they were supposed to submit, then told me I never submitted them and asked me to pay again for the appeal. I had the proof. I fought it, won, and forced the appeal through for free. But I still had to resubmit everything — print, scan, carry it to their office, drop it in a box, scan again just to prove I dropped it. That whole nightmare is why I built VisaClear.
+              </p>
+              <p className="text-sm font-semibold mt-6" style={{ color: "#b8a06a" }}>— Luca Olushoga, Founder</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="pl-6"
+              style={{ borderLeft: "2px solid #b8a06a" }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest mb-5" style={{ color: "rgba(184,160,106,0.6)" }}>Lithuania — Residence Card</p>
+              <p className="leading-relaxed" style={{ color: "rgba(255,255,255,0.78)", fontSize: "15px", lineHeight: "1.8" }}>
+                During my Lithuania residence card process, I was calling my agent so many times for updates — calls, voice notes, texts, messages — that we basically became best friends by accident. I went back recently and listened to some of those old voice notes and just started laughing. The stress in my own voice. All I wanted was to know where my application was. That's it. Instead it was weeks of chasing the same person. When I heard those voice notes I thought — I wish I had VisaClear back then.
+              </p>
+              <p className="text-sm font-semibold mt-6" style={{ color: "#b8a06a" }}>— Luca Olushoga, Founder</p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* Compliance */}
       <section className="py-20 px-4 sm:px-6 bg-muted/30">
         <div className="max-w-4xl mx-auto">

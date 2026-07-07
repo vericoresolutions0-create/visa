@@ -913,14 +913,15 @@ function ReferralsSection() {
             type="button" disabled={!stats?.referralCode}
             onClick={() => {
               if (!stats?.referralCode) return;
-              navigator.clipboard.writeText(stats.referralCode).then(() => { setCopied(true); toast.success(t("referral.toast_copied")); setTimeout(() => setCopied(false), 2000); }).catch(() => toast.error(t("referral.toast_copy_failed")));
+              const link = `${window.location.origin}/checklist?ac=${stats.referralCode}`;
+              navigator.clipboard.writeText(link).then(() => { setCopied(true); toast.success(t("referral.toast_copied")); setTimeout(() => setCopied(false), 2000); }).catch(() => toast.error(t("referral.toast_copy_failed")));
             }}
             className="flex items-center gap-3 mt-1 cursor-pointer disabled:opacity-50 group"
           >
             <span className="text-2xl font-semibold text-primary font-mono">{stats?.referralCode ?? "—"}</span>
             {stats?.referralCode && (copied ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />)}
           </button>
-          <p className="text-sm text-muted-foreground mt-2">Click to copy your referral code</p>
+          <p className="text-sm text-muted-foreground mt-2">Click to copy your referral link — share it so clients get straight to the free checklist and you get credited when they upgrade</p>
         </div>
       </div>
 

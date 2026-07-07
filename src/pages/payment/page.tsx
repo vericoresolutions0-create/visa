@@ -21,6 +21,7 @@ import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { getStoredAgentCode, clearStoredAgentCode } from "@/hooks/use-agent-referral.ts";
 import type { AgentPlanId } from "@/lib/agent-plans.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -262,8 +263,9 @@ export default function PaymentPage() {
   );
   const accountUser = demoUser ?? currentUser;
 
-  const [referralInput, setReferralInput] = useState("");
-  const [appliedReferral, setAppliedReferral] = useState("");
+  const storedAgentCode = getStoredAgentCode() ?? "";
+  const [referralInput, setReferralInput] = useState(storedAgentCode);
+  const [appliedReferral, setAppliedReferral] = useState(storedAgentCode);
   const serverReferralResult = useQuery(
     api.users.validateReferralCode,
     !isDemoAuthenticated && appliedReferral
@@ -398,6 +400,7 @@ export default function PaymentPage() {
           paymentMethod,
         });
       }
+      clearStoredAgentCode();
       toast.success(`${selectedPlan.name} is active.`);
       navigate(selectedPlan.successPath, { replace: true });
     } catch (error) {
