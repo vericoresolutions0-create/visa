@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
+import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
@@ -199,6 +200,7 @@ function AdminInner() {
             <h1 className="font-serif text-xl font-semibold text-[#0f2040]">{currentNav.label}</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
             <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#0f2040]/60 bg-[#0f2040]/5 px-3 py-1.5 rounded-full">
               <Shield className="w-3 h-3" /> Admin
             </span>

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { downloadComplianceCsv } from "@/lib/compliance-export.ts";
+import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
@@ -659,17 +660,20 @@ export default function BusinessDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/40 px-6 py-4 flex items-center gap-3">
-        <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-          <Globe className="w-3.5 h-3.5 text-primary-foreground" />
+      <header className="border-b border-border/40 px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={goBack} className="text-muted-foreground hover:text-primary transition-colors cursor-pointer p-1 -ml-1">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shrink-0">
+            <Globe className="w-3.5 h-3.5 text-primary-foreground" />
+          </div>
+          <span className="font-serif font-semibold text-primary">VisaClear</span>
+          <span className="text-xs text-muted-foreground tracking-widest uppercase hidden sm:flex items-center gap-1">
+            {t("header_tag")}
+          </span>
         </div>
-        <span className="font-serif font-semibold text-primary">VisaClear</span>
-        <span className="text-xs text-muted-foreground tracking-widest uppercase flex items-center gap-1">
-          {t("header_tag")}
-        </span>
+        <NotificationBell />
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-10">

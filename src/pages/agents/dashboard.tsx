@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { WaitTimeStat } from "@/components/wait-time-stat.tsx";
+import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
@@ -1677,6 +1678,7 @@ function DashboardInner() {
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadEnquiries}</span>
                 </button>
               )}
+              <NotificationBell />
               <Button size="default" className="cursor-pointer gap-2" onClick={() => setSection("clients")}>
                 <UserPlus className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("header.add_client")}</span>
