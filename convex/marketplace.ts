@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { logSecurityEvent } from "./securityAudit.ts";
 
 // Credit cost per lead urgency tier — server-only, never accepted from client.
 const UNLOCK_COSTS: Record<string, number> = {
@@ -83,6 +84,9 @@ export const submitLead = mutation({
 });
 
 // ─── Browse marketplace leads (agent side — contact details masked) ───────────
+// Returns leads for ALL signed-in users, not just those with profiles. Agents
+// without a profile or pending verification see the lead list but with a
+// lockReason that drives the right CTA in the UI.
 export const getMarketplaceLeads = query({
   args: {
     destinationFilter: v.optional(v.string()),
@@ -98,12 +102,18 @@ export const getMarketplaceLeads = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    // Agents only — must have a profile
     const profile = await ctx.db
       .query("agent_profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
-    if (!profile) return [];
+
+    // Determine the global gate reason — applies to every lead in the result
+    // when the agent can't unlock anything at all.
+    const gateReason: "no_profile" | "unverified" | null = !profile
+      ? "no_profile"
+      : !profile.verified
+        ? "unverified"
+        : null;
 
     const rawLeads = await ctx.db
       .query("marketplace_leads")
@@ -111,7 +121,6 @@ export const getMarketplaceLeads = query({
       .order("desc")
       .take(50);
 
-    // JS-level filters (no extra DB round trips needed for these)
     const filtered = rawLeads.filter((lead) => {
       if (lead.userId === user._id) return false;
       if (args.destinationFilter && lead.destinationCountry !== args.destinationFilter)
@@ -121,7 +130,32 @@ export const getMarketplaceLeads = query({
       return true;
     });
 
-    // Batch resolve unlock status — Promise.all, never sequential await
+    // Agents who can't unlock anything yet — return a locked preview so the
+    // UI can show them the leads exist and drive them toward completing setup.
+    if (gateReason !== null) {
+      return filtered.map((lead) => ({
+        _id: lead._id,
+        _creationTime: lead._creationTime,
+        visaType: lead.visaType,
+        destinationCountry: lead.destinationCountry,
+        urgencyLevel: lead.urgencyLevel,
+        additionalNotes: null,
+        status: lead.status,
+        unlockCost: lead.unlockCost,
+        createdAt: lead.createdAt,
+        isUnlocked: false as const,
+        lockReason: gateReason as "no_profile" | "unverified",
+        unlockedAt: null,
+        creditsSpent: null,
+        applicantName: "Verified Applicant",
+        applicantEmail: null,
+        applicantPhone: null,
+      }));
+    }
+
+    // Verified agent — batch resolve unlock status and submitter data
+    const balance = profile!.creditBalance ?? 0;
+
     const [unlockStatuses, submitters] = await Promise.all([
       Promise.all(
         filtered.map((lead) =>
@@ -152,6 +186,7 @@ export const getMarketplaceLeads = query({
           unlockCost: lead.unlockCost,
           createdAt: lead.createdAt,
           isUnlocked: true as const,
+          lockReason: null,
           unlockedAt: unlock.unlockedAt,
           creditsSpent: unlock.creditsSpent,
           applicantName: submitter?.name ?? "Applicant",
@@ -159,6 +194,10 @@ export const getMarketplaceLeads = query({
           applicantPhone: submitter?.phone ?? null,
         };
       }
+
+      // Per-lead lock reason: agent verified but can't afford this one
+      const lockReason: "insufficient_credits" | null =
+        balance < lead.unlockCost ? "insufficient_credits" : null;
 
       return {
         _id: lead._id,
@@ -171,6 +210,7 @@ export const getMarketplaceLeads = query({
         unlockCost: lead.unlockCost,
         createdAt: lead.createdAt,
         isUnlocked: false as const,
+        lockReason,
         unlockedAt: null,
         creditsSpent: null,
         applicantName: "Verified Applicant",
@@ -228,7 +268,7 @@ export const unlockLead = mutation({
 
     const now = new Date().toISOString();
 
-    // Atomic: deduct balance and record unlock in the same transaction
+    // Atomic: deduct balance, record unlock, and write audit event
     await Promise.all([
       ctx.db.patch(profile._id, { creditBalance: balance - cost }),
       ctx.db.insert("marketplace_lead_unlocks", {
@@ -236,6 +276,14 @@ export const unlockLead = mutation({
         agentUserId: user._id,
         creditsSpent: cost,
         unlockedAt: now,
+      }),
+      logSecurityEvent(ctx, {
+        actorUserId: user._id,
+        action: "lead_unlock",
+        severity: "info",
+        resourceType: "marketplace_lead",
+        resourceId: args.leadId,
+        metadata: { creditsSpent: cost, remainingBalance: balance - cost },
       }),
     ]);
 
@@ -398,6 +446,14 @@ export const adminGrantCredits = mutation({
         notes: args.notes,
         createdAt: now,
       }),
+      logSecurityEvent(ctx, {
+        actorUserId: admin._id,
+        action: "credits_granted",
+        severity: "info",
+        resourceType: "agent_profile",
+        resourceId: profile._id,
+        metadata: { creditsGranted: args.credits, newBalance, targetAgentId: args.agentUserId },
+      }),
     ]);
 
     return { newBalance };
@@ -421,5 +477,88 @@ export const getOpenLeadCount = query({
       .take(100);
     // Exclude agent's own leads if they're also an applicant
     return leads.filter((l) => l.userId !== user._id).length;
+  },
+});
+
+// ─── Admin: full lead overview ────────────────────────────────────────────────
+export const adminGetAllLeads = query({
+  args: {
+    statusFilter: v.optional(v.union(v.literal("open"), v.literal("closed"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getCurrentUserOrThrow(ctx);
+    if (admin.role !== "admin")
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required." });
+
+    const limit = args.limit ?? 100;
+
+    const leads = args.statusFilter
+      ? await ctx.db
+          .query("marketplace_leads")
+          .withIndex("by_status", (q) => q.eq("status", args.statusFilter!))
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("marketplace_leads")
+          .withIndex("by_created")
+          .order("desc")
+          .take(limit);
+
+    const [submitters, unlockCounts] = await Promise.all([
+      Promise.all(leads.map((l) => ctx.db.get(l.userId))),
+      Promise.all(
+        leads.map((l) =>
+          ctx.db
+            .query("marketplace_lead_unlocks")
+            .withIndex("by_lead", (q) => q.eq("leadId", l._id))
+            .take(50)
+            .then((rows) => rows.length),
+        ),
+      ),
+    ]);
+
+    return leads.map((lead, i) => ({
+      _id: lead._id,
+      _creationTime: lead._creationTime,
+      visaType: lead.visaType,
+      destinationCountry: lead.destinationCountry,
+      urgencyLevel: lead.urgencyLevel,
+      status: lead.status,
+      unlockCost: lead.unlockCost,
+      createdAt: lead.createdAt,
+      sentinelNotifiedAt: lead.sentinelNotifiedAt ?? null,
+      submitterName: submitters[i]?.name ?? null,
+      submitterEmail: submitters[i]?.email ?? null,
+      unlockCount: unlockCounts[i],
+    }));
+  },
+});
+
+// ─── Admin: get all agent credit balances ─────────────────────────────────────
+export const adminGetAgentCredits = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getCurrentUserOrThrow(ctx);
+    if (admin.role !== "admin")
+      throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required." });
+
+    const profiles = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_verified", (q) => q.eq("verified", true))
+      .take(200);
+
+    const users = await Promise.all(profiles.map((p) => ctx.db.get(p.userId)));
+
+    return profiles.map((p, i) => ({
+      profileId: p._id,
+      userId: p.userId,
+      fullName: p.fullName,
+      email: p.email,
+      creditBalance: p.creditBalance ?? 0,
+      tier: p.tier ?? null,
+      region: p.region ?? null,
+      userEmail: users[i]?.email ?? null,
+    }));
   },
 });

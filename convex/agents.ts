@@ -2,9 +2,11 @@ import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { bumpStat } from "./platformStats.ts";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
+import { logSecurityEvent } from "./securityAudit.ts";
 
 async function getMyAgentProfileOrThrow(ctx: QueryCtx | MutationCtx) {
   const user = await getCurrentUserOrThrow(ctx);
@@ -71,6 +73,7 @@ export const upsertProfile = mutation({
     yearsExperience: v.number(),
     languages: v.array(v.string()),
     destinations: v.optional(v.array(v.string())),
+    region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -108,6 +111,7 @@ export const upsertProfile = mutation({
         yearsExperience: args.yearsExperience,
         languages: args.languages,
         destinations: args.destinations,
+        region: args.region,
       });
       return existing._id;
     }
@@ -123,6 +127,7 @@ export const upsertProfile = mutation({
       yearsExperience: args.yearsExperience,
       languages: args.languages,
       destinations: args.destinations,
+      region: args.region,
       verified: false,
       createdAt: new Date().toISOString(),
       // Backfill from users.agentPlan in case this agent paid for Featured
@@ -132,7 +137,30 @@ export const upsertProfile = mutation({
       // but never actually surface as featured.
       tier: user.agentPlan,
     });
+
     if (user.agentPlan) await bumpStat(ctx, "totalAgents", 1);
+
+    // Write audit event and schedule the welcome + AI bio email atomically
+    await Promise.all([
+      logSecurityEvent(ctx, {
+        actorUserId: user._id,
+        action: "agent_profile_create",
+        severity: "info",
+        resourceType: "agent_profile",
+        resourceId: id,
+        metadata: { specialisations: args.specialisations, country: args.country },
+      }),
+      ctx.scheduler.runAfter(0, internal.emails.agentWelcome.sendAgentWelcomeEmail, {
+        to: args.email,
+        agentName: args.fullName,
+        specialisations: args.specialisations,
+        country: args.country,
+        yearsExperience: args.yearsExperience,
+        bio: args.bio,
+        region: args.region,
+      }),
+    ]);
+
     return id;
   },
 });

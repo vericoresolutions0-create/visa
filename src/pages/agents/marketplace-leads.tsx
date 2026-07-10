@@ -8,6 +8,7 @@ import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { api } from "@/convex/_generated/api.js";
 import { cn } from "@/lib/utils.ts";
 import {
+  AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   Clock,
@@ -35,6 +36,8 @@ import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 
 type UrgencyLevel = "urgent" | "standard" | "exploring";
 
+type LockReason = "no_profile" | "unverified" | "insufficient_credits" | null;
+
 type MarketplaceLead = {
   _id: Id<"marketplace_leads">;
   _creationTime: number;
@@ -46,6 +49,7 @@ type MarketplaceLead = {
   unlockCost: number;
   createdAt: string;
   isUnlocked: boolean;
+  lockReason: LockReason;
   unlockedAt: string | null;
   creditsSpent: number | null;
   applicantName: string;
@@ -101,18 +105,43 @@ function timeAgo(iso: string) {
 function LeadCard({
   lead,
   onUnlock,
+  onTopUp,
   unlocking,
   creditBalance,
+  navigate,
 }: {
   lead: MarketplaceLead;
   onUnlock: (id: Id<"marketplace_leads">) => void;
+  onTopUp: () => void;
   unlocking: Id<"marketplace_leads"> | null;
   creditBalance: number;
+  navigate: ReturnType<typeof import("react-router-dom").useNavigate>;
 }) {
   const urg = URGENCY_CONFIG[lead.urgencyLevel];
   const UrgIcon = urg.icon;
-  const canAfford = creditBalance >= lead.unlockCost;
   const isUnlocking = unlocking === lead._id;
+
+  // Global gate — the entire account can't unlock, not just this lead
+  const isGateBlocked = lead.lockReason === "no_profile" || lead.lockReason === "unverified";
+  // Per-lead credit gate
+  const canAfford = !isGateBlocked && creditBalance >= lead.unlockCost;
+
+  const gateConfig = {
+    no_profile: {
+      icon: <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />,
+      title: "Complete your agent profile to unlock leads",
+      body: "Your profile is missing. Set it up to access contact details.",
+      action: { label: "Complete Profile", onClick: () => navigate("/agents/register") },
+      bgClass: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
+    },
+    unverified: {
+      icon: <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />,
+      title: "Profile pending verification",
+      body: "Our team is reviewing your credentials. You'll be able to unlock leads once approved.",
+      action: { label: "View Status", onClick: () => navigate("/agents/dashboard") },
+      bgClass: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
+    },
+  } as const;
 
   return (
     <div
@@ -120,7 +149,9 @@ function LeadCard({
         "rounded-2xl border bg-background transition-shadow hover:shadow-md",
         lead.isUnlocked
           ? "border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-100 dark:ring-emerald-900"
-          : "border-border",
+          : isGateBlocked
+            ? "border-border opacity-80"
+            : "border-border",
       )}
     >
       {/* Card header */}
@@ -155,29 +186,20 @@ function LeadCard({
       <div className="px-5 py-4 space-y-3">
         {lead.isUnlocked ? (
           <>
-            {/* Full contact details */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <UserCircle2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-semibold text-primary">
-                  {lead.applicantName}
-                </span>
+                <span className="text-sm font-semibold text-primary">{lead.applicantName}</span>
               </div>
               {lead.applicantEmail && (
-                <a
-                  href={`mailto:${lead.applicantEmail}`}
-                  className="flex items-center gap-2 text-sm text-accent hover:underline"
-                >
+                <a href={`mailto:${lead.applicantEmail}`} className="flex items-center gap-2 text-sm text-accent hover:underline">
                   <Mail className="w-4 h-4 shrink-0" />
                   {lead.applicantEmail}
                   <ExternalLink className="w-3 h-3 opacity-60" />
                 </a>
               )}
               {lead.applicantPhone && (
-                <a
-                  href={`tel:${lead.applicantPhone}`}
-                  className="flex items-center gap-2 text-sm text-accent hover:underline"
-                >
+                <a href={`tel:${lead.applicantPhone}`} className="flex items-center gap-2 text-sm text-accent hover:underline">
                   <Phone className="w-4 h-4 shrink-0" />
                   {lead.applicantPhone}
                 </a>
@@ -192,9 +214,28 @@ function LeadCard({
               Unlocked {lead.unlockedAt ? timeAgo(lead.unlockedAt) : ""} · {lead.creditsSpent} credit{lead.creditsSpent === 1 ? "" : "s"} spent
             </p>
           </>
+        ) : isGateBlocked && lead.lockReason !== null ? (
+          // Global gate — profile missing or pending verification
+          <div className={cn("rounded-xl border px-4 py-3 flex items-start gap-3", gateConfig[lead.lockReason as "no_profile" | "unverified"].bgClass)}>
+            {gateConfig[lead.lockReason as "no_profile" | "unverified"].icon}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">
+                {gateConfig[lead.lockReason as "no_profile" | "unverified"].title}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {gateConfig[lead.lockReason as "no_profile" | "unverified"].body}
+              </p>
+              <button
+                onClick={gateConfig[lead.lockReason as "no_profile" | "unverified"].action.onClick}
+                className="mt-1.5 text-xs font-semibold text-accent hover:underline cursor-pointer"
+              >
+                {gateConfig[lead.lockReason as "no_profile" | "unverified"].action.label} →
+              </button>
+            </div>
+          </div>
         ) : (
           <>
-            {/* Masked contact preview */}
+            {/* Standard masked preview */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <UserCircle2 className="w-4 h-4 text-muted-foreground/40 shrink-0" />
@@ -202,52 +243,52 @@ function LeadCard({
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                <span className="text-sm text-muted-foreground/40 tracking-widest font-mono">
-                  ●●●●●@●●●●●.com
-                </span>
+                <span className="text-sm text-muted-foreground/40 tracking-widest font-mono">●●●●●@●●●●●.com</span>
               </div>
             </div>
-            {/* Teaser blur */}
             <div className="rounded-lg bg-muted/30 border border-dashed border-border px-3 py-2.5 flex items-center gap-2">
               <Lock className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-              <span className="text-xs text-muted-foreground/60">
-                Unlock to see their situation and contact details
-              </span>
+              <span className="text-xs text-muted-foreground/60">Unlock to see their situation and contact details</span>
             </div>
           </>
         )}
       </div>
 
-      {/* Card footer */}
-      {!lead.isUnlocked && (
+      {/* Card footer — only for unlockable leads */}
+      {!lead.isUnlocked && !isGateBlocked && (
         <div className="px-5 pb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
             <Coins className="w-4 h-4" />
             {lead.unlockCost} credit{lead.unlockCost === 1 ? "" : "s"}
           </div>
-          <button
-            onClick={() => onUnlock(lead._id)}
-            disabled={isUnlocking || !canAfford}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-              canAfford
-                ? "bg-accent text-white hover:bg-accent/90 active:scale-95"
-                : "bg-muted text-muted-foreground cursor-not-allowed",
-            )}
-            title={!canAfford ? `You need ${lead.unlockCost} credits but have ${creditBalance}` : undefined}
-          >
-            {isUnlocking ? (
-              <>
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                Unlocking…
-              </>
-            ) : (
-              <>
-                <LockOpen className="w-3.5 h-3.5" />
-                {canAfford ? "Unlock Lead" : "Need more credits"}
-              </>
-            )}
-          </button>
+          {canAfford ? (
+            <button
+              onClick={() => onUnlock(lead._id)}
+              disabled={isUnlocking}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent/90 active:scale-95 transition-all cursor-pointer"
+            >
+              {isUnlocking ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Unlocking…
+                </>
+              ) : (
+                <>
+                  <LockOpen className="w-3.5 h-3.5" />
+                  Unlock Lead
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={onTopUp}
+              title={`You need ${lead.unlockCost} credits but have ${creditBalance}`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-muted text-muted-foreground hover:bg-accent/10 hover:text-accent border border-border transition-all cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Top up to unlock
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -453,6 +494,8 @@ function MarketplaceLeadsContent() {
   };
 
   const unlockedCount = unlockedLeads.length;
+  // Detect global gate reason from the first non-unlocked lead (all share the same gate)
+  const globalGate = leads.find((l) => !l.isUnlocked)?.lockReason ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -575,6 +618,40 @@ function MarketplaceLeadsContent() {
         {/* Browse leads tab */}
         {tab === "browse" && (
           <div>
+            {/* Global gate banner — replaces the old leads === null check */}
+            {globalGate === "no_profile" && (
+              <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-4 flex gap-3 items-start">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                    Set up your agent profile to unlock leads
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    You can browse the marketplace, but you need a verified agent profile to contact applicants.
+                  </p>
+                  <button
+                    onClick={() => navigate("/agents/register")}
+                    className="mt-2 text-xs font-semibold text-amber-800 dark:text-amber-300 underline cursor-pointer"
+                  >
+                    Complete your profile →
+                  </button>
+                </div>
+              </div>
+            )}
+            {globalGate === "unverified" && (
+              <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-5 py-4 flex gap-3 items-start">
+                <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                    Your profile is pending verification
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+                    Our team is reviewing your credentials — typically 1–2 business days. You'll get a notification when approved.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-6">
               <select
@@ -590,7 +667,7 @@ function MarketplaceLeadsContent() {
                 ))}
               </select>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {(["", "urgent", "standard", "exploring"] as const).map((u) => (
                   <button
                     key={u}
@@ -623,8 +700,10 @@ function MarketplaceLeadsContent() {
                     key={lead._id}
                     lead={lead}
                     onUnlock={handleUnlock}
+                    onTopUp={() => setShowTopUp(true)}
                     unlocking={unlocking}
                     creditBalance={creditBalance}
+                    navigate={navigate}
                   />
                 ))}
               </div>
@@ -654,10 +733,12 @@ function MarketplaceLeadsContent() {
                 {unlockedLeads.map((lead) => (
                   <LeadCard
                     key={lead._id}
-                    lead={{ ...lead, isUnlocked: true, status: lead.status as "open" | "closed", urgencyLevel: lead.urgencyLevel as UrgencyLevel }}
+                    lead={{ ...lead, isUnlocked: true, lockReason: null, status: lead.status as "open" | "closed", urgencyLevel: lead.urgencyLevel as UrgencyLevel }}
                     onUnlock={handleUnlock}
+                    onTopUp={() => setShowTopUp(true)}
                     unlocking={unlocking}
                     creditBalance={creditBalance}
+                    navigate={navigate}
                   />
                 ))}
               </div>
@@ -682,26 +763,6 @@ function MarketplaceLeadsContent() {
           </div>
         )}
 
-        {/* No agent profile warning */}
-        {leads === null && (
-          <div className="mt-8 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-4 flex gap-3">
-            <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Complete your agent profile first
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                You need an active agent profile to access the lead marketplace.
-              </p>
-              <button
-                onClick={() => navigate("/agents/dashboard")}
-                className="mt-2 text-xs font-semibold text-amber-800 dark:text-amber-300 underline cursor-pointer"
-              >
-                Set up your profile →
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {showTopUp && (

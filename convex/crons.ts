@@ -47,4 +47,13 @@ crons.cron(
   {},
 );
 
+// 10:00 AM UTC daily — alerts verified agents about leads that have been open
+// 48+ hours with zero unlocks, giving them a second-chance nudge.
+crons.cron(
+  "lead sentinel alerts",
+  "0 10 * * *",
+  internal.leadSentinel.checkStaleLeads,
+  {},
+);
+
 export default crons;

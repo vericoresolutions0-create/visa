@@ -6,12 +6,13 @@ const PAID_PLANS = ["pro", "expert"] as const;
 const isPaid = (plan: string | undefined) =>
   PAID_PLANS.includes(plan as (typeof PAID_PLANS)[number]);
 
-// ─── Read notifications (paid only) ──────────────────────────────────────────
+// ─── Read notifications (paid users and active agents) ───────────────────────
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user || !isPaid(user.plan)) return [];
+    if (!user) return [];
+    if (!isPaid(user.plan) && !user.agentPlan) return [];
     return await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -20,18 +21,19 @@ export const getMyNotifications = query({
   },
 });
 
-// ─── Unread count (paid only) ─────────────────────────────────────────────────
+// ─── Unread count (paid users and active agents) ──────────────────────────────
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user || !isPaid(user.plan)) return 0;
+    if (!user) return 0;
+    if (!isPaid(user.plan) && !user.agentPlan) return 0;
     const unread = await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user_read", (q) =>
         q.eq("userId", user._id).eq("read", false),
       )
-      .collect();
+      .take(50);
     return unread.length;
   },
 });
@@ -89,6 +91,31 @@ export const createNotification = internalMutation({
     await ctx.db.insert("in_app_notifications", {
       userId: args.userId,
       type: args.type,
+      title: args.title,
+      body: args.body,
+      linkTo: args.linkTo,
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+  },
+});
+
+// ─── Internal: create a marketplace lead alert for an agent ──────────────────
+// Separate from createNotification because agents gate on agentPlan, not plan.
+export const createAgentLeadNotification = internalMutation({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    linkTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    // Silently skip if user no longer exists or has no active agent plan
+    if (!user?.agentPlan) return;
+    await ctx.db.insert("in_app_notifications", {
+      userId: args.userId,
+      type: "marketplace_lead_alert",
       title: args.title,
       body: args.body,
       linkTo: args.linkTo,

@@ -17,14 +17,14 @@ import {
   CheckCircle2, XCircle, Trash2, ChevronDown, ChevronUp,
   AlertCircle, UserCheck, Settings, Send, Clock, Star,
   Building2, Copy, Plus, Eye, UserPlus, ListChecks, MessageCircle,
-  RefreshCw, Award, LogOut, Menu, X,
+  RefreshCw, Award, LogOut, Menu, X, Coins, Lock, LockOpen, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 
-type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog";
+type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log";
 
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "overview",       icon: BarChart3,     label: "Overview" },
@@ -42,6 +42,9 @@ const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "leads",          icon: UserPlus,      label: "Leads" },
   { id: "messages",       icon: MessageCircle, label: "Messages" },
   { id: "employers",      icon: Building2,     label: "Employers" },
+  { id: "marketplace-leads", icon: UserPlus,    label: "Marketplace Leads" },
+  { id: "credit-mgmt",    icon: Star,          label: "Credit Management" },
+  { id: "security-log",   icon: Shield,        label: "Security Log" },
   { id: "audit-log",      icon: ListChecks,    label: "Audit Log" },
   { id: "blog",           icon: FileText,      label: "Blog" },
 ];
@@ -449,6 +452,9 @@ function AdminInner() {
           {tab === "leads" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><LeadsAdminPanel /></div>}
           {tab === "messages" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><ContactMessagesPanel /></div>}
           {tab === "employers" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><EmployersAdminPanel /></div>}
+          {tab === "marketplace-leads" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><MarketplaceLeadsAdminPanel /></div>}
+          {tab === "credit-mgmt" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CreditManagementPanel /></div>}
+          {tab === "security-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><SecurityAuditLogPanel /></div>}
           {tab === "audit-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AuditLogPanel /></div>}
           {tab === "blog" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><BlogAdminPanel /></div>}
 
@@ -1895,6 +1901,360 @@ function AuditLogPanel() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Marketplace Leads Admin Panel ────────────────────────────────────────────
+
+function MarketplaceLeadsAdminPanel() {
+  const [statusFilter, setStatusFilter] = useState<"open" | "closed" | "">("");
+  const leads = useQuery(
+    api.marketplace.adminGetAllLeads,
+    statusFilter ? { statusFilter: statusFilter as "open" | "closed" } : {},
+  );
+
+  const urgencyColors = {
+    urgent: "text-red-600 bg-red-50 border-red-200",
+    standard: "text-blue-600 bg-blue-50 border-blue-200",
+    exploring: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  } as const;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="font-semibold text-sm text-[#0f2040] uppercase tracking-widest">Marketplace Leads</h3>
+          <p className="text-xs text-gray-400 mt-0.5">All applicant lead submissions with unlock counts</p>
+        </div>
+        <div className="flex gap-2">
+          {(["", "open", "closed"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer",
+                statusFilter === s
+                  ? "bg-[#0f2040] text-white border-[#0f2040]"
+                  : "border-gray-200 text-gray-500 hover:text-[#0f2040]",
+              )}
+            >
+              {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {leads === undefined ? (
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
+      ) : leads.length === 0 ? (
+        <div className="text-center py-16 text-sm text-gray-400">No leads found.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Lead</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Submitter</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-center">Unlocks</th>
+                <th className="px-4 py-3 text-left hidden lg:table-cell">Sentinel</th>
+                <th className="px-4 py-3 text-left hidden lg:table-cell">Submitted</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {leads.map((lead) => (
+                <tr key={lead._id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-[#0f2040] text-xs">{lead.visaType}</p>
+                    <p className="text-xs text-gray-400">{lead.destinationCountry}</p>
+                    <span className={cn("inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border", urgencyColors[lead.urgencyLevel])}>
+                      {lead.urgencyLevel}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <p className="text-xs text-gray-700">{lead.submitterName ?? "—"}</p>
+                    <p className="text-[11px] text-gray-400">{lead.submitterEmail ?? "—"}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={cn(
+                      "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                      lead.status === "open"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-gray-100 text-gray-500 border border-gray-200",
+                    )}>
+                      {lead.status === "open" ? <LockOpen className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                      {lead.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      "inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold",
+                      lead.unlockCount > 0 ? "bg-accent/10 text-accent" : "bg-gray-100 text-gray-400",
+                    )}>
+                      {lead.unlockCount}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    {lead.sentinelNotifiedAt ? (
+                      <span className="text-[11px] text-emerald-600">
+                        Notified {new Date(lead.sentinelNotifiedAt).toLocaleDateString("en-GB")}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell text-[11px] text-gray-400">
+                    {new Date(lead.createdAt).toLocaleDateString("en-GB")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Credit Management Admin Panel ────────────────────────────────────────────
+
+function CreditManagementPanel() {
+  const agents = useQuery(api.marketplace.adminGetAgentCredits);
+  const grantCredits = useMutation(api.marketplace.adminGrantCredits);
+  const [grantTarget, setGrantTarget] = useState<Id<"users"> | null>(null);
+  const [grantAmount, setGrantAmount] = useState("10");
+  const [grantNote, setGrantNote] = useState("");
+  const [granting, setGranting] = useState(false);
+
+  const handleGrant = async () => {
+    if (!grantTarget || !grantAmount) return;
+    const credits = parseInt(grantAmount, 10);
+    if (isNaN(credits) || credits <= 0) { toast.error("Enter a valid credit amount."); return; }
+    setGranting(true);
+    try {
+      const result = await grantCredits({ agentUserId: grantTarget, credits, notes: grantNote || undefined });
+      toast.success(`Granted ${credits} credits. New balance: ${result.newBalance}`);
+      setGrantTarget(null);
+      setGrantAmount("10");
+      setGrantNote("");
+    } catch (err) {
+      const msg = err instanceof ConvexError ? (err.data as { message?: string })?.message ?? "Failed." : "Failed.";
+      toast.error(msg);
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const tierLabels: Record<string, string> = {
+    agent_listing: "Listing",
+    agent_featured: "Featured",
+    agency_white_label: "White Label",
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="font-semibold text-sm text-[#0f2040] uppercase tracking-widest">Credit Management</h3>
+        <p className="text-xs text-gray-400 mt-0.5">View agent credit balances and grant credits manually</p>
+      </div>
+
+      {agents === undefined ? (
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
+      ) : agents.length === 0 ? (
+        <div className="text-center py-16 text-sm text-gray-400">No verified agents yet.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Agent</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Tier</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Region</th>
+                <th className="px-4 py-3 text-center">Balance</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {agents.map((agent) => (
+                <tr key={agent.profileId} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-[#0f2040] text-xs">{agent.fullName}</p>
+                    <p className="text-[11px] text-gray-400">{agent.email}</p>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell text-xs text-gray-500">
+                    {agent.tier ? tierLabels[agent.tier] ?? agent.tier : "—"}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {agent.region ? (
+                      <span className={cn(
+                        "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        agent.region === "europe"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-gray-100 text-gray-600 border border-gray-200",
+                      )}>
+                        {agent.region === "europe" ? "Europe / EU" : "Global"}
+                      </span>
+                    ) : <span className="text-[11px] text-gray-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      "inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full",
+                      agent.creditBalance > 0 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-400",
+                    )}>
+                      <Coins className="w-3 h-3" />
+                      {agent.creditBalance}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => setGrantTarget(grantTarget === agent.userId ? null : agent.userId)}
+                      className="text-xs font-semibold text-accent hover:underline cursor-pointer"
+                    >
+                      {grantTarget === agent.userId ? "Cancel" : "Grant credits"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Inline grant form */}
+      {grantTarget && (
+        <div className="rounded-xl border border-accent/20 bg-accent/5 p-4 space-y-3">
+          <p className="text-sm font-semibold text-[#0f2040]">
+            Grant credits to: {agents?.find((a) => a.userId === grantTarget)?.fullName ?? "Agent"}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Credits to grant</label>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                value={grantAmount}
+                onChange={(e) => setGrantAmount(e.target.value)}
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Note (optional)</label>
+              <input
+                value={grantNote}
+                onChange={(e) => setGrantNote(e.target.value)}
+                placeholder="e.g. Beta onboarding"
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => void handleGrant()}
+            disabled={granting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-[#0f2040] text-white hover:bg-[#0f2040]/90 transition-colors cursor-pointer disabled:opacity-60"
+          >
+            {granting ? (
+              <><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Granting…</>
+            ) : (
+              <><Coins className="w-3.5 h-3.5" /> Grant {grantAmount} credits</>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Security Audit Log Panel ─────────────────────────────────────────────────
+
+function SecurityAuditLogPanel() {
+  const entries = useQuery(api.securityAudit.adminGetSecurityLog, {});
+
+  const severityConfig = {
+    info: { cls: "bg-blue-50 text-blue-700 border-blue-200", label: "Info" },
+    warn: { cls: "bg-amber-50 text-amber-700 border-amber-200", label: "Warn" },
+    critical: { cls: "bg-red-50 text-red-700 border-red-200", label: "Critical" },
+  } as const;
+
+  const actionLabels: Record<string, string> = {
+    lead_unlock: "Lead unlock",
+    credits_granted: "Credits granted",
+    agent_profile_create: "Agent profile created",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-sm text-[#0f2040] uppercase tracking-widest">Security Audit Log</h3>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Immutable log of marketplace unlocks, credit grants, and agent registrations. Write-only from server — never editable.
+        </p>
+      </div>
+
+      {entries === undefined ? (
+        <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
+      ) : entries.length === 0 ? (
+        <div className="border border-dashed border-gray-200 rounded-xl p-10 text-center text-sm text-gray-400">
+          No security events recorded yet.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Event</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Resource</th>
+                <th className="px-4 py-3 text-left">Severity</th>
+                <th className="px-4 py-3 text-left hidden lg:table-cell">Details</th>
+                <th className="px-4 py-3 text-left">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {entries.map((entry) => {
+                const sev = severityConfig[entry.severity];
+                let metadata: Record<string, unknown> = {};
+                try { metadata = entry.metadata ? JSON.parse(entry.metadata) : {}; } catch { /* noop */ }
+                return (
+                  <tr key={entry._id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-[#0f2040] text-xs">
+                        {actionLabels[entry.action] ?? entry.action}
+                      </p>
+                      <p className="text-[11px] text-gray-400 font-mono">
+                        actor: {String(entry.actorUserId).slice(-8)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {entry.resourceType ? (
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-600">{entry.resourceType}</p>
+                          <p className="text-[10px] text-gray-400 font-mono">{entry.resourceId?.slice(-8)}</p>
+                        </div>
+                      ) : <span className="text-[11px] text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border", sev.cls)}>
+                        {sev.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell text-[11px] text-gray-500">
+                      {Object.keys(metadata).length > 0 ? (
+                        <span title={JSON.stringify(metadata, null, 2)} className="cursor-help">
+                          {Object.entries(metadata).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[11px] text-gray-400">
+                      {new Date(entry.createdAt).toLocaleString("en-GB")}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

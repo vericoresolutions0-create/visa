@@ -68,6 +68,7 @@ export default function AgentRegisterPage() {
     yearsExperience: 1,
     specialisations: [] as string[],
     languages: [] as string[],
+    region: "" as "" | "global" | "europe",
   });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -96,6 +97,7 @@ export default function AgentRegisterPage() {
         yearsExperience: profile.yearsExperience,
         specialisations: profile.specialisations,
         languages: profile.languages,
+        region: (profile.region as "global" | "europe") || undefined,
       });
       setStep(3);
     } catch {
@@ -352,6 +354,35 @@ export default function AgentRegisterPage() {
                         )}
                       >
                         {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm mb-2">Market focus</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Helps applicants find you in EU/global searches and drives lead marketplace routing.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        { value: "global", label: "Global", desc: "You work with applicants worldwide" },
+                        { value: "europe", label: "Europe / EU", desc: "You specialise in EU/Schengen routes" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setProfile((prev) => ({ ...prev, region: opt.value }))}
+                        className={cn(
+                          "rounded-xl border p-3 text-left transition-all cursor-pointer",
+                          profile.region === opt.value
+                            ? "border-primary bg-primary/8 shadow-sm"
+                            : "border-border hover:border-primary/30",
+                        )}
+                      >
+                        <p className="text-sm font-semibold text-foreground">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
                       </button>
                     ))}
                   </div>
