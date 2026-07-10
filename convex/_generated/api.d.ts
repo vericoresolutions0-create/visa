@@ -52,6 +52,7 @@ import type * as http from "../http.js";
 import type * as influencers from "../influencers.js";
 import type * as licenseCodes from "../licenseCodes.js";
 import type * as managedDependents from "../managedDependents.js";
+import type * as marketplace from "../marketplace.js";
 import type * as newsletter from "../newsletter.js";
 import type * as notificationDispatch from "../notificationDispatch.js";
 import type * as notificationProcessor from "../notificationProcessor.js";
@@ -130,6 +131,7 @@ declare const fullApi: ApiFromModules<{
   influencers: typeof influencers;
   licenseCodes: typeof licenseCodes;
   managedDependents: typeof managedDependents;
+  marketplace: typeof marketplace;
   newsletter: typeof newsletter;
   notificationDispatch: typeof notificationDispatch;
   notificationProcessor: typeof notificationProcessor;

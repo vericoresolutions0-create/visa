@@ -811,7 +811,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
               {
                 icon: <Users className="w-4 h-4" />,
                 label: "Find an Agent",
-                path: "/agents",
+                path: "/dashboard/find-agent",
               },
             ].map((a) => (
               <button

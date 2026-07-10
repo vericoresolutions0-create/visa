@@ -273,6 +273,11 @@ export default defineSchema({
     // agent dashboard — no email provider is configured yet, so this is the
     // honest, real notification signal available right now.
     lastDashboardViewAt: v.optional(v.string()),
+    // Denormalized credit balance for fast reads — updated atomically in
+    // marketplace.ts alongside every insert into agent_credit_purchases and
+    // marketplace_lead_unlocks. The immutable ledger tables are the source of
+    // truth; this field is derived from them and may be recomputed by an admin.
+    creditBalance: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_tier", ["tier"])
@@ -917,6 +922,62 @@ export default defineSchema({
   })
     .index("by_agent", ["agentUserId"])
     .index("by_paying_user", ["payingUserId"]),
+
+  // An applicant's open visa-help request, visible to all verified agents in
+  // the marketplace. Contact details are masked until an agent pays credits
+  // to unlock — the unlock is recorded in marketplace_lead_unlocks.
+  // unlockCost is set server-side at submission time from the UNLOCK_COSTS
+  // constant in marketplace.ts — never accepted from the client.
+  marketplace_leads: defineTable({
+    userId: v.id("users"),
+    visaType: v.string(),
+    destinationCountry: v.string(),
+    urgencyLevel: v.union(
+      v.literal("urgent"),
+      v.literal("standard"),
+      v.literal("exploring"),
+    ),
+    additionalNotes: v.optional(v.string()),
+    status: v.union(v.literal("open"), v.literal("closed")),
+    unlockCost: v.number(),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_status", ["userId", "status"])
+    .index("by_status", ["status"])
+    .index("by_created", ["createdAt"]),
+
+  // Immutable unlock ledger — one row per (agent, lead) pair. Never deleted.
+  // The agent's credit balance is debited atomically in the same mutation
+  // that inserts this row so the two can never diverge.
+  marketplace_lead_unlocks: defineTable({
+    leadId: v.id("marketplace_leads"),
+    agentUserId: v.id("users"),
+    creditsSpent: v.number(),
+    unlockedAt: v.string(),
+  })
+    .index("by_lead", ["leadId"])
+    .index("by_agent", ["agentUserId"])
+    .index("by_lead_and_agent", ["leadId", "agentUserId"]),
+
+  // Immutable credit acquisition ledger. agent_profiles.creditBalance is
+  // derived from this plus marketplace_lead_unlocks — kept in sync atomically,
+  // never recomputed from a collect() scan in hot paths.
+  agent_credit_purchases: defineTable({
+    agentUserId: v.id("users"),
+    creditsAdded: v.number(),
+    amountPaidCents: v.number(),
+    currency: v.string(),
+    source: v.union(
+      v.literal("paystack"),
+      v.literal("stripe"),
+      v.literal("admin_grant"),
+    ),
+    providerReference: v.optional(v.string()),
+    grantedByUserId: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+  }).index("by_agent", ["agentUserId"]),
 
   // One row per destination — the live, admin-editable override of the static
   // LAST_VERIFIED_DATES in visa-data.ts. When an admin clicks "Mark Reviewed"

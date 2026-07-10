@@ -87,6 +87,8 @@ const EuropeanTrackerPage = lazy(() => import("./pages/dashboard/european-tracke
 const NotificationsPage = lazy(() => import("./pages/dashboard/notifications/page.tsx"));
 const RefPage = lazy(() => import("./pages/ref/page.tsx"));
 const CreatorPortalPage = lazy(() => import("./pages/creator/portal.tsx"));
+const AgentMarketplaceLeadsPage = lazy(() => import("./pages/agents/marketplace-leads.tsx"));
+const FindAgentPage = lazy(() => import("./pages/dashboard/find-agent/page.tsx"));
 
 function PageLoader() {
   return (
@@ -218,6 +220,7 @@ function AppRoutes() {
           <Route path="/agents/register" element={<AgentRegisterPage />} />
           <Route path="/agents/onboarding" element={<AgentOnboardingPage />} />
           <Route path="/agents/dashboard" element={<AgentDashboardPreviewPage />} />
+          <Route path="/agents/marketplace-leads" element={<AgentMarketplaceLeadsPage />} />
           <Route path="/agents/:profileId" element={<AgentProfilePage />} />
           <Route path="/client-portal/:token" element={<ClientPortalPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
@@ -240,6 +243,7 @@ function AppRoutes() {
           <Route path="/dashboard/immigration-status" element={<ImmigrationStatusPage />} />
           <Route path="/dashboard/european-tracker" element={<EuropeanTrackerPage />} />
           <Route path="/dashboard/notifications" element={<NotificationsPage />} />
+          <Route path="/dashboard/find-agent" element={<FindAgentPage />} />
           <Route path="/ref/:slug" element={<RefPage />} />
           <Route path="/creator/portal/:token" element={<CreatorPortalPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

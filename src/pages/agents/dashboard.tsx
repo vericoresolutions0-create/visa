@@ -35,6 +35,7 @@ import {
   CreditCard,
   FileText,
   Globe,
+  Inbox,
   LayoutDashboard,
   ListChecks,
   LockKeyhole,
@@ -1679,6 +1680,15 @@ function DashboardInner() {
                 </button>
               )}
               <NotificationBell />
+              <button
+                type="button"
+                onClick={() => navigate("/agents/marketplace-leads")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-primary hover:bg-secondary border border-border transition-colors cursor-pointer"
+                title="Lead Marketplace"
+              >
+                <Inbox className="w-4 h-4" />
+                <span className="hidden sm:inline">Leads</span>
+              </button>
               <Button size="default" className="cursor-pointer gap-2" onClick={() => setSection("clients")}>
                 <UserPlus className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("header.add_client")}</span>
