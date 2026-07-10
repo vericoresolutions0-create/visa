@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Globe, Shield, CheckCircle2, Lock, FileText, Zap, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
@@ -24,11 +26,16 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDemoAuthenticated } = useDemoAuth();
+  const { isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/dashboard";
   const { t } = useTranslation("login");
   const isSignup = location.pathname === "/signup";
   const goBack = useSmartBack("/");
+
+  useEffect(() => {
+    if (isAuthenticated) navigate(returnTo, { replace: true });
+  }, [isAuthenticated, navigate, returnTo]);
 
   if (isDemoAuthenticated) {
     return (
