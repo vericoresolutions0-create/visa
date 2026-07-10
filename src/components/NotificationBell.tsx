@@ -164,6 +164,15 @@ export function NotificationBell() {
               ))
             )}
           </div>
+          {/* Footer: link to full notifications page */}
+          <div className="px-4 py-2.5 border-t border-border bg-muted/30">
+            <button
+              onClick={() => { setOpen(false); navigate("/dashboard/notifications"); }}
+              className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            >
+              View all notifications →
+            </button>
+          </div>
         </div>
       )}
     </div>

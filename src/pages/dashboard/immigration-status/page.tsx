@@ -24,6 +24,13 @@ const JURISDICTIONS = [
   { value: "de_nbe", label: "🇩🇪 Germany — Niederlassungserlaubnis", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
   { value: "fr_cr", label: "🇫🇷 France — Carte de résident", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
   { value: "nl_vvotd", label: "🇳🇱 Netherlands — Verblijfsvergunning", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "pl_kp", label: "🇵🇱 Poland — Karta Pobytu (Temporary)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "pl_perm", label: "🇵🇱 Poland — Zezwolenie na pobyt stały", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "lt_lgl", label: "🇱🇹 Lithuania — Leidimas gyventi", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "be_ts", label: "🇧🇪 Belgium — Titre de séjour", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "at_nb", label: "🇦🇹 Austria — Niederlassungsbewilligung", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "se_ut", label: "🇸🇪 Sweden — Uppehållstillstånd", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "ie_stamp4", label: "🇮🇪 Ireland — Stamp 4", absenceLabel: "180 days / rolling year", limit: 180, warning: 150, rule: "rolling_year" },
   { value: "other", label: "🌍 Other jurisdiction", absenceLabel: "See local rules", limit: 180, warning: 150, rule: "rolling_year" },
 ] as const;
 
@@ -1291,6 +1298,29 @@ export default function ImmigrationStatusPage() {
             </div>
           )}
         </Card>
+
+        {/* ── EU residents prompt ── */}
+        {resolvedVisa && jInfo?.rule === "eu_ltr" && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-900">Living in Europe?</div>
+                <div className="text-xs text-slate-500 truncate">
+                  Track your Schengen days, renewal window, and EU-specific compliance in one view.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/dashboard/european-tracker")}
+              className="h-8 px-4 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shrink-0 flex items-center gap-1.5"
+            >
+              EU Tracker <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

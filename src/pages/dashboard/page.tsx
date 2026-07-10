@@ -44,6 +44,7 @@ import {
   Sparkles,
   Award,
   Home,
+  MapPin,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn } from "@/lib/utils.ts";
@@ -756,6 +757,16 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 icon: <Globe className="w-4 h-4" />,
                 label: "Immigration Status",
                 path: "/dashboard/immigration-status",
+              },
+              {
+                icon: <MapPin className="w-4 h-4" />,
+                label: "European Tracker",
+                path: "/dashboard/european-tracker",
+              },
+              {
+                icon: <Bell className="w-4 h-4" />,
+                label: "Notifications",
+                path: "/dashboard/notifications",
               },
               {
                 icon: <StickyNote className="w-4 h-4" />,

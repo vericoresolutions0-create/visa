@@ -83,6 +83,8 @@ const CommunityPage = lazy(() => import("./pages/community/page.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const InfluencerPortalPage = lazy(() => import("./pages/influencer/portal.tsx"));
 const ImmigrationStatusPage = lazy(() => import("./pages/dashboard/immigration-status/page.tsx"));
+const EuropeanTrackerPage = lazy(() => import("./pages/dashboard/european-tracker/page.tsx"));
+const NotificationsPage = lazy(() => import("./pages/dashboard/notifications/page.tsx"));
 const RefPage = lazy(() => import("./pages/ref/page.tsx"));
 const CreatorPortalPage = lazy(() => import("./pages/creator/portal.tsx"));
 
@@ -236,6 +238,8 @@ function AppRoutes() {
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/influencer/:token" element={<InfluencerPortalPage />} />
           <Route path="/dashboard/immigration-status" element={<ImmigrationStatusPage />} />
+          <Route path="/dashboard/european-tracker" element={<EuropeanTrackerPage />} />
+          <Route path="/dashboard/notifications" element={<NotificationsPage />} />
           <Route path="/ref/:slug" element={<RefPage />} />
           <Route path="/creator/portal/:token" element={<CreatorPortalPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
