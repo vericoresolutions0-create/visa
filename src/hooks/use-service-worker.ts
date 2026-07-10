@@ -15,13 +15,13 @@ export function useServiceWorker() {
             registrations.map((registration) => registration.unregister()),
           ),
         )
-        .catch((err) => console.log("Service Worker cleanup failed:", err));
+        .catch(() => {});
 
       if ("caches" in window) {
         caches
           .keys()
           .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-          .catch((err) => console.log("Cache cleanup failed:", err));
+          .catch(() => {});
       }
 
       return;
@@ -56,6 +56,6 @@ export function useServiceWorker() {
           });
         });
       })
-      .catch((err) => console.log("Service Worker registration failed:", err));
+      .catch(() => {});
   }, []);
 }

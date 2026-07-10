@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { useTranslation } from "react-i18next";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
@@ -464,6 +465,9 @@ export default function ChecklistPage() {
   const goBackToDashboard = useSmartBack("/dashboard");
   const goBackToHome = useSmartBack("/");
   const { isDemoAuthenticated, user: demoUser, signOut } = useDemoAuth();
+  const { isAuthenticated, signOut: authSignOut } = useAuth();
+  // True whenever the visitor has any form of authenticated session (demo or real Convex Auth).
+  const isLoggedIn = isDemoAuthenticated || isAuthenticated;
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Derive step from URL: if all 3 params present, show checklist
@@ -537,7 +541,7 @@ export default function ChecklistPage() {
     if (step === "checklist") {
       // A signed-in user opening one of their saved checklists lands directly
       // on this step; send them back to the dashboard instead of the selector.
-      if (openedDirectlyAtChecklist && isDemoAuthenticated) {
+      if (openedDirectlyAtChecklist && isLoggedIn) {
         goBackToDashboard();
         return;
       }
@@ -660,34 +664,32 @@ export default function ChecklistPage() {
                 </button>
               </div>
             )}
-            {isDemoAuthenticated && (
+            {isLoggedIn && (
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
                   title={t("nav.my_dashboard")}
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{t("nav.my_dashboard")}</span>
+                  <span>{t("nav.my_dashboard")}</span>
                 </button>
                 <button
                   onClick={() => navigate("/settings/profile")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/20"
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                   title={t("nav.settings")}
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{t("nav.settings")}</span>
                 </button>
                 <button
                   onClick={() => {
-                    signOut();
+                    if (isDemoAuthenticated) { signOut(); } else { void authSignOut(); }
                     navigate("/");
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer border border-transparent hover:border-destructive/20"
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors cursor-pointer"
                   title={t("nav.sign_out")}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{t("nav.sign_out")}</span>
                 </button>
               </div>
             )}
@@ -1001,6 +1003,38 @@ export default function ChecklistPage() {
                             Already have an account? Sign in
                           </button>
                         </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* ── Dashboard return — logged-in users ── */}
+                  {isLoggedIn && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                      className="bg-primary rounded-xl p-5 flex gap-4 items-start"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 mt-0.5">
+                        <LayoutDashboard className="w-5 h-5 text-primary-foreground/80" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] mb-1" style={{ color: "#b8a06a" }}>
+                          Your account
+                        </p>
+                        <p className="font-semibold text-sm text-primary-foreground mb-1">
+                          Back to your dashboard
+                        </p>
+                        <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.6)" }}>
+                          Your progress is saved. Head back whenever you're ready — your checklists and reminders are all there.
+                        </p>
+                        <button
+                          onClick={() => navigate("/dashboard")}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white text-primary hover:bg-white/90 transition-colors rounded-lg px-3 py-2 cursor-pointer"
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5" />
+                          Go to Dashboard
+                        </button>
                       </div>
                     </motion.div>
                   )}

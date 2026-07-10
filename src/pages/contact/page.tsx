@@ -13,7 +13,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { ConvexError } from "convex/values";
 import {
-  Globe, ArrowLeft, Mail, Phone,
+  Globe, ArrowLeft, Mail, Briefcase,
   Shield, Clock, CheckCircle2,
 } from "lucide-react";
 
@@ -37,7 +37,7 @@ export default function ContactPage() {
       actionLabel: t("info.email.action"),
     },
     {
-      icon: Phone,
+      icon: Briefcase,
       label: t("info.agent.label"),
       value: "vericoresolutions0@gmail.com",
       hint: t("info.agent.hint"),

@@ -1459,15 +1459,22 @@ function OverviewSection({
               ))}
             </div>
           </div>
-          <div className="mx-auto w-full max-w-xs rounded-[2rem] border border-primary/20 bg-primary p-3 shadow-xl">
+          <div className="mx-auto w-full max-w-xs rounded-[2rem] border border-primary/20 bg-primary p-3 shadow-xl relative">
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest bg-accent text-white px-2.5 py-0.5 rounded-full">
+              {t("portal.sample_preview")}
+            </span>
             <div className="rounded-[1.4rem] bg-card p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-1">Document Upload</p>
-              <h4 className="font-serif text-lg font-semibold text-primary mb-3">UK Visitor Visa</h4>
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-1">{t("portal.file_progress")}</p>
+              <h4 className="font-serif text-lg font-semibold text-primary mb-3">{t("portal.sample_visa")}</h4>
               <div className="h-2 rounded-full bg-secondary mb-3 overflow-hidden">
                 <div className="h-full w-[62%] rounded-full bg-accent" />
               </div>
               <div className="space-y-2">
-                {[{ label: "Passport (bio page)", done: true }, { label: "Bank statements", done: true }, { label: "Cover letter", done: false }].map((item) => (
+                {[
+                  { label: t("portal.checklist1"), done: true },
+                  { label: t("portal.checklist2"), done: true },
+                  { label: t("portal.checklist3"), done: false },
+                ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
                     <span className="text-xs font-medium text-foreground">{item.label}</span>
                     {item.done ? <CheckCircle2 className="w-4 h-4 text-accent" /> : <UploadCloud className="w-4 h-4 text-muted-foreground" />}

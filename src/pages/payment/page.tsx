@@ -515,7 +515,7 @@ export default function PaymentPage() {
                     <h2 className="font-semibold text-primary">Payment temporarily unavailable</h2>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Our payment system is being configured. Please try again shortly or contact us at support@visaclear.app.
+                    Our payment system is being configured. Please try again shortly or contact us at vericoresolutions0@gmail.com.
                   </p>
                 </div>
               ) : (
@@ -591,7 +591,7 @@ export default function PaymentPage() {
                         type="email"
                         value={billingEmail}
                         onChange={(event) => setBillingEmail(event.target.value)}
-                        placeholder={accountUser?.email ?? "billing@example.com"}
+                        placeholder={accountUser?.email ?? "you@email.com"}
                         className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
