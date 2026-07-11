@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -30,7 +30,16 @@ export default function AgentProfilePage() {
     profileId ? { profileId } : "skip",
   );
   const contactAgent = useMutation(api.agents.contactAgent);
+  const recordProfileView = useMutation(api.agents.recordProfileView);
   const [contacted, setContacted] = useState(false);
+
+  useEffect(() => {
+    if (profile?._id) {
+      void recordProfileView({ agentProfileId: profile._id }).catch(() => {});
+    }
+  // Only fire once when the profile first loads — not on every re-render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?._id]);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
   const [showMessageBox, setShowMessageBox] = useState(false);

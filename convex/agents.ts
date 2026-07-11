@@ -18,9 +18,29 @@ async function getMyAgentProfileOrThrow(ctx: QueryCtx | MutationCtx) {
   return profile;
 }
 
-// ─── List agents (public, paginated) ──────────────────────────────────────────
-// Only verified agents appear in the public marketplace — unverified profiles
-// are pending admin review and must not be shown as bookable experts.
+// ─── List agents — tier-sorted, free agents excluded ──────────────────────────
+// Free (no tier) verified agents are NOT listed publicly. Only agents with a
+// paid plan or an active admin-granted trial appear in the marketplace.
+// Returns three buckets in priority order so the frontend can render distinct
+// sections without any client-side sorting logic.
+export const listTieredAgents = query({
+  args: {},
+  handler: async (ctx) => {
+    const [elite, featured, listed] = await Promise.all([
+      ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agency_white_label")).take(50),
+      ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agent_featured")).take(50),
+      ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agent_listing")).take(100),
+    ]);
+    return {
+      elite:    elite.filter((a) => a.verified),
+      featured: featured.filter((a) => a.verified),
+      listed:   listed.filter((a) => a.verified),
+    };
+  },
+});
+
+// ─── Legacy paginated query — kept only while agents/page.tsx still imports it ─
+// Remove once all call sites migrate to listTieredAgents.
 export const listAgents = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
@@ -273,7 +293,9 @@ export const searchAgents = query({
 
     return {
       featured: matches.filter((a) => FEATURED_TIERS.has(a.tier ?? "")),
-      listed:   matches.filter((a) => !FEATURED_TIERS.has(a.tier ?? "")),
+      // Only £29+ Listing agents appear in the regular section — free (no tier)
+      // verified agents are not listed publicly until they subscribe.
+      listed: matches.filter((a) => a.tier === "agent_listing"),
     };
   },
 });
@@ -324,6 +346,76 @@ export const logSearchEvent = mutation({
       sessionId: args.sessionId,
       createdAt: new Date().toISOString(),
     });
+  },
+});
+
+// ─── Public: record one profile page view ─────────────────────────────────────
+// Called from the profile page on mount. No auth required — it's a vanity
+// counter, not a security gate. Rate-limited to 10k views/day per agent to
+// prevent a competitor from hammering the endpoint.
+export const recordProfileView = mutation({
+  args: { agentProfileId: v.id("agent_profiles") },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.agentProfileId);
+    if (!profile || !profile.verified) return;
+
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const existing = await ctx.db
+      .query("agent_profile_views")
+      .withIndex("by_agent_and_date", (q) =>
+        q.eq("agentProfileId", args.agentProfileId).eq("dateKey", dateKey),
+      )
+      .unique();
+
+    if (existing) {
+      if (existing.count >= 10000) return;
+      await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    } else {
+      await ctx.db.insert("agent_profile_views", {
+        agentProfileId: args.agentProfileId,
+        dateKey,
+        count: 1,
+      });
+    }
+  },
+});
+
+// ─── Agent: profile view stats ────────────────────────────────────────────────
+// Today / last 7 days / last 30 days. Reads via the compound index so it
+// never scans the full table — always bounded to this agent's rows only.
+export const getMyProfileViewStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const profile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) return null;
+
+    const today   = new Date().toISOString().slice(0, 10);
+    const d7ago   = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const d30ago  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const rows = await ctx.db
+      .query("agent_profile_views")
+      .withIndex("by_agent_and_date", (q) =>
+        q.eq("agentProfileId", profile._id).gte("dateKey", d30ago),
+      )
+      .take(31);
+
+    let viewsToday = 0;
+    let views7d    = 0;
+    let views30d   = 0;
+
+    for (const row of rows) {
+      views30d += row.count;
+      if (row.dateKey >= d7ago)  views7d    += row.count;
+      if (row.dateKey === today) viewsToday  = row.count;
+    }
+
+    return { viewsToday, views7d, views30d };
   },
 });
 

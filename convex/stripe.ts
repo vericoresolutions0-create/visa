@@ -123,6 +123,33 @@ export const createCheckoutSession = action({
   },
 });
 
+// Stripe Customer Portal — lets agents view invoices, update their payment
+// method, or cancel their subscription without contacting support.
+export const createAgentBillingPortalSession = action({
+  args: {},
+  handler: async (ctx): Promise<{ url: string }> => {
+    const stripe = getStripeClient();
+    const user = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!user) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in." });
+    }
+    if (!user.stripeCustomerId) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "No Stripe billing account found. Your subscription may have been set up via a different payment method.",
+      });
+    }
+
+    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${siteUrl}/agents/dashboard`,
+    });
+
+    return { url: portalSession.url };
+  },
+});
+
 // Pix, boleto, and OXXO are real Stripe-supported payment methods for
 // Brazil and Mexico — but Stripe doesn't support them for *recurring*
 // billing (there's no stored instrument to auto-charge next cycle), so

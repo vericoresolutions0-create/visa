@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated, AuthLoading, useMutation, useQuery } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ import {
   Clock3,
   Copy,
   CreditCard,
+  Eye,
   FileText,
   Globe,
   Inbox,
@@ -892,7 +893,11 @@ function PipelineSection({ intakes }: { intakes: Intake[] }) {
 
 // ─── Section: Analytics ───────────────────────────────────────────────────────
 
-function AnalyticsSection({ intakes, unreadEnquiries }: { intakes: Intake[]; unreadEnquiries: number }) {
+function AnalyticsSection({ intakes, unreadEnquiries, viewStats }: {
+  intakes: Intake[];
+  unreadEnquiries: number;
+  viewStats: { viewsToday: number; views7d: number; views30d: number } | null | undefined;
+}) {
   const { t } = useTranslation("agent-dashboard");
   const translateCountry = useCountryName();
 
@@ -961,6 +966,29 @@ function AnalyticsSection({ intakes, unreadEnquiries }: { intakes: Intake[]; unr
           </div>
         </div>
       )}
+
+      {/* Profile views */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Eye className="w-4 h-4 text-accent" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Profile Views</p>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: "Today",    value: viewStats?.viewsToday ?? "—" },
+            { label: "7 days",   value: viewStats?.views7d    ?? "—" },
+            { label: "30 days",  value: viewStats?.views30d   ?? "—" },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="text-3xl font-bold text-primary tabular-nums">{s.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-4 border-t border-border pt-3">
+          Counted each time an applicant opens your public profile page. Updates live.
+        </p>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
@@ -1225,9 +1253,26 @@ function LicenseSection() {
   };
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const redeemCode = useMutation(api.licenseCodes.redeemLicenseCode);
+  const openBillingPortal = useAction(api.stripe.createAgentBillingPortalSession);
   const [code, setCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const navigate = useNavigate();
+
+  const handleOpenBillingPortal = async () => {
+    setOpeningPortal(true);
+    try {
+      const { url } = await openBillingPortal({});
+      window.location.href = url;
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Could not open billing portal. Try again.");
+      }
+      setOpeningPortal(false);
+    }
+  };
 
   const handleRedeem = async () => {
     if (!code.trim()) { toast.error(t("license.toast_need_code")); return; }
@@ -1249,7 +1294,7 @@ function LicenseSection() {
         <p className="text-sm text-muted-foreground mt-0.5">{t("license.description")}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t("license.current_plan")}</p>
           <p className="text-2xl font-semibold text-primary">{myProfile?.tier ? TIER_LABELS[myProfile.tier] ?? myProfile.tier : t("license.free")}</p>
@@ -1271,6 +1316,26 @@ function LicenseSection() {
               {redeeming ? t("license.redeeming") : t("license.redeem")}
             </Button>
           </div>
+        </div>
+        {/* Billing portal — only shown when agent has a Stripe subscription */}
+        <div className="rounded-2xl border border-border bg-card p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Billing & Invoices</p>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+              Download invoices, update your payment method, or manage your subscription.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            disabled={openingPortal}
+            onClick={() => { void handleOpenBillingPortal(); }}
+            className="cursor-pointer w-full"
+          >
+            {openingPortal ? "Opening…" : "Manage Subscription"}
+          </Button>
         </div>
       </div>
 
@@ -1739,6 +1804,7 @@ function DashboardInner() {
 
   const myProfile = useQuery(api.agents.getMyProfile, {});
   const trialStatus = useQuery(api.agentTrials.getMyTrialStatus, {});
+  const viewStats = useQuery(api.agents.getMyProfileViewStats, {});
   const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
   const contactRequests = (useQuery(api.agents.getMyContactRequests, {}) ?? []) as ContactRequest[];
@@ -1932,7 +1998,7 @@ function DashboardInner() {
               {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} />}
               {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
               {section === "pipeline"  && <PipelineSection intakes={intakes} />}
-              {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} />}
+              {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} viewStats={viewStats} />}
               {section === "referrals" && <ReferralsSection />}
               {section === "license"   && <LicenseSection />}
             </motion.div>

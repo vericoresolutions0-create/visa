@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, usePaginatedQuery, useConvexAuth } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
@@ -434,24 +434,21 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
     });
   }, [searchVisa, searchDest, logSearch, sessionId]);
 
-  // Paginated list for "browse all" mode
-  const { results: allAgents, status, loadMore } = usePaginatedQuery(
-    api.agents.listAgents,
-    {},
-    { initialNumItems: 20 },
-  );
-  const featuredAgents = useQuery(api.agents.getFeaturedAgents, {});
+  // Tiered browse — three sections, free agents excluded
+  const tieredAgents = useQuery(api.agents.listTieredAgents, {});
   const [filterSpec, setFilterSpec] = useState("");
 
-  const featuredIds = new Set((featuredAgents ?? []).map((a) => a._id));
-  const filteredAll = (filterSpec
-    ? allAgents.filter((a) => a.specialisations.includes(filterSpec))
-    : allAgents
-  ).filter((a) => !featuredIds.has(a._id));
+  const filterAgents = <T extends AgentProfile>(agents: T[]) =>
+    filterSpec ? agents.filter((a) => a.specialisations.includes(filterSpec)) : agents;
+
+  const filteredElite    = filterAgents(tieredAgents?.elite    ?? []);
+  const filteredFeatured = filterAgents(tieredAgents?.featured ?? []);
+  const filteredListed   = filterAgents(tieredAgents?.listed   ?? []);
 
   const totalSearchResults = isSearching && searchResults
     ? searchResults.featured.length + searchResults.listed.length
     : null;
+  const browseLoading = !isSearching && tieredAgents === undefined;
 
   return (
     <div className="space-y-6">
@@ -580,19 +577,6 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
       {/* ── BROWSE ALL MODE ── */}
       {!isSearching && (
         <>
-          {/* Featured agents */}
-          {featuredAgents && featuredAgents.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
-              </div>
-              <div className="space-y-3">
-                {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} />)}
-              </div>
-            </div>
-          )}
-
           {/* Visa type filter chips */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
             <button
@@ -618,38 +602,58 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
             ))}
           </div>
 
-          {/* Loading */}
-          {status === "LoadingFirstPage" && (
+          {/* Loading skeletons */}
+          {browseLoading && (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => <AgentSkeleton key={i} />)}
             </div>
           )}
 
-          {/* Agent list */}
-          {status !== "LoadingFirstPage" && (
-            filteredAll.length > 0 ? (
+          {/* ── Elite Agencies ── */}
+          {!browseLoading && filteredElite.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Gem className="w-4 h-4 text-amber-500" />
+                <span className="font-semibold text-sm text-primary uppercase tracking-widest">Elite Agencies</span>
+              </div>
               <div className="space-y-3">
-                {filteredAll.map((a) => <AgentCard key={a._id} agent={a} />)}
+                {filteredElite.map((a) => <AgentCard key={a._id} agent={a} />)}
               </div>
-            ) : (
-              <div className="border border-dashed border-border rounded-xl p-10 text-center">
-                <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="font-semibold text-foreground mb-1">{t("inner.empty_title")}</p>
-                <p className="text-sm text-muted-foreground mb-4">{t("inner.empty_body")}</p>
-              </div>
-            )
+            </div>
           )}
 
-          {(status === "CanLoadMore" || status === "LoadingMore") && (
-            <div className="text-center">
-              <Button
-                variant="secondary"
-                disabled={status === "LoadingMore"}
-                onClick={() => loadMore(20)}
-                className="cursor-pointer"
-              >
-                {status === "LoadingMore" ? t("inner.loading") : t("inner.load_more")}
-              </Button>
+          {/* ── Featured Agents ── */}
+          {!browseLoading && filteredFeatured.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-purple-500 fill-purple-500" />
+                <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
+              </div>
+              <div className="space-y-3">
+                {filteredFeatured.map((a) => <AgentCard key={a._id} agent={a} />)}
+              </div>
+            </div>
+          )}
+
+          {/* ── Verified Agents ── */}
+          {!browseLoading && filteredListed.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <BadgeCheck className="w-4 h-4 text-blue-500" />
+                <span className="font-semibold text-sm text-primary uppercase tracking-widest">Verified Agents</span>
+              </div>
+              <div className="space-y-3">
+                {filteredListed.map((a) => <AgentCard key={a._id} agent={a} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!browseLoading && filteredElite.length === 0 && filteredFeatured.length === 0 && filteredListed.length === 0 && (
+            <div className="border border-dashed border-border rounded-xl p-10 text-center">
+              <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="font-semibold text-foreground mb-1">{t("inner.empty_title")}</p>
+              <p className="text-sm text-muted-foreground mb-4">{t("inner.empty_body")}</p>
             </div>
           )}
         </>

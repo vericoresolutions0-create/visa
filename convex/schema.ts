@@ -1106,4 +1106,14 @@ export default defineSchema({
     dateKey: v.string(),
     count: v.number(),
   }).index("by_date", ["dateKey"]),
+
+  // Daily profile view counter per agent. One row per (agentProfileId, dateKey).
+  // Incremented on every public profile page load; capped at 10k/day per agent
+  // to prevent abuse. The daily bucket pattern avoids unbounded row growth
+  // (one row per day instead of one per view) and lets us sum ranges cheaply.
+  agent_profile_views: defineTable({
+    agentProfileId: v.id("agent_profiles"),
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_agent_and_date", ["agentProfileId", "dateKey"]),
 });
