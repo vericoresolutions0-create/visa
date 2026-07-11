@@ -19,6 +19,7 @@ import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { AVAILABLE_DESTINATIONS, getAvailableVisaTypes, getChecklist, VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
 import {
+  Archive,
   ArrowLeft,
   BadgeCheck,
   BarChart3,
@@ -43,6 +44,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  NotebookPen,
   Send,
   Shield,
   Star,
@@ -79,6 +81,7 @@ type Intake = {
   destination: string;
   visaType: string;
   status: IntakeStatus;
+  notes?: string;
   createdAt: string;
   claimedByEmail?: string;
   sourceContactRequestId?: Id<"agent_contact_requests">;
@@ -279,7 +282,13 @@ function ClientCard({ intake }: { intake: Intake }) {
   const translateCountry = useCountryName();
   const [expanded, setExpanded] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [notes, setNotes] = useState(intake.notes ?? "");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
+  const updateNotes = useMutation(api.clientIntakes.updateIntakeNotes);
+  const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
   const required = requiredDocCount(intake.destination, intake.visaType);
   const days = daysSince(intake.createdAt);
   const s = STATUS_STYLES[intake.status];
@@ -299,6 +308,19 @@ function ClientCard({ intake }: { intake: Intake }) {
     finally { setUpdatingStatus(false); }
   };
 
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    try { await updateNotes({ token: intake.token, notes }); toast.success("Notes saved."); }
+    catch { toast.error("Failed to save notes."); }
+    finally { setSavingNotes(false); }
+  };
+
+  const handleArchive = async () => {
+    setArchiving(true);
+    try { await archiveIntake({ token: intake.token }); toast.success(`${intake.clientName} archived.`); }
+    catch { toast.error("Archive failed."); setArchiving(false); }
+  };
+
   return (
     <div className={cn("rounded-2xl border bg-card p-4 space-y-3", days >= 7 && intake.status === "awaiting_documents" ? "border-red-200" : "border-border")}>
       {/* Header row */}
@@ -313,6 +335,11 @@ function ClientCard({ intake }: { intake: Intake }) {
               {intake.sourceContactRequestId && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#d4a726]/15 text-[#0f2040] border border-[#d4a726]/30">
                   <Globe className="w-2.5 h-2.5" /> Via VisaClear
+                </span>
+              )}
+              {intake.notes && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                  <NotebookPen className="w-2.5 h-2.5" /> Note
                 </span>
               )}
             </div>
@@ -355,9 +382,10 @@ function ClientCard({ intake }: { intake: Intake }) {
       {/* Send link */}
       <SendLinkButtons token={intake.token} clientName={intake.clientName} clientPhone={intake.clientPhone} />
 
-      {/* Expanded: stage control + docs */}
+      {/* Expanded: stage control + notes + docs + archive */}
       {expanded && (
-        <div className="space-y-3 pt-1 border-t border-border">
+        <div className="space-y-4 pt-2 border-t border-border">
+          {/* Stage control */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Move to stage</p>
             <div className="flex flex-wrap gap-2">
@@ -372,6 +400,34 @@ function ClientCard({ intake }: { intake: Intake }) {
               ))}
             </div>
           </div>
+
+          {/* Notes */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <NotebookPen className="w-3 h-3" /> Notes
+            </p>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              maxLength={5000}
+              placeholder="Add private notes about this client — only you can see these."
+              className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 text-foreground placeholder:text-muted-foreground/60"
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[11px] text-muted-foreground">{notes.length}/5000</span>
+              <button
+                type="button"
+                disabled={savingNotes || notes === (intake.notes ?? "")}
+                onClick={() => { void handleSaveNotes(); }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-opacity"
+              >
+                {savingNotes ? "Saving…" : "Save notes"}
+              </button>
+            </div>
+          </div>
+
+          {/* Documents */}
           {intake.documents.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Documents</p>
@@ -389,7 +445,26 @@ function ClientCard({ intake }: { intake: Intake }) {
               ))}
             </div>
           )}
+
           <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
+
+          {/* Archive */}
+          {confirmArchive ? (
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+              <span className="text-xs text-red-700 font-medium flex-1">Archive {intake.clientName}? They won't appear in your active list.</span>
+              <button type="button" onClick={() => { void handleArchive(); }} disabled={archiving}
+                className="text-xs font-bold text-red-600 hover:text-red-800 cursor-pointer disabled:opacity-40">
+                {archiving ? "Archiving…" : "Confirm"}
+              </button>
+              <button type="button" onClick={() => setConfirmArchive(false)}
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer ml-1">Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmArchive(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-600 transition-colors cursor-pointer">
+              <Archive className="w-3.5 h-3.5" /> Archive client
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -403,7 +478,13 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
   const translateCountry = useCountryName();
   const [expanded, setExpanded] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [notes, setNotes] = useState(intake.notes ?? "");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
+  const updateNotes = useMutation(api.clientIntakes.updateIntakeNotes);
+  const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
   const required = requiredDocCount(intake.destination, intake.visaType);
   const days = daysSince(intake.createdAt);
   const s = STATUS_STYLES[intake.status];
@@ -421,6 +502,19 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
     try { await updateStatus({ token: intake.token, status: newStatus }); toast.success(`Moved to "${STATUS_LABELS[newStatus]}"`); }
     catch { toast.error("Status update failed."); }
     finally { setUpdatingStatus(false); }
+  };
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    try { await updateNotes({ token: intake.token, notes }); toast.success("Notes saved."); }
+    catch { toast.error("Failed to save notes."); }
+    finally { setSavingNotes(false); }
+  };
+
+  const handleArchive = async () => {
+    setArchiving(true);
+    try { await archiveIntake({ token: intake.token }); toast.success(`${intake.clientName} archived.`); }
+    catch { toast.error("Archive failed."); setArchiving(false); }
   };
 
   return (
@@ -441,6 +535,11 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
                 {intake.sourceContactRequestId && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#d4a726]/15 text-[#0f2040] border border-[#d4a726]/30 shrink-0">
                     <Globe className="w-2.5 h-2.5" /> Via VisaClear
+                  </span>
+                )}
+                {intake.notes && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
+                    <NotebookPen className="w-2.5 h-2.5" /> Note
                   </span>
                 )}
               </div>
@@ -516,6 +615,34 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
                   ))}
                 </div>
               </div>
+
+              {/* Notes */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <NotebookPen className="w-3 h-3" /> Notes
+                </p>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  maxLength={5000}
+                  placeholder="Add private notes about this client — only you can see these."
+                  className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 text-foreground placeholder:text-muted-foreground/60"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-[11px] text-muted-foreground">{notes.length}/5000</span>
+                  <button
+                    type="button"
+                    disabled={savingNotes || notes === (intake.notes ?? "")}
+                    onClick={(e) => { e.stopPropagation(); void handleSaveNotes(); }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-opacity"
+                  >
+                    {savingNotes ? "Saving…" : "Save notes"}
+                  </button>
+                </div>
+              </div>
+
               {/* Documents */}
               {intake.documents.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-1">{t("intake.empty")}</p>
@@ -538,8 +665,28 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
                   </div>
                 </div>
               )}
+
               {/* Wait time */}
               <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
+
+              {/* Archive */}
+              {confirmArchive ? (
+                <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-xs text-red-700 font-medium flex-1">Archive {intake.clientName}? They won't appear in your active list.</span>
+                  <button type="button" onClick={() => { void handleArchive(); }} disabled={archiving}
+                    className="text-xs font-bold text-red-600 hover:text-red-800 cursor-pointer disabled:opacity-40">
+                    {archiving ? "Archiving…" : "Confirm"}
+                  </button>
+                  <button type="button" onClick={() => setConfirmArchive(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">Cancel</button>
+                </div>
+              ) : (
+                <button type="button"
+                  onClick={(e) => { e.stopPropagation(); setConfirmArchive(true); }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-600 transition-colors cursor-pointer">
+                  <Archive className="w-3.5 h-3.5" /> Archive client
+                </button>
+              )}
             </div>
           </td>
         </tr>

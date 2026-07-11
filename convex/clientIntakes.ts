@@ -60,11 +60,11 @@ export const listMyIntakes = query({
     // longer entitled to access client documents.
     if (!agent || !agent.agentPlan) return [];
 
-    const intakes = await ctx.db
+    const intakes = (await ctx.db
       .query("client_intakes")
       .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
       .order("desc")
-      .take(200);
+      .take(200)).filter((i) => !i.archived);
 
     return await Promise.all(
       intakes.map(async (intake) => {
@@ -96,6 +96,7 @@ export const listMyIntakes = query({
           visaType: intake.visaType,
           status: intake.status,
           createdAt: intake.createdAt,
+          notes: intake.notes,
           claimedByEmail: claimedBy?.email,
           sourceContactRequestId: intake.sourceContactRequestId,
           documents: documentsWithUrls,
@@ -250,7 +251,19 @@ export const recordDocument = mutation({
       await ctx.db.patch(intake._id, { status: "documents_received" });
     }
 
-    // Notify the agent. Runs after the mutation commits — if RESEND_API_KEY
+    // In-app notification — appears in the agent's bell immediately, no email
+    // dependency. Created here so it fires even if the email action fails.
+    await ctx.db.insert("in_app_notifications", {
+      userId: intake.agentId,
+      type: "client_document_uploaded",
+      title: `${intake.clientName} uploaded a document`,
+      body: args.label,
+      linkTo: "/agents/dashboard",
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Email alert. Runs after the mutation commits — if RESEND_API_KEY
     // is not configured, sendAgentUploadAlert logs and exits cleanly.
     const agent = await ctx.db.get(intake.agentId);
     if (agent?.email) {
@@ -262,5 +275,46 @@ export const recordDocument = mutation({
         destination: intake.destination,
       });
     }
+  },
+});
+
+// ─── Agent: save notes for a client ──────────────────────────────────────────
+export const updateIntakeNotes = mutation({
+  args: {
+    token: v.string(),
+    notes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const agent = await getCurrentUserOrThrow(ctx);
+    if (args.notes.length > 5000)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Notes must be under 5000 characters." });
+
+    const intake = await ctx.db
+      .query("client_intakes")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "Client not found." });
+    if (intake.agentId !== agent._id)
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your client." });
+
+    await ctx.db.patch(intake._id, { notes: args.notes || undefined });
+  },
+});
+
+// ─── Agent: archive a client intake (hides it from the active list) ───────────
+export const archiveIntake = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const agent = await getCurrentUserOrThrow(ctx);
+
+    const intake = await ctx.db
+      .query("client_intakes")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!intake) throw new ConvexError({ code: "NOT_FOUND", message: "Client not found." });
+    if (intake.agentId !== agent._id)
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your client." });
+
+    await ctx.db.patch(intake._id, { archived: true });
   },
 });
