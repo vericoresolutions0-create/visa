@@ -1738,6 +1738,7 @@ function DashboardInner() {
   };
 
   const myProfile = useQuery(api.agents.getMyProfile, {});
+  const trialStatus = useQuery(api.agentTrials.getMyTrialStatus, {});
   const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
   const contactRequests = (useQuery(api.agents.getMyContactRequests, {}) ?? []) as ContactRequest[];
@@ -1855,6 +1856,71 @@ function DashboardInner() {
 
         {/* Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          {/* Trial banner — shown whenever admin has granted an active trial */}
+          {trialStatus && (
+            <div className={cn(
+              "mb-5 rounded-2xl border p-4 sm:p-5 flex items-start gap-4 relative overflow-hidden",
+              trialStatus.daysLeft <= 7
+                ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-red-50/40"
+                : "border-accent/25 bg-gradient-to-br from-accent/5 to-purple-500/5",
+            )}>
+              <div className={cn(
+                "absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl",
+                trialStatus.daysLeft <= 7
+                  ? "bg-linear-to-r from-amber-400 to-red-500"
+                  : "bg-linear-to-r from-accent to-purple-500",
+              )} />
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                trialStatus.daysLeft <= 7 ? "bg-amber-500" : "bg-accent",
+              )}>
+                {trialStatus.daysLeft <= 7
+                  ? <Zap className="w-5 h-5 text-white" />
+                  : <Star className="w-5 h-5 text-white" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-sm font-bold text-primary">
+                    {trialStatus.daysLeft <= 7 ? "Trial Ending Soon" : `${trialStatus.plan === "agent_listing" ? "Listing" : trialStatus.plan === "agent_featured" ? "Featured" : "White Label"} Plan Trial`}
+                  </span>
+                  <span className={cn(
+                    "text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full text-white",
+                    trialStatus.daysLeft <= 7
+                      ? "bg-linear-to-r from-amber-500 to-red-500"
+                      : "bg-linear-to-r from-accent to-purple-500",
+                  )}>
+                    {trialStatus.daysLeft <= 7 ? `${trialStatus.daysLeft} days left` : "Free Trial"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                  {trialStatus.daysLeft <= 7
+                    ? <>Your trial expires on <strong>{new Date(trialStatus.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>. Subscribe now to keep your placement, client pipeline, and listing without interruption.</>
+                    : <>You have full access to <strong>{trialStatus.plan === "agent_listing" ? "Listing" : trialStatus.plan === "agent_featured" ? "Featured" : "White Label"}</strong> features. Your trial runs until <strong>{new Date(trialStatus.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong> — <strong>{trialStatus.daysLeft} days</strong> from today. No payment until you subscribe.</>
+                  }
+                </p>
+                <button
+                  onClick={() => navigate("/pricing?agent=true")}
+                  className={cn(
+                    "mt-3 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer border-none transition-opacity hover:opacity-80",
+                    trialStatus.daysLeft <= 7
+                      ? "bg-amber-500 text-white"
+                      : "bg-accent text-white",
+                  )}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Subscribe to keep access →
+                </button>
+              </div>
+              <div className="hidden sm:flex flex-col items-center text-center shrink-0 min-w-[52px]">
+                <span className={cn(
+                  "text-2xl font-extrabold leading-none",
+                  trialStatus.daysLeft <= 7 ? "text-amber-600" : "text-accent",
+                )}>{trialStatus.daysLeft}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mt-0.5">days left</span>
+              </div>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={section}

@@ -80,6 +80,17 @@ export default defineSchema({
     stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
     agentStripeSubscriptionId: v.optional(v.string()),
+    agentTrialPlan: v.optional(
+      v.union(
+        v.literal("agent_listing"),
+        v.literal("agent_featured"),
+        v.literal("agency_white_label"),
+      ),
+    ),
+    agentTrialExpiresAt: v.optional(v.string()),
+    agentTrialGrantedAt: v.optional(v.string()),
+    agentTrialGrantedBy: v.optional(v.id("users")),
+    agentTrialNote: v.optional(v.string()),
     paystackReference: v.optional(v.string()),
     // Which influencer affiliate code (if any) brought this user to VisaClear.
     // Separate from referredByCode, which is the peer-to-peer user referral system.
@@ -98,6 +109,7 @@ export default defineSchema({
     .index("by_plan", ["plan"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"])
     .index("by_agent_stripe_subscription", ["agentStripeSubscriptionId"])
+    .index("by_agent_trial_plan", ["agentTrialPlan"])
     .index("by_influencer_code", ["influencerCode"])
     .index("by_creator_code", ["creatorCode"]),
 

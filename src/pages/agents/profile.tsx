@@ -12,7 +12,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn } from "@/lib/utils.ts";
 import {
   ArrowLeft, MapPin, Briefcase, Languages, Check, MessageCircle,
-  Phone, BadgeCheck, Star, Globe, ChevronRight,
+  Phone, BadgeCheck, Star, Globe, ChevronRight, Gem,
 } from "lucide-react";
 
 function toWhatsAppNumber(phone: string): string {
@@ -138,7 +138,22 @@ export default function AgentProfilePage() {
                 <h1 className="font-serif text-2xl font-semibold text-primary leading-tight">
                   {profile.fullName}
                 </h1>
-                {profile.verified && (
+                {profile.tier === "agency_white_label" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold bg-linear-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200">
+                    <Gem className="w-3 h-3" /> Elite Agency
+                  </span>
+                )}
+                {profile.tier === "agent_featured" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                    <Star className="w-3 h-3 fill-purple-500" /> Featured Agent
+                  </span>
+                )}
+                {profile.tier === "agent_listing" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <BadgeCheck className="w-3 h-3" /> Verified Agent
+                  </span>
+                )}
+                {profile.verified && !profile.tier && (
                   <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20">
                     <BadgeCheck className="w-3 h-3" /> Verified
                   </span>

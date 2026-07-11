@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as adminOrgs from "../adminOrgs.js";
 import type * as agentReferralCommissions from "../agentReferralCommissions.js";
+import type * as agentTrials from "../agentTrials.js";
 import type * as agents from "../agents.js";
 import type * as ai__languageNames from "../ai/_languageNames.js";
 import type * as ai_assistant from "../ai/assistant.js";
@@ -94,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminOrgs: typeof adminOrgs;
   agentReferralCommissions: typeof agentReferralCommissions;
+  agentTrials: typeof agentTrials;
   agents: typeof agents;
   "ai/_languageNames": typeof ai__languageNames;
   "ai/assistant": typeof ai_assistant;

@@ -15,7 +15,7 @@ import {
   Globe, ArrowLeft, Users, Star, MapPin, ChevronRight,
   Plus, Check, Shield, MessageCircle, Search, Zap,
   Languages, Briefcase, Phone, BadgeCheck, LayoutDashboard,
-  TrendingUp,
+  TrendingUp, Gem,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ import { AGENT_PLANS, SPECIALISATIONS, LANGUAGES_LIST } from "@/lib/agent-plans.
 import { AVAILABLE_DESTINATIONS } from "@/lib/visa-data.ts";
 
 // ─── Agent Card ───────────────────────────────────────────────────────────────
+
+type AgentTier = "agent_listing" | "agent_featured" | "agency_white_label";
 
 type AgentProfile = {
   _id: string;
@@ -38,13 +40,37 @@ type AgentProfile = {
   rating?: number;
   reviewCount?: number;
   phone?: string;
+  tier?: AgentTier;
+};
+
+// Tier badge config — one source of truth for badge icon, label, and colours
+// used in both the marketplace card and the public profile page.
+const TIER_BADGE: Record<AgentTier, { label: string; icon: React.ReactNode; card: string; badge: string }> = {
+  agency_white_label: {
+    label: "Elite Agency",
+    icon: <Gem className="w-3 h-3" />,
+    card: "border-amber-300/70 ring-1 ring-amber-200/60 shadow-sm",
+    badge: "bg-linear-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200",
+  },
+  agent_featured: {
+    label: "Featured Agent",
+    icon: <Star className="w-3 h-3 fill-purple-500" />,
+    card: "border-purple-300/50 ring-1 ring-purple-200/40 shadow-sm",
+    badge: "bg-purple-50 text-purple-700 border border-purple-200",
+  },
+  agent_listing: {
+    label: "Verified Agent",
+    icon: <BadgeCheck className="w-3 h-3" />,
+    card: "border-blue-200/60 ring-1 ring-blue-100/50",
+    badge: "bg-blue-50 text-blue-700 border border-blue-200",
+  },
 };
 
 function toWhatsAppNumber(phone: string): string {
   return phone.replace(/[^\d]/g, "");
 }
 
-function AgentCard({ agent, isFeatured = false }: { agent: AgentProfile; isFeatured?: boolean }) {
+function AgentCard({ agent }: { agent: AgentProfile }) {
   const { t } = useTranslation("agents");
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
@@ -80,17 +106,17 @@ function AgentCard({ agent, isFeatured = false }: { agent: AgentProfile; isFeatu
       )}`
     : null;
 
+  const tierCfg = agent.tier ? TIER_BADGE[agent.tier] : null;
+
   return (
     <div className={cn(
       "bg-card border rounded-xl p-5 hover:shadow-md transition-all",
-      isFeatured
-        ? "border-amber-300/60 ring-1 ring-amber-200/50 shadow-sm"
-        : "border-border hover:border-primary/20",
+      tierCfg ? tierCfg.card : "border-border hover:border-primary/20",
     )}>
-      {isFeatured && (
-        <div className="flex items-center gap-1.5 mb-3">
-          <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-600">Featured</span>
+      {tierCfg && (
+        <div className={cn("inline-flex items-center gap-1.5 mb-3 text-[11px] font-bold uppercase tracking-[0.1em] px-2.5 py-1 rounded-full", tierCfg.badge)}>
+          {tierCfg.icon}
+          {tierCfg.label}
         </div>
       )}
       <div className="flex items-start gap-4">
@@ -100,7 +126,7 @@ function AgentCard({ agent, isFeatured = false }: { agent: AgentProfile; isFeatu
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-semibold text-foreground">{agent.fullName}</span>
-            {agent.verified && (
+            {agent.verified && !agent.tier && (
               <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20">
                 <Check className="w-2.5 h-2.5" /> {t("card.verified")}
               </span>
@@ -517,7 +543,7 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
                   </div>
                   <div className="space-y-3">
                     {searchResults.featured.map((a) => (
-                      <AgentCard key={a._id} agent={a} isFeatured />
+                      <AgentCard key={a._id} agent={a} />
                     ))}
                   </div>
                 </div>
@@ -562,7 +588,7 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
                 <span className="font-semibold text-sm text-primary uppercase tracking-widest">{t("inner.featured")}</span>
               </div>
               <div className="space-y-3">
-                {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} isFeatured />)}
+                {featuredAgents.map((a) => <AgentCard key={a._id} agent={a} />)}
               </div>
             </div>
           )}
