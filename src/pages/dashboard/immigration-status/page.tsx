@@ -1334,7 +1334,7 @@ export default function ImmigrationStatusPage() {
                   onClick={() => navigate("/pricing")}
                   className="w-full h-11 bg-purple-700 text-white font-bold text-sm rounded-xl hover:bg-purple-800 transition-colors flex items-center justify-center gap-2"
                 >
-                  Upgrade to Expert · £20/mo <ArrowRight className="w-4 h-4" />
+                  Upgrade to Expert · £19/mo <ArrowRight className="w-4 h-4" />
                 </button>
                 <p className="text-[10.5px] text-slate-400 text-center mt-2">Cancel anytime · includes everything in Pro</p>
               </div>
