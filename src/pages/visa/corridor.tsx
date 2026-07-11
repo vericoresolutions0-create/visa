@@ -299,10 +299,21 @@ function useCorridorJsonLd(
       })),
     };
 
+    const breadcrumbSchema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://visaclear.app" },
+        { "@type": "ListItem", position: 2, name: "Visa Guides", item: "https://visaclear.app/visa" },
+        { "@type": "ListItem", position: 3, name: `${origin} → ${destination}`, item: url.split("/").slice(0, -1).join("/") },
+        { "@type": "ListItem", position: 4, name: visaType.name, item: url },
+      ],
+    };
+
     const script = document.createElement("script");
     script.id = "vc-corridor-jsonld";
     script.type = "application/ld+json";
-    script.textContent = JSON.stringify([faqSchema, howToSchema]);
+    script.textContent = JSON.stringify([faqSchema, howToSchema, breadcrumbSchema]);
     document.head.appendChild(script);
 
     return () => {

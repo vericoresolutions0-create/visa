@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { useEffect } from "react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Globe, Clock, Tag, ChevronRight } from "lucide-react";
@@ -32,10 +33,42 @@ export default function BlogArticlePage() {
     body: overlay.body ?? baseArticle.body,
   } : baseArticle;
 
+  const canonicalUrl = id ? `https://visaclear.app/blog/${id}` : undefined;
+
   useSeo({
     title: article ? article.title : loading ? "Loading…" : "Article Not Found",
     description: article ? article.excerpt : "This article could not be found.",
+    canonical: canonicalUrl,
   });
+
+  useEffect(() => {
+    if (!article || !canonicalUrl) return;
+    const existing = document.getElementById("vc-article-jsonld");
+    if (existing) existing.remove();
+
+    const script = document.createElement("script");
+    script.id = "vc-article-jsonld";
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: article.title,
+      description: article.excerpt,
+      url: canonicalUrl,
+      datePublished: article.publishedAt,
+      author: { "@type": "Organization", name: "VisaClear by Vericore" },
+      publisher: {
+        "@type": "Organization",
+        name: "VisaClear by Vericore",
+        url: "https://visaclear.app",
+      },
+    });
+    document.head.appendChild(script);
+
+    return () => {
+      document.getElementById("vc-article-jsonld")?.remove();
+    };
+  }, [article, canonicalUrl]);
 
   if (loading) {
     return (

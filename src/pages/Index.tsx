@@ -44,6 +44,7 @@ export default function Index() {
     title: "VisaClear by Vericore",
     description:
       "Stop getting your visa rejected. Get a precise, personalised visa document checklist in 60 seconds. Built for African, Asian, and LatAm applicants.",
+    canonical: "https://visaclear.app",
   });
   const navigate = useNavigate();
   const { t } = useTranslation("common");

@@ -8,40 +8,31 @@ type SeoProps = {
 
 const BASE_TITLE = "VisaClear by Vericore";
 
+function setMeta(selector: string, attr: string, value: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(selector);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, value);
+    document.head.appendChild(el);
+  }
+  el.content = content;
+}
+
 export function useSeo({ title, description, canonical }: SeoProps) {
   useEffect(() => {
-    // Title
-    document.title = title === BASE_TITLE ? title : `${title} | ${BASE_TITLE}`;
+    const fullTitle = title === BASE_TITLE ? title : `${title} | ${BASE_TITLE}`;
 
-    // Description
-    let metaDesc = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement("meta");
-      metaDesc.name = "description";
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.content = description;
+    document.title = fullTitle;
 
-    // OG Title
-    let ogTitle = document.querySelector<HTMLMetaElement>('meta[property="og:title"]');
-    if (!ogTitle) {
-      ogTitle = document.createElement("meta");
-      ogTitle.setAttribute("property", "og:title");
-      document.head.appendChild(ogTitle);
-    }
-    ogTitle.content = document.title;
+    setMeta('meta[name="description"]', "name", "description", description);
+    setMeta('meta[property="og:title"]', "property", "og:title", fullTitle);
+    setMeta('meta[property="og:description"]', "property", "og:description", description);
+    setMeta('meta[name="twitter:title"]', "name", "twitter:title", fullTitle);
+    setMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
 
-    // OG Description
-    let ogDesc = document.querySelector<HTMLMetaElement>('meta[property="og:description"]');
-    if (!ogDesc) {
-      ogDesc = document.createElement("meta");
-      ogDesc.setAttribute("property", "og:description");
-      document.head.appendChild(ogDesc);
-    }
-    ogDesc.content = description;
-
-    // Canonical
     if (canonical) {
+      setMeta('meta[property="og:url"]', "property", "og:url", canonical);
+
       let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
       if (!link) {
         link = document.createElement("link");

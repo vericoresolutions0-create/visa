@@ -2,49 +2,49 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <!-- ── Core pages ─────────────────────────────────────────── -->
-  <url><loc>https://visaclear.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://visaclear.app/checklist</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://visaclear.app/risk-score</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://visaclear.app/wall-of-fame</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://visaclear.app/wait-times</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://visaclear.app/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://visaclear.app/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://visaclear.app/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://visaclear.app/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://visaclear.app/agents</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://visaclear.app/passport-photo</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://visaclear.app/white-label</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://visaclear.app/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://visaclear.app/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://visaclear.app/</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://visaclear.app/checklist</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/risk-score</loc><lastmod>2025-06-01</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/wall-of-fame</loc><lastmod>2025-07-01</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/wait-times</loc><lastmod>2025-07-01</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://visaclear.app/pricing</loc><lastmod>2025-06-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://visaclear.app/blog</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://visaclear.app/about</loc><lastmod>2025-06-01</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://visaclear.app/contact</loc><lastmod>2025-06-01</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://visaclear.app/agents</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://visaclear.app/passport-photo</loc><lastmod>2025-06-01</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://visaclear.app/white-label</loc><lastmod>2025-06-01</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://visaclear.app/terms</loc><lastmod>2025-01-01</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://visaclear.app/privacy</loc><lastmod>2025-01-01</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
 
   <!-- ── Visa corridor hub + compare ───────────────────────── -->
-  <url><loc>https://visaclear.app/visa</loc><changefreq>weekly</changefreq><priority>0.95</priority></url>
-  <url><loc>https://visaclear.app/visa/compare</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://visaclear.app/visa</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/compare</loc><lastmod>2025-07-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
 
   <!-- ── Nigeria → Canada ───────────────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/nigeria/canada/express-entry</loc><changefreq>monthly</changefreq><priority>0.95</priority></url>
-  <url><loc>https://visaclear.app/visa/nigeria/canada/study-permit</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://visaclear.app/visa/nigeria/canada/visitor-visa</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://visaclear.app/visa/nigeria/canada/express-entry</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/nigeria/canada/study-permit</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/nigeria/canada/visitor-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
 
   <!-- ── Nigeria → United Kingdom ──────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/nigeria/united-kingdom/skilled-worker</loc><changefreq>monthly</changefreq><priority>0.95</priority></url>
-  <url><loc>https://visaclear.app/visa/nigeria/united-kingdom/student</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/nigeria/united-kingdom/skilled-worker</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/nigeria/united-kingdom/student</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
   <!-- ── United Kingdom → Spain ────────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/united-kingdom/spain/digital-nomad-visa</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://visaclear.app/visa/united-kingdom/spain/non-lucrative-visa</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://visaclear.app/visa/united-kingdom/spain/digital-nomad-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/united-kingdom/spain/non-lucrative-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
 
   <!-- ── United Kingdom → Portugal ─────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/united-kingdom/portugal/d7-visa</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/united-kingdom/portugal/d7-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
   <!-- ── India → United Kingdom ────────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/india/united-kingdom/skilled-worker</loc><changefreq>monthly</changefreq><priority>0.95</priority></url>
-  <url><loc>https://visaclear.app/visa/india/united-kingdom/student</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/india/united-kingdom/skilled-worker</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/india/united-kingdom/student</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
   <!-- ── Philippines → United Arab Emirates ────────────────── -->
-  <url><loc>https://visaclear.app/visa/philippines/united-arab-emirates/employment-visa</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/philippines/united-arab-emirates/employment-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
-  <!-- ── Brazil → Portugal ─────────────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/brazil/portugal/d7-visa</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <!-- ── Brazil → Portugal ─────────────────────────── -->
+  <url><loc>https://visaclear.app/visa/brazil/portugal/d7-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
 </urlset>
