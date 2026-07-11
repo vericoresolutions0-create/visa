@@ -230,7 +230,9 @@ export default defineSchema({
     analysis: v.string(),
     recoveryPlan: v.string(),
     createdAt: v.string(),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_destination_visatype", ["destination", "visaType"]),
 
   // Tracks PDF uploads for the Rejection Analyser so we can verify the
   // caller uploaded the file themselves before allowing it to be read or
@@ -420,7 +422,8 @@ export default defineSchema({
     moderatedByUserId: v.optional(v.id("users")),
   })
     .index("by_status", ["status"])
-    .index("by_user", ["submittedByUserId"]),
+    .index("by_user", ["submittedByUserId"])
+    .index("by_destination_visatype", ["destination", "visaType"]),
 
   // A submitted Risk Score result — deliberately readable by anyone with
   // the _id (no auth check on the read), since the whole point is a
@@ -1068,4 +1071,24 @@ export default defineSchema({
     .index("by_actor", ["actorUserId"])
     .index("by_action", ["action"])
     .index("by_created", ["createdAt"]),
+
+  // Corridor-level policy alert subscriptions — public, no-sign-in, deduped
+  // per email+corridor. Keyed by email+origin+destination+visaType so a user
+  // can subscribe to multiple corridors without duplicates.
+  corridor_alert_subscriptions: defineTable({
+    email: v.string(),
+    origin: v.string(),
+    destination: v.string(),
+    visaType: v.string(),
+    subscribedAt: v.string(),
+  })
+    .index("by_email_and_corridor", ["email", "origin", "destination", "visaType"])
+    .index("by_corridor", ["origin", "destination", "visaType"]),
+
+  // Same backstop pattern as contact_daily_usage, for the public corridor
+  // alert subscription mutation.
+  corridor_alert_daily_usage: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
 });

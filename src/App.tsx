@@ -81,6 +81,9 @@ const GoogleLoginPage = lazy(() => import("./pages/google-login/page.tsx"));
 const MenuPage = lazy(() => import("./pages/menu/page.tsx"));
 const CommunityPage = lazy(() => import("./pages/community/page.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const VisaHubPage = lazy(() => import("./pages/visa/index.tsx"));
+const VisaCorridorPage = lazy(() => import("./pages/visa/corridor.tsx"));
+const VisaComparePage = lazy(() => import("./pages/visa/compare.tsx"));
 const InfluencerPortalPage = lazy(() => import("./pages/influencer/portal.tsx"));
 const ImmigrationStatusPage = lazy(() => import("./pages/dashboard/immigration-status/page.tsx"));
 const EuropeanTrackerPage = lazy(() => import("./pages/dashboard/european-tracker/page.tsx"));
@@ -154,6 +157,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       "/influencer",
       "/ref",
       "/creator",
+      "/visa",
     ];
     if (!onboarded && !skipPaths.some((p) => location.pathname.startsWith(p))) {
       navigate("/onboarding", { replace: true });
@@ -247,6 +251,9 @@ function AppRoutes() {
           <Route path="/ref/:slug" element={<RefPage />} />
           <Route path="/creator/portal/:token" element={<CreatorPortalPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/visa" element={<VisaHubPage />} />
+          <Route path="/visa/compare" element={<VisaComparePage />} />
+          <Route path="/visa/:originSlug/:destinationSlug/:visaTypeSlug" element={<VisaCorridorPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
