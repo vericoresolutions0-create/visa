@@ -15,7 +15,6 @@ import {
 import {
   CheckCircle2,
   AlertTriangle,
-  Eye,
   Clock,
   DollarSign,
   Users,
@@ -746,7 +745,6 @@ export default function CorridorPage() {
             </p>
             <CorridorAgentList
               destination={corridor.destination}
-              specialisation={corridor.destination}
             />
           </div>
 

@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAdmin } from "./admin.ts";
 
 // ── Public: verified agents for a corridor ──────────────────────────────────
 // Returns ONLY safe public fields. Never exposes email, phone, creditBalance,
@@ -186,14 +187,7 @@ export const adminGetCorridorAlertSubscribers = query({
     destination: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // requireAdmin pattern — read from authHelpers
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHORIZED", message: "Not authenticated." });
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email ?? ""))
-      .unique();
-    if (user?.role !== "admin") throw new ConvexError({ code: "FORBIDDEN", message: "Admin only." });
+    await requireAdmin(ctx);
 
     if (args.origin && args.destination) {
       return await ctx.db

@@ -34,7 +34,11 @@ export const getAuditLog = query({
   args: {},
   handler: async (ctx): Promise<Doc<"admin_audit_log">[]> => {
     await requireAdmin(ctx);
-    return await ctx.db.query("admin_audit_log").order("desc").take(100);
+    try {
+      return await ctx.db.query("admin_audit_log").order("desc").take(100);
+    } catch {
+      return [];
+    }
   },
 });
 

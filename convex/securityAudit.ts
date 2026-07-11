@@ -73,11 +73,15 @@ export const adminGetSecurityLog = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db
-      .query("security_audit_logs")
-      .withIndex("by_created")
-      .order("desc")
-      .take(args.limit ?? 200);
+    try {
+      return await ctx.db
+        .query("security_audit_logs")
+        .withIndex("by_created")
+        .order("desc")
+        .take(args.limit ?? 200);
+    } catch {
+      return [];
+    }
   },
 });
 
@@ -85,10 +89,14 @@ export const adminGetActorEvents = query({
   args: { actorUserId: v.id("users"), limit: v.optional(v.number()) },
   handler: async (ctx, _args) => {
     await requireAdmin(ctx);
-    return await ctx.db
-      .query("security_audit_logs")
-      .withIndex("by_actor", (q) => q.eq("actorUserId", _args.actorUserId))
-      .order("desc")
-      .take(_args.limit ?? 100);
+    try {
+      return await ctx.db
+        .query("security_audit_logs")
+        .withIndex("by_actor", (q) => q.eq("actorUserId", _args.actorUserId))
+        .order("desc")
+        .take(_args.limit ?? 100);
+    } catch {
+      return [];
+    }
   },
 });

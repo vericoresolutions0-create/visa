@@ -1,7 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertCircle, Home, RotateCw, UserRoundCheck } from "lucide-react";
+import { AlertCircle, Home, LayoutDashboard, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
-import { signInDemoUser } from "@/hooks/use-demo-auth.ts";
 import { captureException } from "@/lib/sentry.ts";
 
 type ErrorBoundaryProps = {
@@ -49,8 +48,8 @@ export class ErrorBoundary extends Component<
             Something needs a refresh
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            The demo hit a runtime error instead of loading the next screen. You
-            can reopen the demo dashboard or return home.
+            The page hit an unexpected error and could not load. You can try
+            reloading, go back to the dashboard, or return home.
           </p>
           {this.state.message ? (
             <div className="mb-5 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-left">
@@ -65,13 +64,10 @@ export class ErrorBoundary extends Component<
           <div className="grid gap-3">
             <Button
               className="cursor-pointer font-semibold"
-              onClick={() => {
-                signInDemoUser();
-                window.location.assign("/dashboard");
-              }}
+              onClick={() => window.location.assign("/dashboard")}
             >
-              <UserRoundCheck className="w-4 h-4" />
-              Open Demo Dashboard
+              <LayoutDashboard className="w-4 h-4" />
+              Back to Dashboard
             </Button>
             <Button
               variant="secondary"

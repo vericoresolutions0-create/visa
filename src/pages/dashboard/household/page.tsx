@@ -366,7 +366,7 @@ function ManagedDependentsSection() {
     if (gate()) return;
     try {
       await deleteDependent({ id: id as Parameters<typeof deleteDependent>[0]["id"] });
-      toast.success(t("dep.toast_removed", { name }));
+      toast.success(t("dep.toast_removed", { name: _name }));
     } catch (err) {
       toast.error(errMessage(err, t("dep.toast_remove_error")));
     }

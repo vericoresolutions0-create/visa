@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment, Component, type ReactNode, type ErrorInfo } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -48,6 +48,32 @@ const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "audit-log",      icon: ListChecks,    label: "Audit Log" },
   { id: "blog",           icon: FileText,      label: "Blog" },
 ];
+
+// Isolates a single admin tab panel from crashing the whole page.
+// key={tab} on the wrapper ensures it resets when switching tabs.
+class PanelErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
+  componentDidCatch(_e: Error, info: ErrorInfo) { console.error("Admin panel error:", _e, info.componentStack); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <AlertCircle className="w-8 h-8 text-red-400" />
+          <p className="text-sm font-semibold text-red-500">This panel failed to load.</p>
+          <p className="text-xs text-gray-400 max-w-sm text-center break-words">{this.state.error}</p>
+          <button
+            className="text-xs text-[#0f2040] font-semibold underline cursor-pointer"
+            onClick={() => this.setState({ error: null })}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number | string; sub?: string }) {
   return (
@@ -220,6 +246,7 @@ function AdminInner() {
 
         {/* Page content */}
         <main className="flex-1 p-6 md:p-8">
+        <PanelErrorBoundary key={tab}>
 
           {/* Overview */}
           {tab === "overview" && (
@@ -268,9 +295,8 @@ function AdminInner() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {users.map((user) => (
-                        <>
+                        <Fragment key={user._id}>
                           <tr
-                            key={user._id}
                             className="hover:bg-gray-50/60 cursor-pointer transition-colors"
                             onClick={() => setExpandedUser(expandedUser === user._id ? null : user._id)}
                           >
@@ -346,7 +372,7 @@ function AdminInner() {
                               </td>
                             </tr>
                           )}
-                        </>
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -458,6 +484,7 @@ function AdminInner() {
           {tab === "audit-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AuditLogPanel /></div>}
           {tab === "blog" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><BlogAdminPanel /></div>}
 
+        </PanelErrorBoundary>
         </main>
       </div>
     </div>
@@ -1433,7 +1460,8 @@ type LicensePlan = "agent_listing" | "agent_featured" | "agency_white_label";
 function suggestLicensePlan(requestedPlan: string): LicensePlan {
   if (requestedPlan === "starter") return "agent_listing";
   if (requestedPlan === "agency") return "agency_white_label";
-  return "agency_white_label";
+  if (requestedPlan === "professional" || requestedPlan === "featured") return "agent_featured";
+  return "agent_listing";
 }
 
 function IssueCodeControl({ applicationId, email, requestedPlan }: { applicationId: Id<"whitelabel_applications">; email: string; requestedPlan: string }) {

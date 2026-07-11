@@ -345,13 +345,17 @@ export const getMyUnlockedLeads = query({
 export const getMySubmittedLeads = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-    return await ctx.db
-      .query("marketplace_leads")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .take(20);
+    try {
+      const user = await getCurrentUser(ctx);
+      if (!user) return [];
+      return await ctx.db
+        .query("marketplace_leads")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .take(20);
+    } catch {
+      return [];
+    }
   },
 });
 
