@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-    "build": "tsc -b --force && vite build",
+    "build": "tsc -b --force && vite build && node scripts/prerender.mjs",
     "lint": "eslint .",
     "prettier-fix": "prettier --write .",
     "prettier-check": "prettier --check ."
