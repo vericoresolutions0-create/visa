@@ -3699,6 +3699,8 @@ const CATEGORY_ORDER = ["Auth", "AI", "Email", "Config", "Payments"];
 
 function SystemHealthPanel() {
   const health = useQuery(api.systemHealth.getSystemHealth, {});
+  const tgConfigured  = useQuery(api.telegramBot.isTelegramConfigured, {});
+  const waConfigured  = useQuery(api.whatsappBot.isWhatsAppConfigured, {});
   const navigate = useNavigate();
 
   if (health === undefined) {
@@ -3843,7 +3845,60 @@ function SystemHealthPanel() {
         </div>
       </div>
 
-      {/* Solid status */}
+      {/* Notification channels */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+            <MessageCircle className="w-3.5 h-3.5" /> Notification Channels
+          </span>
+          <span className="text-[10.5px] text-muted-foreground font-medium">Admin alerts — Telegram &amp; WhatsApp</span>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {([
+            {
+              label: "Telegram Bot",
+              status: tgConfigured,
+              tab: "telegram-bot" as Tab,
+              hint: "Set TELEGRAM_BOT_TOKEN to enable",
+            },
+            {
+              label: "WhatsApp Bot",
+              status: waConfigured,
+              tab: "whatsapp-bot" as Tab,
+              hint: "Set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_NUMBER to enable",
+            },
+          ] as const).map(({ label, status, tab: targetTab, hint }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-3">
+              <div className={cn(
+                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                status ? "bg-emerald-50" : "bg-gray-100"
+              )}>
+                <MessageCircle className={cn("w-3.5 h-3.5", status ? "text-emerald-600" : "text-gray-400")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">{label}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  {status === undefined ? "Checking…" : status ? "Connected and active" : hint}
+                </p>
+              </div>
+              {status === undefined ? (
+                <span className="text-[9.5px] font-bold bg-gray-50 text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5">…</span>
+              ) : status ? (
+                <span className="text-[9.5px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full px-1.5 py-0.5">Live ✓</span>
+              ) : (
+                <button
+                  onClick={() => navigate(`/admin?tab=${targetTab}`)}
+                  className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  Configure →
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Confirmed solid */}
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100">
           <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
@@ -3852,11 +3907,12 @@ function SystemHealthPanel() {
         </div>
         <div className="divide-y divide-gray-50">
           {[
-            { icon: Shield,       title: "Security headers",         desc: "CSP, X-Frame-Options, HSTS, Referrer-Policy on every response" },
-            { icon: Globe,        title: "Backend on Convex cloud",  desc: "ardent-pelican-768 — independent of your laptop, always on" },
-            { icon: Lock,         title: "RLS & tenant isolation",   desc: "Every mutation goes through getCurrentUserOrThrow() — no cross-user reads" },
-            { icon: RefreshCw,    title: "PWA service worker v6",    desc: "Network-first HTML, cache-first assets, push notifications wired" },
-            { icon: Sparkles,     title: "5 languages live",         desc: "EN · FR · ES · PT · AR · HI — checklist & core UI fully translated" },
+            { icon: Shield,       title: "Security headers",                  desc: "CSP, X-Frame-Options, HSTS, Referrer-Policy on every response" },
+            { icon: Globe,        title: "Backend on Convex cloud",           desc: "ardent-pelican-768 — independent of your laptop, always on" },
+            { icon: Lock,         title: "RLS & tenant isolation",            desc: "Every mutation goes through getCurrentUserOrThrow() — no cross-user reads" },
+            { icon: RefreshCw,    title: "PWA service worker v6",             desc: "Network-first HTML, cache-first assets, push notifications wired" },
+            { icon: Sparkles,     title: "6 languages live",                  desc: "EN · FR · ES · PT · AR · HI — UI and all 10 blog articles fully translated" },
+            { icon: Globe,        title: "iOS PWA splash screens",            desc: "13 device-specific launch images deployed — white flash on iPhone eliminated" },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-start gap-3 px-5 py-3">
               <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
@@ -3872,29 +3928,59 @@ function SystemHealthPanel() {
         </div>
       </div>
 
+      {/* Action Now */}
+      <div className="rounded-xl border border-red-200 bg-red-50/50 overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-red-200">
+          <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> Action Now
+          </span>
+        </div>
+        <div className="divide-y divide-red-100/60">
+          <div className="flex items-start gap-3 px-5 py-3.5">
+            <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-900">GitHub PAT token — security risk</p>
+              <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
+                A personal access token is embedded in the git remote URL and is visible in git config. Rotate it on GitHub and replace the remote URL with SSH or a token-only credential. Do this before your next push.
+              </p>
+            </div>
+            <a
+              href="https://github.com/settings/tokens"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[9.5px] font-bold bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-red-200 transition-colors shrink-0"
+            >
+              GitHub →
+            </a>
+          </div>
+          <div className="flex items-start gap-3 px-5 py-3.5">
+            <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-900">Paystack secret key — Nigerian payments blocked</p>
+              <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
+                All other payment integrations are live. Nigerian card payments are gated on this key. Add <code className="bg-red-100 rounded px-0.5">PAYSTACK_SECRET_KEY</code> in the Convex Dashboard → Environment Variables when Paystack provides it.
+              </p>
+            </div>
+            <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">Waiting</span>
+          </div>
+        </div>
+      </div>
+
       {/* Watch list */}
       <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
         <div className="px-5 py-3.5 border-b border-amber-100">
           <span className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" /> Watch list — no action now
+            <Clock className="w-3.5 h-3.5" /> Watch list — no urgency
           </span>
         </div>
         <div className="divide-y divide-amber-100/60">
-          {[
-            { title: "GitHub PAT token",       desc: "Rotate the personal access token in your git remote and switch to SSH keys" },
-            { title: "OG social share image",  desc: "Current share image is the app icon (512×512). A 1200×630 card improves link previews on WhatsApp/Twitter" },
-            { title: "Paystack secret key",    desc: "Nigerian card payments waiting on this key — everything else is live" },
-            { title: "Blog article translations", desc: "FR/ES/PT/AR/HI article copy still to be written — framework is ready" },
-            { title: "iOS launch splash screens", desc: "Brief white flash on iPhone PWA launch — cosmetic only, needs apple-touch-startup-image tags" },
-          ].map(({ title, desc }) => (
-            <div key={title} className="flex items-start gap-3 px-5 py-3">
-              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-amber-900">{title}</p>
-                <p className="text-[11px] text-amber-700/80 font-medium">{desc}</p>
-              </div>
+          <div className="flex items-start gap-3 px-5 py-3">
+            <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-amber-900">OG social share image</p>
+              <p className="text-[11px] text-amber-700/80 font-medium">Current share image is the app icon (512×512). A 1200×630 landscape card improves link previews on WhatsApp, Twitter, and LinkedIn.</p>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
