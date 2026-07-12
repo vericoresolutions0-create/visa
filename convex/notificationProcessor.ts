@@ -8,7 +8,7 @@ export const getDocumentsExpiringOn = internalQuery({
     return await ctx.db
       .query("vault_documents")
       .withIndex("by_expiry_date", (q) => q.eq("expiryDate", args.expiryDate))
-      .collect();
+      .take(1000);
   },
 });
 
@@ -19,7 +19,7 @@ export const getTripsWithTravelDate = internalQuery({
     return await ctx.db
       .query("saved_checklists")
       .withIndex("by_travel_date", (q) => q.eq("travelDate", args.travelDate))
-      .collect();
+      .take(1000);
   },
 });
 

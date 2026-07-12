@@ -124,6 +124,10 @@ function RejectionAnalyserInner() {
   const [activeTab, setActiveTab] = useState<ResultTab>("overview");
   const [copied, setCopied] = useState(false);
 
+  // Marketplace lead consent
+  const [consentToLead, setConsentToLead] = useState(false);
+  const [leadSubmittedAfterAnalysis, setLeadSubmittedAfterAnalysis] = useState(false);
+
   const generateUploadUrl = useMutation(api.rejections.generateRejectionUploadUrl);
   const confirmUpload = useMutation(api.rejections.confirmRejectionUpload);
   const analyseRejection = useAction(api.ai.rejectionAnalyser.analyseRejection);
@@ -187,9 +191,11 @@ function RejectionAnalyserInner() {
         origin,
         language: i18n.language,
         pdfStorageId: pdfStorageId ?? undefined,
+        consentToMarketplaceLead: consentToLead,
       });
       setResult(res as AnalysisResult);
       setActiveTab("overview");
+      setLeadSubmittedAfterAnalysis(consentToLead);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Analysis failed. Please try again.";
       toast.error(msg.replace("ConvexError:", "").trim());
@@ -217,6 +223,8 @@ function RejectionAnalyserInner() {
     setVisaType("");
     setOrigin("");
     setActiveTab("overview");
+    setConsentToLead(false);
+    setLeadSubmittedAfterAnalysis(false);
   };
 
   // ── Loading view ──────────────────────────────────────────────────────────
@@ -313,6 +321,24 @@ function RejectionAnalyserInner() {
               </div>
             </div>
           </div>
+
+          {/* Agent match confirmation */}
+          {leadSubmittedAfterAnalysis && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800 rounded-xl p-4 flex items-start gap-3"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Your details have been shared with verified agents</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed mt-0.5">
+                  Verified immigration specialists on VisaClear may reach out to offer assistance. Your contact details remain masked until you approve.
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Tab nav */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
@@ -763,6 +789,34 @@ function RejectionAnalyserInner() {
         )}
       </div>
 
+      {/* GDPR consent — must be ticked before analysis runs */}
+      <label className="flex items-start gap-3 cursor-pointer group select-none border border-border rounded-xl p-4 bg-card transition-colors hover:border-primary/40">
+        <div className="relative mt-0.5 shrink-0">
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={consentToLead}
+            onChange={(e) => setConsentToLead(e.target.checked)}
+          />
+          <div
+            className={cn(
+              "w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150",
+              consentToLead
+                ? "bg-primary border-primary"
+                : "border-input bg-background group-hover:border-primary/60",
+            )}
+          >
+            {consentToLead && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+          </div>
+        </div>
+        <div className="space-y-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground leading-snug">Connect me with a specialist <span className="text-xs font-normal text-muted-foreground">(optional)</span></p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            I agree that VisaClear may show anonymised details of my refusal (visa type, destination, nationality, and reason codes) to verified agents on the platform who can offer assistance.
+          </p>
+        </div>
+      </label>
+
       <Button
         size="lg"
         className="w-full cursor-pointer font-semibold py-6 text-base shadow-md"
@@ -774,7 +828,7 @@ function RejectionAnalyserInner() {
 
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-accent" /> Processed securely</span>
-        <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-accent" /> Not shared with third parties</span>
+        <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-accent" /> {consentToLead ? "Shared with verified agents only" : "Not shared with third parties"}</span>
         <span className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-accent" /> Expert plan only</span>
       </div>
     </div>

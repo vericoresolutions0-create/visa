@@ -1,4 +1,4 @@
-const CACHE_NAME = "visaclear-v5";
+const CACHE_NAME = "visaclear-v6";
 const urlsToCache = ["/", "/icon/icon-192.png", "/icon/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -94,12 +94,15 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const targetUrl = event.notification?.data?.url ?? "/dashboard";
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if ("focus" in client) return client.focus();
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus().then(() => client.navigate(targetUrl));
+        }
       }
-      if (clients.openWindow) return clients.openWindow("/");
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     })
   );
 });

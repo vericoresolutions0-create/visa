@@ -5,6 +5,16 @@ import { internal } from "./_generated/api";
 import { bumpPlanCounters } from "./platformStats.ts";
 import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
 
+function currentBillingMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthsFromSignup(subscriptionStartedAt: string): number {
+  const elapsed = Date.now() - new Date(subscriptionStartedAt).getTime();
+  return Math.max(1, Math.round(elapsed / (30 * 24 * 60 * 60 * 1000)));
+}
+
 // Lets the frontend know whether to redirect to real Stripe Checkout or
 // fall back to the existing simulated flow — same "not configured yet"
 // pattern used for Google sign-in and the AI features.
@@ -97,6 +107,21 @@ export const applyCheckoutCompleted = internalMutation({
           args.billingCycle,
           args.amountCents,
         );
+      }
+
+      // Log month-1 creator commission for the initial Stripe checkout.
+      // Renewal months (invoice.payment_succeeded) are handled separately in
+      // applySubscriptionRenewal below, which guards against double-counting
+      // by filtering billing_reason === "subscription_create" at the webhook.
+      if (user.creatorCode && (args.plan === "pro" || args.plan === "expert")) {
+        await ctx.scheduler.runAfter(0, internal.creators.logMonthlyCommission, {
+          creatorSlug: user.creatorCode,
+          referredUserId: user._id,
+          plan: args.plan as "pro" | "expert",
+          billingMonth: currentBillingMonth(),
+          subscriptionAmountCents: args.amountCents,
+          monthsFromSignup: 1,
+        });
       }
     } else {
       await ctx.db.patch(user._id, {
@@ -215,6 +240,81 @@ export const applyOneTimePlanPayment = internalMutation({
     // auto-charge), so a referring agent earns commission again each time
     // their referred client actually pays again — not just on day one.
     await creditAgentReferralCommission(ctx, user, args.plan, args.billingCycle, args.amountCents);
+
+    // Same logic applies for creator commissions — log one row per payment,
+    // capped by commissionMonths. logMonthlyCommission's idempotency guard
+    // (by_referred_user + billingMonth) prevents double-counting on retries.
+    if (user.creatorCode) {
+      const effectiveStart = user.subscriptionStartedAt ?? nowIso;
+      await ctx.scheduler.runAfter(0, internal.creators.logMonthlyCommission, {
+        creatorSlug: user.creatorCode,
+        referredUserId: user._id,
+        plan: args.plan,
+        billingMonth: currentBillingMonth(),
+        subscriptionAmountCents: args.amountCents,
+        monthsFromSignup: monthsFromSignup(effectiveStart),
+      });
+    }
+  },
+});
+
+// Called from the Stripe webhook on invoice.payment_succeeded for renewal
+// billing cycles (billing_reason !== "subscription_create"). Handles creator
+// commission for months 2+ of a recurring subscription and keeps
+// lastPaymentAt accurate so the admin panel's "last payment" column stays fresh.
+export const applySubscriptionRenewal = internalMutation({
+  args: {
+    stripeSubscriptionId: v.string(),
+    amountCents: v.number(),
+    stripeEventId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const alreadyProcessed = await ctx.db
+      .query("processed_webhook_events")
+      .withIndex("by_provider_reference", (q) =>
+        q.eq("provider", "stripe").eq("reference", args.stripeEventId),
+      )
+      .unique();
+    if (alreadyProcessed) return;
+    await ctx.db.insert("processed_webhook_events", {
+      provider: "stripe",
+      reference: args.stripeEventId,
+      processedAt: new Date().toISOString(),
+    });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_stripe_subscription", (q) =>
+        q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
+      )
+      .unique();
+    if (!user) return;
+
+    await ctx.db.patch(user._id, { lastPaymentAt: new Date().toISOString() });
+
+    if (user.plan === "pro" || user.plan === "expert") {
+      // Agent earns commission on every renewal, same as the Paystack path —
+      // the idempotency key (stripeEventId) prevents double-counting on retries.
+      if (user.billingCycle) {
+        await creditAgentReferralCommission(
+          ctx,
+          user,
+          user.plan,
+          user.billingCycle as "monthly" | "yearly",
+          args.amountCents,
+        );
+      }
+      if (user.creatorCode && user.subscriptionStartedAt) {
+        await ctx.scheduler.runAfter(0, internal.creators.logMonthlyCommission, {
+          creatorSlug: user.creatorCode,
+          referredUserId: user._id,
+          plan: user.plan,
+          billingMonth: currentBillingMonth(),
+          subscriptionAmountCents: args.amountCents,
+          monthsFromSignup: monthsFromSignup(user.subscriptionStartedAt),
+        });
+      }
+    }
   },
 });
 

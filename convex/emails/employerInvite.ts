@@ -11,7 +11,7 @@ export const sendEmployerInviteEmail = internalAction({
     const { to, orgName, token } = args;
     const safeOrgName = escapeHtml(orgName);
     const subject = `${orgName} has invited you to VisaClear`;
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const inviteUrl = `${siteUrl}/business/invite/${token}`;
     const html = `
 <!DOCTYPE html>

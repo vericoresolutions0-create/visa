@@ -111,7 +111,9 @@ export default function CreatorPortalPage() {
           <div className="text-right">
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Commission rate</div>
             <div className="text-sm font-black text-blue-700">{stats.commissionRatePercent}% recurring</div>
-            <div className="text-[11px] text-slate-400">for {stats.commissionMonths} months per subscriber</div>
+            <div className="text-[11px] text-slate-400">
+              {stats.commissionMonths === 0 ? "unlimited — every payment, forever" : `for ${stats.commissionMonths} months per subscriber`}
+            </div>
           </div>
         </div>
       </header>

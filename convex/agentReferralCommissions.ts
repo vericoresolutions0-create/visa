@@ -135,11 +135,11 @@ export const requestPayout = mutation({
       ctx.db
         .query("agent_referral_commissions")
         .withIndex("by_agent", (q) => q.eq("agentUserId", user._id))
-        .collect(),
+        .take(500),
       ctx.db
         .query("payout_requests")
         .withIndex("by_agent_status", (q) => q.eq("agentUserId", user._id).eq("status", "paid"))
-        .collect(),
+        .take(200),
     ]);
 
     const totalEarned = commissions.reduce((sum, c) => sum + c.commissionCents, 0);

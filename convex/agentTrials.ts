@@ -111,9 +111,9 @@ export const cleanupExpiredTrials = internalMutation({
     const now = new Date().toISOString();
 
     const [listing, featured, whiteLabel] = await Promise.all([
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_listing")).collect(),
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_featured")).collect(),
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agency_white_label")).collect(),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_listing")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_featured")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agency_white_label")).take(500),
     ]);
 
     const expired = [...listing, ...featured, ...whiteLabel].filter(
@@ -150,9 +150,9 @@ export const adminListTrials = query({
     const now = new Date().toISOString();
 
     const [listing, featured, whiteLabel] = await Promise.all([
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_listing")).collect(),
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_featured")).collect(),
-      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agency_white_label")).collect(),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_listing")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_featured")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agency_white_label")).take(500),
     ]);
 
     return [...listing, ...featured, ...whiteLabel]

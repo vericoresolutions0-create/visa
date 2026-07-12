@@ -47,12 +47,11 @@ export default function RiskScorePage() {
 
   const handleSelectOption = (category: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [category]: value }));
-    // Auto-advance — keeps the quiz feeling fast, which matters for completion/share rate.
     setTimeout(() => {
       if (step < TOTAL_STEPS - 1) {
         setStep((s) => s + 1);
       }
-    }, 200);
+    }, 80);
   };
 
   const handleSubmit = async () => {

@@ -30,8 +30,13 @@ export default function AgentProfilePage() {
     profileId ? { profileId } : "skip",
   );
   const contactAgent = useMutation(api.agents.contactAgent);
+  const contactAgentAsGuest = useMutation(api.agents.contactAgentAsGuest);
   const recordProfileView = useMutation(api.agents.recordProfileView);
   const [contacted, setContacted] = useState(false);
+  const [guestSent, setGuestSent] = useState(false);
+  const [guestSending, setGuestSending] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
 
   useEffect(() => {
     if (profile?._id) {
@@ -50,11 +55,6 @@ export default function AgentProfilePage() {
   });
 
   const handleContact = async () => {
-    if (!isAuthenticated) {
-      toast.info("Sign in to contact this agent");
-      navigate("/login");
-      return;
-    }
     if (!profile) return;
     setSending(true);
     try {
@@ -73,6 +73,36 @@ export default function AgentProfilePage() {
       }
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleGuestContact = async () => {
+    if (!profile) return;
+    const name = guestName.trim();
+    const email = guestEmail.trim();
+    if (!name) { toast.error("Please enter your name."); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setGuestSending(true);
+    try {
+      await contactAgentAsGuest({
+        agentProfileId: profile._id as Id<"agent_profiles">,
+        guestName: name,
+        guestEmail: email,
+        message: message.trim() || undefined,
+      });
+      setGuestSent(true);
+      toast.success(`Enquiry sent to ${profile.fullName}.`);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Could not send enquiry. Try again.");
+      }
+    } finally {
+      setGuestSending(false);
     }
   };
 
@@ -229,11 +259,13 @@ export default function AgentProfilePage() {
 
           {/* CTA */}
           {contacted ? (
+            // Authenticated: enquiry confirmed
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20">
               <Check className="w-4 h-4 text-accent" />
               <span className="text-sm font-semibold text-accent">Enquiry sent — the agent will be in touch.</span>
             </div>
-          ) : (
+          ) : isAuthenticated ? (
+            // Authenticated: existing contact form (unchanged)
             <div className="space-y-3">
               {showMessageBox && (
                 <textarea
@@ -253,13 +285,7 @@ export default function AgentProfilePage() {
                   disabled={sending}
                   className="flex-1 cursor-pointer"
                 >
-                  {sending
-                    ? "Sending…"
-                    : showMessageBox
-                    ? "Send Enquiry"
-                    : isAuthenticated
-                    ? "Contact Agent"
-                    : "Sign in to Contact"}
+                  {sending ? "Sending…" : showMessageBox ? "Send Enquiry" : "Contact Agent"}
                 </Button>
                 {showMessageBox && (
                   <Button
@@ -292,6 +318,125 @@ export default function AgentProfilePage() {
                   </a>
                 )}
               </div>
+            </div>
+          ) : guestSent ? (
+            // Guest: post-submission — contact revealed + account prompt
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20">
+                <Check className="w-4 h-4 text-accent" />
+                <span className="text-sm font-semibold text-accent">
+                  Enquiry sent — {profile.fullName} will be in touch.
+                </span>
+              </div>
+              {(whatsappHref || profile.phone) && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                    Contact directly
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {whatsappHref && (
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#25D366]/30 bg-[#25D366]/10 text-xs font-semibold text-[#1f9e54] hover:bg-[#25D366]/20 transition-colors cursor-pointer"
+                        title="Message on WhatsApp"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        WhatsApp
+                      </a>
+                    )}
+                    {profile.phone && (
+                      <a
+                        href={`tel:${profile.phone}`}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+                        title="Call"
+                      >
+                        <Phone className="w-4 h-4 mr-1" />
+                        {profile.phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-xl bg-primary/5 border border-primary/15 p-4">
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed mb-3">
+                  Create a free account to track this enquiry, get notified when {profile.fullName} responds,
+                  and manage all your visa documents in one place.
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/login?returnTo=/agents/profile/${profileId}`)}
+                    className="cursor-pointer text-xs"
+                  >
+                    Create free account
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/login?returnTo=/agents/profile/${profileId}`)}
+                    className="cursor-pointer text-xs"
+                  >
+                    Sign in
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Guest: enquiry form (name + email + optional message)
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                    Your name
+                  </label>
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Your name"
+                    maxLength={200}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                    Email address
+                  </label>
+                  <input
+                    type="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    maxLength={254}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Optional: briefly describe your visa situation…"
+                maxLength={2000}
+                className="w-full px-4 py-3 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring min-h-[90px] resize-none"
+              />
+              <Button
+                onClick={() => void handleGuestContact()}
+                disabled={guestSending}
+                className="w-full cursor-pointer"
+              >
+                {guestSending ? "Sending…" : "Send Enquiry"}
+              </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Already have an account?{" "}
+                <button
+                  onClick={() => navigate(`/login?returnTo=/agents/profile/${profileId}`)}
+                  className="font-semibold text-accent hover:underline cursor-pointer"
+                >
+                  Sign in
+                </button>
+              </p>
             </div>
           )}
         </div>

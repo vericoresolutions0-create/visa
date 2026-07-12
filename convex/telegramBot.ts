@@ -75,7 +75,7 @@ function findVisaType(text: string): VisaType | undefined {
   return undefined;
 }
 
-const SITE_URL_FALLBACK = "http://localhost:4173";
+const SITE_URL_FALLBACK = "https://visaclear.app";
 
 export type BotReply = {
   replyText: string;

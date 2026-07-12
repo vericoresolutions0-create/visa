@@ -31,7 +31,7 @@ export const confirmRejectionUpload = mutation({
     const stale = await ctx.db
       .query("pending_rejection_uploads")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(20);
     for (const row of stale) {
       try { await ctx.storage.delete(row.storageId); } catch {}
       await ctx.db.delete(row._id);
@@ -74,7 +74,7 @@ export const getMyAnalyses = query({
       .query("rejection_analyses")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
+      .take(100);
   },
 });
 

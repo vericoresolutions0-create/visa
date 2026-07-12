@@ -27,7 +27,7 @@ async function countTripsCreatedThisMonth(ctx: QueryCtx, userId: Id<"users">): P
   const trips = await ctx.db
     .query("saved_checklists")
     .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
+    .take(500);
   return trips.filter((t) => t._creationTime >= monthStart).length;
 }
 
@@ -77,7 +77,7 @@ export const saveChecklist = mutation({
     const existing = await ctx.db
       .query("saved_checklists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(200);
 
     const match = existing.find(
       (c) => c.origin === args.origin && c.destination === args.destination && c.visaType === args.visaType
@@ -228,7 +228,7 @@ export const getSavedChecklists = query({
       .query("saved_checklists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
+      .take(200);
   },
 });
 
@@ -267,7 +267,7 @@ export const getChecklistsForDependent = query({
     const all = await ctx.db
       .query("saved_checklists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(200);
     return all
       .filter((c) => c.managedDependentId === args.dependentId)
       .sort((a, b) => b._creationTime - a._creationTime);

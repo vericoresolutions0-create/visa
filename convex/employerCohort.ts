@@ -34,7 +34,7 @@ export const inviteEmployee = mutation({
     const existingLinks = await ctx.db
       .query("org_employee_links")
       .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId).eq("invitedEmail", email))
-      .collect();
+      .take(10);
     if (existingLinks.some((l) => l.status === "pending" || l.status === "accepted")) {
       throw new ConvexError({ code: "ALREADY_INVITED", message: "This person already has an active invite or is already linked." });
     }
@@ -161,7 +161,7 @@ export const listEmployeeNotes = query({
       .query("org_employee_notes")
       .withIndex("by_link", (q) => q.eq("linkId", args.linkId))
       .order("desc")
-      .collect();
+      .take(100);
   },
 });
 
@@ -179,12 +179,12 @@ export const listMyCohort = query({
       .query("org_employee_links")
       .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
       .order("desc")
-      .collect();
+      .take(1000);
 
     return await Promise.all(
       links.map(async (link) => {
         const noteCount = (
-          await ctx.db.query("org_employee_notes").withIndex("by_link", (q) => q.eq("linkId", link._id)).collect()
+          await ctx.db.query("org_employee_notes").withIndex("by_link", (q) => q.eq("linkId", link._id)).take(100)
         ).length;
 
         const base = {

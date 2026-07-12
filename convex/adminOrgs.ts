@@ -17,8 +17,8 @@ export const listOrganizations = query({
     return await Promise.all(
       orgs.map(async (org) => {
         const [members, links] = await Promise.all([
-          ctx.db.query("org_members").withIndex("by_org", (q) => q.eq("organizationId", org._id)).collect(),
-          ctx.db.query("org_employee_links").withIndex("by_org", (q) => q.eq("organizationId", org._id)).collect(),
+          ctx.db.query("org_members").withIndex("by_org", (q) => q.eq("organizationId", org._id)).take(500),
+          ctx.db.query("org_employee_links").withIndex("by_org", (q) => q.eq("organizationId", org._id)).take(1000),
         ]);
         return {
           _id: org._id,

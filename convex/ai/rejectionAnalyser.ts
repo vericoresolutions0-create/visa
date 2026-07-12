@@ -64,6 +64,7 @@ export const analyseRejection = action({
     origin: v.string(),
     language: v.optional(v.string()),
     pdfStorageId: v.optional(v.id("_storage")),
+    consentToMarketplaceLead: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<RejectionAnalysisResult> => {
     const user = await ctx.runQuery(api.users.getCurrentUser, {});
@@ -221,6 +222,31 @@ Keep all JSON key names in English. Translate text values only if instructed bel
         analysis: JSON.stringify(result.rootCauses),
         recoveryPlan: JSON.stringify(result.timelinedSteps),
       });
+
+      // Log anonymised pattern intelligence — no PII, no letter content.
+      // Accumulates over time into a proprietary corpus of corridor-specific
+      // refusal data that no competitor can replicate without years of real analyses.
+      await ctx.runMutation(internal.rejectionPatterns.logPattern, {
+        origin: args.origin,
+        destination: args.destination,
+        visaType: args.visaType,
+        refusalCodes: result.rootCauses.map((c) => c.officialCodeRef).filter(Boolean),
+        missingDocumentCategories: result.missedDocuments.slice(0, 10),
+        successProbability: result.successProbability,
+      });
+
+      if (args.consentToMarketplaceLead === true) {
+        const refusalCodes = result.rootCauses
+          .map((c) => c.officialCodeRef)
+          .filter(Boolean);
+        await ctx.runMutation(internal.marketplace.submitLeadFromRejectionAnalysis, {
+          userId: user._id,
+          visaType: args.visaType,
+          destinationCountry: args.destination,
+          applicantNationality: args.origin,
+          refusalCodes,
+        });
+      }
 
       return result;
     } catch (error) {

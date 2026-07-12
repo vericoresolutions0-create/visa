@@ -71,7 +71,7 @@ export const listMyIntakes = query({
         const documents = await ctx.db
           .query("client_documents")
           .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-          .collect();
+          .take(30);
         const documentsWithUrls = await Promise.all(
           documents.map(async (doc) => ({
             _id: doc._id,
@@ -169,7 +169,7 @@ export const listMyUploadsForIntake = query({
     const documents = await ctx.db
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-      .collect();
+      .take(30);
     return documents.map((doc) => ({
       label: doc.label,
       fileName: doc.fileName,
@@ -193,7 +193,7 @@ export const generateUploadUrl = mutation({
     const existingDocs = await ctx.db
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-      .collect();
+      .take(30);
     if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
       throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }
@@ -230,7 +230,7 @@ export const recordDocument = mutation({
     const existingDocs = await ctx.db
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-      .collect();
+      .take(30);
     if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
       throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }

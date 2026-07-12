@@ -222,12 +222,12 @@ export const listPostsForModeration = query({
         .query("community_posts")
         .withIndex("by_status", (q) => q.eq("status", "pending"))
         .order("asc")
-        .collect(),
+        .take(200),
       ctx.db
         .query("community_posts")
         .withIndex("by_status", (q) => q.eq("status", "hidden"))
         .order("asc")
-        .collect(),
+        .take(200),
     ]);
     return [...pending, ...hidden];
   },

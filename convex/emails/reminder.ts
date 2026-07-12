@@ -21,7 +21,7 @@ export const sendReminderEmail = internalAction({
     });
 
     const subject = `Reminder: ${args.title} — VisaClear`;
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
 <!DOCTYPE html>
 <html>

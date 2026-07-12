@@ -1534,7 +1534,6 @@ function TripWorkspace() {
     setScoreLoading(true);
     try {
       if (isDemoAuthenticated) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
         setScoreResult({
           probability: 78,
           reasoning: "This is a demo estimate: a strong checklist completion rate and consistent document history typically correlate with a higher approval likelihood, but every embassy's review is ultimately discretionary.",

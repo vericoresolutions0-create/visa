@@ -11,7 +11,7 @@ export const sendSettleInReadyEmail = internalAction({
     const { to, destination, tripId } = args;
     const safeDestination = escapeHtml(destination);
     const subject = `Your ${destination} visa is approved — here's what's next`;
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const tripUrl = `${siteUrl}/dashboard/trips/${tripId}`;
     const html = `
 <!DOCTYPE html>

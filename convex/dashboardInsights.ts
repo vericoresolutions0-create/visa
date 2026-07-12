@@ -19,9 +19,9 @@ export const getTravelHealth = query({
     if (user.plan !== "pro" && user.plan !== "expert") return "locked";
 
     const [vaultDocs, reminders, trips] = await Promise.all([
-      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).take(100),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(100),
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(100),
     ]);
 
     let score = 100;

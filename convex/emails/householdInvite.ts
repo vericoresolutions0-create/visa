@@ -11,7 +11,7 @@ export const sendHouseholdInviteEmail = internalAction({
     const { to, householdName, token } = args;
     const safeHouseholdName = escapeHtml(householdName);
     const subject = `${householdName} has invited you to share visa readiness on VisaClear`;
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const inviteUrl = `${siteUrl}/business/invite/${token}`;
     const html = `
 <!DOCTYPE html>

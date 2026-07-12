@@ -183,7 +183,6 @@ function SubmitLeadForm({
     setSubmitting(true);
     try {
       if (isDemo) {
-        await new Promise((r) => setTimeout(r, 600));
         toast.success("Lead submitted! Agents in the marketplace can now see your request.");
         onSuccess();
         return;
@@ -377,7 +376,6 @@ export default function FindAgentPage() {
     setClosingId(leadId);
     try {
       if (isDemoAuthenticated) {
-        await new Promise((r) => setTimeout(r, 400));
         setDemoLeads((prev) =>
           prev.map((l) => (l._id === leadId ? { ...l, status: "closed" } : l)),
         );

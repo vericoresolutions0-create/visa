@@ -12,7 +12,7 @@ async function countRealSignups(ctx: QueryCtx | MutationCtx, referralCode: strin
   const referred = await ctx.db
     .query("users")
     .withIndex("by_referred_by_code", (q) => q.eq("referredByCode", referralCode))
-    .collect();
+    .take(1000);
   return referred.filter((u) => u.lastPaymentAt !== undefined).length;
 }
 

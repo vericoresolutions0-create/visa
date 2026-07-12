@@ -34,8 +34,8 @@ export const listMyDependents = query({
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);
     const [dependents, checklists] = await Promise.all([
-      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).order("desc").collect(),
-      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).order("desc").take(50),
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(200),
     ]);
 
     return dependents.map((dep) => ({
@@ -90,7 +90,7 @@ export const deleteDependent = mutation({
     const checklists = await ctx.db
       .query("saved_checklists")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(200);
     const linkedCount = checklists.filter((c) => c.managedDependentId === args.id).length;
     if (linkedCount > 0) {
       throw new ConvexError({

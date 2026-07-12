@@ -49,7 +49,7 @@ export const markAllRead = mutation({
       .withIndex("by_user_read", (q) =>
         q.eq("userId", user._id).eq("read", false),
       )
-      .collect();
+      .take(200);
     await Promise.all(unread.map((n) => ctx.db.patch(n._id, { read: true })));
   },
 });

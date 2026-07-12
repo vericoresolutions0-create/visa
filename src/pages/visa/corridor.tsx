@@ -166,6 +166,23 @@ function CostCalculator({ visaType }: { visaType: CorridorVisaType }) {
   );
 }
 
+// ── Approval count badge (from new approvalStories table) ────────────────────
+
+function ApprovalCountBadge({ origin, destination }: { origin: string; destination: string }) {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const corridor = `${norm(origin)}-${norm(destination)}`;
+  const count = useQuery(api.approvalStories.getCorridorApprovalCount, { corridor });
+  if (!count) return null;
+  return (
+    <Link
+      to={`/approvals`}
+      className="ml-auto text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors whitespace-nowrap"
+    >
+      {count}+ approved
+    </Link>
+  );
+}
+
 // ── Rejection stories widget ──────────────────────────────────────────────────
 
 function RejectionWidget({ destination, visaType }: { destination: string; visaType: string }) {
@@ -684,9 +701,13 @@ export default function CorridorPage() {
             <div className="space-y-6">
               {/* Approval stories */}
               <div>
-                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                  <Star className="h-5 w-5 text-amber-500" />
+                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2 flex-wrap">
+                  <Star className="h-5 w-5 text-amber-500 shrink-0" />
                   Approved applicant stories
+                  <ApprovalCountBadge
+                    origin={corridor.origin}
+                    destination={corridor.destination}
+                  />
                 </h2>
                 <RejectionWidget
                   destination={corridor.destination}
@@ -758,6 +779,34 @@ export default function CorridorPage() {
               destination={corridor.destination}
             />
           </div>
+
+          {/* Got refused? */}
+          {visaType.commonMistakes.length > 0 && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 dark:bg-destructive/10 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                <h3 className="text-sm font-bold text-foreground">Got refused for {visaType.shortName}?</h3>
+              </div>
+              <ul className="space-y-1.5 mb-4">
+                {visaType.commonMistakes.slice(0, 3).map((mistake, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground leading-relaxed">
+                    <span className="text-destructive font-bold shrink-0 mt-0.5">×</span>
+                    {mistake}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                Upload your refusal letter — our AI identifies the exact codes cited, what each one means, and what to fix before reapplying.
+              </p>
+              <Link
+                to="/rejection-analyser"
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              >
+                Analyse my refusal <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <p className="text-xs text-muted-foreground text-center mt-2">Expert plan · AI-powered · Private</p>
+            </div>
+          )}
 
           {/* Compare CTA */}
           <div className="rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-4">

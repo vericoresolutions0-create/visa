@@ -305,7 +305,7 @@ export default defineSchema({
   // reached the agent.
   agent_contact_requests: defineTable({
     agentProfileId: v.id("agent_profiles"),
-    fromUserId: v.id("users"),
+    fromUserId: v.optional(v.id("users")),
     fromName: v.optional(v.string()),
     fromEmail: v.optional(v.string()),
     message: v.optional(v.string()),
@@ -314,6 +314,24 @@ export default defineSchema({
   })
     .index("by_agent", ["agentProfileId"])
     .index("by_from_user", ["fromUserId"]),
+
+  // Per-(email, agent) daily write cap for unauthenticated enquiries.
+  // Prevents a guest from spamming the same agent multiple times per day.
+  // emailKey is the lowercased, trimmed email address.
+  guest_enquiry_daily: defineTable({
+    emailKey: v.string(),
+    agentProfileId: v.id("agent_profiles"),
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_email_agent_date", ["emailKey", "agentProfileId", "dateKey"]),
+
+  // Platform-wide daily backstop for guest agent enquiries — same pattern as
+  // contact_daily_usage. Caps total guest enquiries across all agents per day
+  // so a botnet with many email addresses still hits a hard ceiling.
+  guest_enquiry_global_daily: defineTable({
+    dateKey: v.string(),
+    count: v.number(),
+  }).index("by_date", ["dateKey"]),
   contact_messages: defineTable({
     name: v.string(),
     email: v.string(),
@@ -965,6 +983,11 @@ export default defineSchema({
     // Set by the lead sentinel cron after agents are notified about this stale lead.
     // Prevents duplicate sentinel notifications on subsequent cron runs.
     sentinelNotifiedAt: v.optional(v.string()),
+    // Only set when the lead was auto-created from a Rejection Analyser session
+    // with explicit GDPR consent — lets admins/agents distinguish organic from
+    // auto-generated leads in the marketplace.
+    leadSource: v.optional(v.literal("rejection_analyser")),
+    applicantNationality: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_status", ["userId", "status"])
@@ -1116,4 +1139,67 @@ export default defineSchema({
     dateKey: v.string(),
     count: v.number(),
   }).index("by_agent_and_date", ["agentProfileId", "dateKey"]),
+
+  // Anonymised rejection intelligence — one row per Rejection Analyser run.
+  // No personal data, no letter text. Accumulated over time to surface which
+  // corridors and refusal codes are most common, giving VisaClear proprietary
+  // pattern data no competitor can buy.
+  rejection_patterns: defineTable({
+    corridor: v.string(),        // "ghana-united-kingdom"
+    origin: v.string(),          // "Ghana"
+    destination: v.string(),     // "United Kingdom"
+    visaType: v.string(),
+    refusalCodes: v.array(v.string()),
+    missingDocumentCategories: v.array(v.string()),
+    successProbability: v.number(),
+    analysedAt: v.string(),
+  })
+    .index("by_corridor", ["corridor"])
+    .index("by_destination_visatype", ["destination", "visaType"])
+    .index("by_analysed", ["analysedAt"]),
+
+  // User-submitted flags on checklist requirements that may be outdated or
+  // wrong. Anonymous at the db level (no userId stored) so the user feels
+  // safe reporting without fear of being identified. Admin reviews and either
+  // marks as "reviewed" (fix committed) or "dismissed" (not actionable).
+  checklist_flags: defineTable({
+    corridor: v.string(),
+    origin: v.string(),
+    destination: v.string(),
+    visaType: v.string(),
+    requirementTitle: v.optional(v.string()),  // which specific item was flagged
+    issueType: v.union(
+      v.literal("requirement_changed"),
+      v.literal("link_broken"),
+      v.literal("missing_information"),
+      v.literal("incorrect_information"),
+    ),
+    notes: v.optional(v.string()),
+    submittedAt: v.string(),
+    status: v.union(v.literal("pending"), v.literal("reviewed"), v.literal("dismissed")),
+    reviewedAt: v.optional(v.string()),
+    reviewedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_status", ["status"])
+    .index("by_corridor", ["corridor"])
+    .index("by_submitted", ["submittedAt"]),
+
+  // Real visa approval stories from paid members — moderated by admin before
+  // going public. Deliberately lightweight (no name, no photo, no userId in
+  // published queries) so it reads as a trust signal, not a testimonials wall.
+  approval_stories: defineTable({
+    origin: v.string(),
+    destination: v.string(),
+    visaType: v.string(),
+    corridor: v.string(),
+    attempts: v.union(v.literal(1), v.literal(2), v.literal(3)),
+    shortNote: v.optional(v.string()),  // max 120 chars
+    submittedAt: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    moderatedAt: v.optional(v.string()),
+    moderatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_status", ["status"])
+    .index("by_corridor_status", ["corridor", "status"])
+    .index("by_submitted", ["submittedAt"]),
 });

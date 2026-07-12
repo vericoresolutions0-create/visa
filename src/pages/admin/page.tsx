@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 
-type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log";
+type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health";
 
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "overview",       icon: BarChart3,     label: "Overview" },
@@ -45,9 +45,14 @@ const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "employers",      icon: Building2,     label: "Employers" },
   { id: "marketplace-leads", icon: UserPlus,    label: "Marketplace Leads" },
   { id: "credit-mgmt",    icon: Star,          label: "Credit Management" },
-  { id: "security-log",   icon: Shield,        label: "Security Log" },
-  { id: "audit-log",      icon: ListChecks,    label: "Audit Log" },
-  { id: "blog",           icon: FileText,      label: "Blog" },
+  { id: "security-log",          icon: Shield,        label: "Security Log" },
+  { id: "audit-log",             icon: ListChecks,    label: "Audit Log" },
+  { id: "blog",                  icon: FileText,      label: "Blog" },
+  { id: "corridor-intelligence", icon: BarChart3,     label: "Corridor Intel" },
+  { id: "checklist-flags",       icon: AlertCircle,   label: "Checklist Flags" },
+  { id: "approvals",             icon: Award,         label: "Approvals" },
+  { id: "creators",              icon: Sparkles,      label: "Creators" },
+  { id: "health",                icon: Shield,        label: "System Health" },
 ];
 
 // Isolates a single admin tab panel from crashing the whole page.
@@ -236,11 +241,10 @@ function AdminInner() {
             </span>
             <button
               onClick={async () => { await signOut(); navigate("/"); }}
-              className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors cursor-pointer px-2 py-1.5"
-              title="Sign out"
+              className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer px-3 py-1.5 rounded-lg"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
+              Sign out
             </button>
           </div>
         </header>
@@ -487,6 +491,11 @@ function AdminInner() {
           {tab === "security-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><SecurityAuditLogPanel /></div>}
           {tab === "audit-log" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AuditLogPanel /></div>}
           {tab === "blog" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><BlogAdminPanel /></div>}
+          {tab === "corridor-intelligence" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CorridorIntelligencePanel /></div>}
+          {tab === "checklist-flags" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><ChecklistFlagsPanel /></div>}
+          {tab === "approvals" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><ApprovalsAdminPanel /></div>}
+          {tab === "creators" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CreatorsAdminPanel /></div>}
+          {tab === "health" && <SystemHealthPanel />}
 
         </PanelErrorBoundary>
         </main>
@@ -2233,6 +2242,7 @@ function MarketplaceLeadsAdminPanel() {
               <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                 <th className="px-4 py-3 text-left">Lead</th>
                 <th className="px-4 py-3 text-left hidden md:table-cell">Submitter</th>
+                <th className="px-4 py-3 text-left hidden xl:table-cell">Source</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-center">Unlocks</th>
                 <th className="px-4 py-3 text-left hidden lg:table-cell">Sentinel</th>
@@ -2252,6 +2262,23 @@ function MarketplaceLeadsAdminPanel() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <p className="text-xs text-gray-700">{lead.submitterName ?? "—"}</p>
                     <p className="text-[11px] text-gray-400">{lead.submitterEmail ?? "—"}</p>
+                    {lead.applicantNationality && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">{lead.applicantNationality}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    {lead.leadSource === "rejection_analyser" ? (
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                          Rejection Analyser
+                        </span>
+                        {lead.additionalNotes && (
+                          <p className="text-[10px] text-gray-400 mt-1 leading-relaxed max-w-[180px]">{lead.additionalNotes}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-gray-400">Manual</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn(
@@ -3001,6 +3028,876 @@ export default function AdminPage() {
           </div>
         )}
       </Authenticated>
+    </div>
+  );
+}
+
+// ─── Corridor Intelligence Panel ──────────────────────────────────────────────
+
+function CorridorIntelligencePanel() {
+  const data = useQuery(api.rejectionPatterns.getCorridorIntelligence, {});
+
+  if (data === undefined) {
+    return <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>;
+  }
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <BarChart3 className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm font-semibold text-gray-400">No pattern data yet</p>
+        <p className="text-xs text-gray-400 mt-1">Pattern data accumulates automatically each time the Rejection Analyser is used.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-serif font-semibold text-[#0f2040]">Corridor Intelligence</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Aggregated from every Rejection Analyser session — anonymised, no personal data stored.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Corridor</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Visa</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Analyses</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Avg Success %</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">Top Refusal Codes</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden xl:table-cell">Common Missing Docs</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {data.map((row, i) => (
+              <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                <td className="px-4 py-4">
+                  <div className="font-medium text-[#0f2040] text-sm">{row.origin} → {row.destination}</div>
+                </td>
+                <td className="px-4 py-4">
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">{row.visaType}</span>
+                </td>
+                <td className="px-4 py-4">
+                  <span className="font-semibold text-[#0f2040]">{row.analysisCount}</span>
+                </td>
+                <td className="px-4 py-4">
+                  <span className={cn(
+                    "font-semibold text-sm",
+                    row.avgSuccessProbability >= 60 ? "text-green-600" : row.avgSuccessProbability >= 35 ? "text-amber-600" : "text-red-600"
+                  )}>
+                    {row.avgSuccessProbability}%
+                  </span>
+                </td>
+                <td className="px-4 py-4 hidden lg:table-cell">
+                  <div className="flex flex-wrap gap-1.5">
+                    {row.topRefusalCodes.length === 0
+                      ? <span className="text-xs text-gray-400">—</span>
+                      : row.topRefusalCodes.map((rc) => (
+                        <span key={rc.code} className="text-[10px] font-medium bg-red-50 text-red-700 border border-red-100 rounded px-1.5 py-0.5">
+                          {rc.code} <span className="text-red-400">×{rc.count}</span>
+                        </span>
+                      ))
+                    }
+                  </div>
+                </td>
+                <td className="px-4 py-4 hidden xl:table-cell">
+                  <div className="space-y-0.5">
+                    {row.topMissingDocs.length === 0
+                      ? <span className="text-xs text-gray-400">—</span>
+                      : row.topMissingDocs.map((d) => (
+                        <div key={d.doc} className="text-xs text-gray-600">{d.doc} <span className="text-gray-400">×{d.count}</span></div>
+                      ))
+                    }
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Checklist Flags Panel ────────────────────────────────────────────────────
+
+function ChecklistFlagsPanel() {
+  const flags = useQuery(api.checklistFlags.listPendingFlags, {});
+  const reviewFlag = useMutation(api.checklistFlags.reviewFlag);
+
+  const ISSUE_LABELS: Record<string, string> = {
+    requirement_changed: "Requirement changed",
+    link_broken: "Link broken",
+    missing_information: "Missing info",
+    incorrect_information: "Incorrect info",
+  };
+
+  const handleReview = async (flagId: string, action: "reviewed" | "dismissed") => {
+    try {
+      await reviewFlag({ flagId: flagId as Parameters<typeof reviewFlag>[0]["flagId"], action });
+      toast.success(action === "reviewed" ? "Marked as reviewed" : "Dismissed");
+    } catch {
+      toast.error("Failed to update flag");
+    }
+  };
+
+  if (flags === undefined) {
+    return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-serif font-semibold text-[#0f2040]">Checklist Accuracy Flags</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Submitted by logged-in users who found requirements that may be wrong or outdated.</p>
+        </div>
+        <span className={cn(
+          "text-xs font-bold px-3 py-1 rounded-full border",
+          flags.length > 0 ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-100"
+        )}>
+          {flags.length} pending
+        </span>
+      </div>
+
+      {flags.length === 0 ? (
+        <div className="text-center py-16">
+          <CheckCircle2 className="w-10 h-10 text-green-300 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-gray-400">No pending flags</p>
+          <p className="text-xs text-gray-400 mt-1">All checklist accuracy flags have been reviewed.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {flags.map((flag) => (
+            <div key={flag._id} className="border border-amber-100 bg-amber-50/40 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span className="font-semibold text-sm text-[#0f2040]">{flag.origin} → {flag.destination}</span>
+                    <span className="text-xs font-medium bg-white border border-gray-200 text-gray-600 rounded-full px-2 py-0.5">{flag.visaType}</span>
+                    <span className="text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
+                      {ISSUE_LABELS[flag.issueType] ?? flag.issueType}
+                    </span>
+                  </div>
+                  {flag.requirementTitle && (
+                    <p className="text-xs font-medium text-gray-700 mb-1">Requirement: <span className="font-normal">{flag.requirementTitle}</span></p>
+                  )}
+                  {flag.notes && (
+                    <p className="text-xs text-gray-600 leading-relaxed">"{flag.notes}"</p>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {new Date(flag.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleReview(flag._id, "reviewed")}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0f2040] text-white hover:bg-[#0f2040]/90 transition-colors cursor-pointer"
+                  >
+                    Mark Reviewed
+                  </button>
+                  <button
+                    onClick={() => handleReview(flag._id, "dismissed")}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Approval Stories Admin Panel ─────────────────────────────────────────────
+
+function ApprovalsAdminPanel() {
+  const stories = useQuery(api.approvalStories.listPendingStories, {});
+  const moderateStory = useMutation(api.approvalStories.moderateStory);
+
+  const ATTEMPTS_LABEL: Record<number, string> = {
+    1: "First attempt",
+    2: "Second attempt",
+    3: "Third attempt or more",
+  };
+
+  const handleModerate = async (storyId: string, action: "approved" | "rejected") => {
+    try {
+      await moderateStory({ storyId: storyId as Parameters<typeof moderateStory>[0]["storyId"], action });
+      toast.success(action === "approved" ? "Story approved and published" : "Story rejected");
+    } catch {
+      toast.error("Failed to update story");
+    }
+  };
+
+  if (stories === undefined) {
+    return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-serif font-semibold text-[#0f2040]">Approval Stories</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Submitted by paid members. Review before publishing to the public approvals page.</p>
+        </div>
+        <span className={cn(
+          "text-xs font-bold px-3 py-1 rounded-full border",
+          (stories.length > 0) ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-100"
+        )}>
+          {stories.length} pending
+        </span>
+      </div>
+
+      {stories.length === 0 ? (
+        <div className="text-center py-16">
+          <Award className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-gray-400">No stories pending review</p>
+          <p className="text-xs text-gray-400 mt-1">Approved stories appear on the public /approvals page and on each corridor page.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {stories.map((story) => (
+            <div key={story._id} className="border border-gray-200 bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span className="font-semibold text-sm text-[#0f2040]">{story.origin} → {story.destination}</span>
+                    <span className="text-xs font-medium bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{story.visaType}</span>
+                    <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-100 rounded-full px-2 py-0.5">
+                      {ATTEMPTS_LABEL[story.attempts] ?? `${story.attempts} attempts`}
+                    </span>
+                  </div>
+                  {story.shortNote && (
+                    <p className="text-sm text-gray-700 leading-relaxed italic">"{story.shortNote}"</p>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {new Date(story.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleModerate(story._id, "approved")}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleModerate(story._id, "rejected")}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Creators / Influencers ────────────────────────────────────────────────────
+
+function CreatorsAdminPanel() {
+  const creators = useQuery(api.creators.listAll, {});
+  const createCode = useMutation(api.creators.createCode);
+  const toggleActive = useMutation(api.creators.toggleActive);
+  const markPaid = useMutation(api.creators.markCommissionsPaid);
+
+  const [showForm, setShowForm] = useState(false);
+  const [cName, setCName] = useState("");
+  const [cEmail, setCEmail] = useState("");
+  const [cSlug, setCSlug] = useState("");
+  const [cRate, setCRate] = useState(20);
+  const [cUnlimited, setCUnlimited] = useState(true);
+  const [cMonths, setCMonths] = useState(6);
+  const [cNotes, setCNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedPortalId, setCopiedPortalId] = useState<string | null>(null);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const handleNameChange = (v: string) => {
+    setCName(v);
+    // Auto-fill slug from name only while user hasn't manually edited it
+    if (!cSlug || cSlug === slugify(cName)) setCSlug(slugify(v));
+  };
+
+  const handleCreate = async () => {
+    if (!cName.trim() || !cEmail.trim() || !cSlug.trim()) return;
+    setSubmitting(true);
+    try {
+      await createCode({
+        name: cName.trim(),
+        email: cEmail.trim(),
+        slug: cSlug.trim(),
+        commissionRatePercent: cRate,
+        commissionMonths: cUnlimited ? 0 : cMonths,
+        notes: cNotes.trim() || undefined,
+      });
+      toast.success(`Creator "${cName.trim()}" created — copy their portal link from the table below.`);
+      setShowForm(false);
+      setCName(""); setCEmail(""); setCSlug(""); setCRate(20);
+      setCUnlimited(true); setCMonths(6); setCNotes("");
+    } catch (err) {
+      const message = err instanceof ConvexError ? (err.data as { message: string }).message : "Failed to create creator.";
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const copyRef = (slug: string, id: string) => {
+    void navigator.clipboard.writeText(`https://visaclear.app/ref/${slug}`);
+    setCopiedId(id);
+    toast.success("Referral link copied.");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const copyPortal = (token: string, id: string) => {
+    void navigator.clipboard.writeText(`${window.location.origin}/creator/portal/${token}`);
+    setCopiedPortalId(id);
+    toast.success("Portal link copied — send this to the creator privately.");
+    setTimeout(() => setCopiedPortalId(null), 2000);
+  };
+
+  const handleMarkPaid = async (slug: string, id: string) => {
+    setMarkingPaid(id);
+    try {
+      const count = await markPaid({ creatorSlug: slug });
+      toast.success(`Marked ${count} commission row${count === 1 ? "" : "s"} as paid.`);
+    } catch {
+      toast.error("Could not mark commissions as paid.");
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
+  const fmtMoney = (cents: number) => `£${(cents / 100).toFixed(2)}`;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-yellow-500" />
+            Creators & Influencers
+            {creators && (
+              <span className="text-[11px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2 py-0.5">
+                {creators.length} total
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Each creator gets a unique link and a private portal. Commission fires on every payment their referred followers make.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setShowForm((v) => !v)}
+          className="cursor-pointer shrink-0"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {showForm ? "Cancel" : "Add creator"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50/50 p-5 space-y-4">
+          <p className="text-xs font-semibold text-yellow-800 uppercase tracking-wider">New creator</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Full name</label>
+              <input
+                value={cName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="e.g. Amara Osei"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Email (for payout contact)</label>
+              <input
+                type="email"
+                value={cEmail}
+                onChange={(e) => setCEmail(e.target.value)}
+                placeholder="creator@example.com"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Slug — their link will be{" "}
+              <span className="font-mono text-primary">
+                visaclear.app/ref/<strong>{cSlug || "slug"}</strong>
+              </span>
+            </label>
+            <input
+              value={cSlug}
+              onChange={(e) => setCSlug(slugify(e.target.value))}
+              placeholder="e.g. amara"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-white font-mono"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Commission rate</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={cRate}
+                  onChange={(e) => setCRate(Math.min(50, Math.max(1, Number(e.target.value))))}
+                  className="w-20 px-3 py-2 text-sm rounded-lg border border-input bg-white text-center font-semibold"
+                />
+                <span className="text-sm text-muted-foreground">% of each payment</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Duration</label>
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cUnlimited}
+                  onChange={(e) => setCUnlimited(e.target.checked)}
+                  className="w-4 h-4 accent-yellow-500 cursor-pointer"
+                />
+                Unlimited — earn on every payment forever
+              </label>
+              {!cUnlimited && (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    min={1}
+                    max={36}
+                    value={cMonths}
+                    onChange={(e) => setCMonths(Math.min(36, Math.max(1, Number(e.target.value))))}
+                    className="w-20 px-3 py-2 text-sm rounded-lg border border-input bg-white text-center"
+                  />
+                  <span className="text-sm text-muted-foreground">months</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Notes (private, optional)</label>
+            <input
+              value={cNotes}
+              onChange={(e) => setCNotes(e.target.value)}
+              placeholder="e.g. YouTube — immigration niche, 45k subs"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-input bg-white"
+            />
+          </div>
+
+          <Button
+            size="sm"
+            className="w-full cursor-pointer"
+            disabled={!cName.trim() || !cEmail.trim() || !cSlug.trim() || submitting}
+            onClick={() => { void handleCreate(); }}
+          >
+            {submitting ? "Creating..." : "Create creator"}
+          </Button>
+        </div>
+      )}
+
+      {creators === undefined ? (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+        </div>
+      ) : creators.length === 0 ? (
+        <div className="border border-dashed border-border rounded-xl p-10 text-center space-y-2">
+          <Sparkles className="w-8 h-8 text-yellow-400 mx-auto" />
+          <p className="text-sm font-semibold text-foreground">No creators yet</p>
+          <p className="text-xs text-muted-foreground">
+            Add your first creator or influencer above — they get a referral link and a private earnings portal.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {creators.map((c) => {
+            const isExpanded = expandedId === c._id;
+            const hasUnpaid = c.pendingCents > 0;
+
+            return (
+              <div
+                key={c._id}
+                className={cn(
+                  "rounded-xl border bg-card transition-all",
+                  c.active ? "border-border" : "border-border/50 opacity-60"
+                )}
+              >
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-9 h-9 rounded-full bg-yellow-100 border border-yellow-200 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-yellow-700">{c.name.charAt(0).toUpperCase()}</span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground">{c.name}</span>
+                      <span className="text-[10.5px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">/ref/{c.slug}</span>
+                      <span className={cn(
+                        "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                        c.active
+                          ? "bg-green-50 text-green-700 border border-green-200"
+                          : "bg-secondary text-secondary-foreground border border-border"
+                      )}>
+                        {c.active ? "Active" : "Paused"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                      <span>{c.commissionRatePercent}% per payment</span>
+                      <span>·</span>
+                      <span>{c.commissionMonths === 0 ? "Unlimited" : `${c.commissionMonths} months`}</span>
+                      {c.notes && <><span>·</span><span className="truncate max-w-[160px]">{c.notes}</span></>}
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:flex items-center gap-5 text-center shrink-0">
+                    {[
+                      { label: "Clicks",   value: c.totalClicks.toLocaleString(), color: "text-foreground" },
+                      { label: "Signups",  value: c.signupCount.toString(),        color: "text-foreground" },
+                      { label: "Paying",   value: c.paidSubscriberCount.toString(), color: "text-blue-600" },
+                      { label: "Owed",     value: fmtMoney(c.pendingCents),         color: hasUnpaid ? "text-amber-600" : "text-foreground" },
+                      { label: "Total",    value: fmtMoney(c.totalCommissionCents), color: "text-emerald-600" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label}>
+                        <div className={cn("text-sm font-bold tabular-nums", color)}>{value}</div>
+                        <div className="text-[10px] text-muted-foreground font-medium">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : c._id)}
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground"
+                  >
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Mobile stats */}
+                <div className="sm:hidden grid grid-cols-4 border-t border-border divide-x divide-border">
+                  {[
+                    { label: "Clicks",  value: c.totalClicks.toLocaleString(), color: "text-foreground" },
+                    { label: "Signups", value: c.signupCount.toString(),        color: "text-foreground" },
+                    { label: "Paying",  value: c.paidSubscriberCount.toString(), color: "text-blue-600" },
+                    { label: "Owed",    value: fmtMoney(c.pendingCents),         color: hasUnpaid ? "text-amber-600" : "text-foreground" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="py-2 text-center">
+                      <div className={cn("text-sm font-bold tabular-nums", color)}>{value}</div>
+                      <div className="text-[10px] text-muted-foreground">{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {isExpanded && (
+                  <div className="border-t border-border p-4 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Referral link (they share this publicly)</p>
+                      <div className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-lg border border-border text-xs font-mono text-muted-foreground">
+                        <span className="truncate flex-1">https://visaclear.app/ref/{c.slug}</span>
+                        <button
+                          onClick={() => copyRef(c.slug, c._id)}
+                          className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 cursor-pointer"
+                        >
+                          {copiedId === c._id ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === c._id ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Private portal (send to creator only — never post publicly)</p>
+                      <div className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-lg border border-amber-200 bg-amber-50/50 text-xs font-mono text-muted-foreground">
+                        <span className="truncate flex-1 select-none text-amber-700">{window.location.origin}/creator/portal/{"•".repeat(16)}</span>
+                        <button
+                          onClick={() => copyPortal(c.portalToken, c._id)}
+                          className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
+                        >
+                          {copiedPortalId === c._id ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedPortalId === c._id ? "Copied" : "Copy link"}
+                        </button>
+                      </div>
+                      <p className="text-[10.5px] text-muted-foreground">Token is hidden on screen. Clicking Copy puts the full URL on your clipboard.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      {hasUnpaid && (
+                        <button
+                          onClick={() => { void handleMarkPaid(c.slug, c._id); }}
+                          disabled={markingPaid === c._id}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {markingPaid === c._id ? "Marking..." : `Mark paid (${fmtMoney(c.pendingCents)} owed)`}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { void toggleActive({ codeId: c._id }); }}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer",
+                          c.active
+                            ? "border-red-200 text-red-600 hover:bg-red-50"
+                            : "border-green-200 text-green-700 hover:bg-green-50"
+                        )}
+                      >
+                        {c.active
+                          ? <><XCircle className="w-3.5 h-3.5" /> Pause</>
+                          : <><CheckCircle2 className="w-3.5 h-3.5" /> Reactivate</>
+                        }
+                      </button>
+                      {c.totalCommissionCents > 0 && (
+                        <span className="ml-auto text-xs text-muted-foreground font-medium">
+                          {fmtMoney(c.totalCommissionCents)} total · {fmtMoney(c.totalCommissionCents - c.pendingCents)} paid out
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── System Health Panel ───────────────────────────────────────────────────────
+
+const ENV_VAR_META: { key: string; label: string; category: string; optional?: boolean }[] = [
+  { key: "AUTH_GOOGLE_ID",       label: "Google Sign-In ID",       category: "Auth" },
+  { key: "AUTH_GOOGLE_SECRET",   label: "Google Sign-In Secret",   category: "Auth" },
+  { key: "OPENAI_API_KEY",       label: "OpenAI API Key",          category: "AI" },
+  { key: "RESEND_API_KEY",       label: "Resend API Key",          category: "Email" },
+  { key: "RESEND_FROM_EMAIL",    label: "Resend From Address",     category: "Email" },
+  { key: "SITE_URL",             label: "Site URL",                category: "Config" },
+  { key: "STRIPE_SECRET_KEY",    label: "Stripe Secret Key",       category: "Payments" },
+  { key: "STRIPE_PUBLISHABLE_KEY", label: "Stripe Publishable Key", category: "Payments" },
+  { key: "STRIPE_WEBHOOK_SECRET", label: "Stripe Webhook Secret",  category: "Payments" },
+  { key: "PAYSTACK_SECRET_KEY",  label: "Paystack Secret Key",     category: "Payments", optional: true },
+];
+
+const CATEGORY_ORDER = ["Auth", "AI", "Email", "Config", "Payments"];
+
+function SystemHealthPanel() {
+  const health = useQuery(api.systemHealth.getSystemHealth, {});
+  const navigate = useNavigate();
+
+  if (health === undefined) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  const score = health.score;
+  const scoreColor = score >= 95 ? "text-emerald-600" : score >= 80 ? "text-amber-600" : "text-red-600";
+  const scoreLabel = score >= 95 ? "Production-ready" : score >= 80 ? "Needs attention" : "Action required";
+  const scoreDeg = Math.round((score / 100) * 360);
+
+  // Group env vars by category
+  const byCategory = CATEGORY_ORDER.map((cat) => ({
+    category: cat,
+    vars: ENV_VAR_META.filter((v) => v.category === cat),
+  }));
+
+  const pendingAttention =
+    health.pendingFlagsCount > 0 ||
+    health.pendingApprovalsCount > 0 ||
+    health.pendingCreatorPayoutCents > 0 ||
+    health.pendingPayoutRequestsCount > 0;
+
+  const checkedAt = new Date(health.checkedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="space-y-5">
+
+      {/* Score card */}
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 flex items-center gap-5">
+        {/* Conic-gradient score circle */}
+        <div
+          className="relative shrink-0 w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ background: `conic-gradient(${score >= 95 ? "#059669" : score >= 80 ? "#d97706" : "#dc2626"} 0deg ${scoreDeg}deg, #e5e7eb ${scoreDeg}deg 360deg)` }}
+        >
+          <div className="absolute w-14 h-14 rounded-full bg-white" />
+          <span className={cn("relative z-10 text-lg font-black tabular-nums", scoreColor)}>{score}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={cn("text-base font-bold", scoreColor)}>{scoreLabel}</div>
+          <p className="text-xs text-muted-foreground font-medium mt-0.5 leading-relaxed">
+            {score >= 95
+              ? "All critical systems configured. VisaClear is fully operational."
+              : "Some configuration gaps detected. See env vars below."}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" /> Live · last checked {checkedAt} — updates automatically
+          </p>
+        </div>
+        <div className="hidden sm:grid grid-cols-2 gap-3 shrink-0">
+          {[
+            { label: "Users",      value: health.platformStats.totalUsers.toLocaleString() },
+            { label: "Checklists", value: health.platformStats.totalChecklists.toLocaleString() },
+            { label: "Pro",        value: (health.platformStats.proUsers ?? 0).toLocaleString() },
+            { label: "Expert",     value: (health.platformStats.expertUsers ?? 0).toLocaleString() },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center bg-gray-50 rounded-xl px-3 py-2">
+              <div className="text-sm font-black tabular-nums text-gray-800">{value}</div>
+              <div className="text-[9.5px] font-semibold text-gray-400 uppercase tracking-wide">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pending attention */}
+      {pendingAttention && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <p className="text-[10.5px] font-bold text-amber-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> Needs your attention
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Checklist flags", value: health.pendingFlagsCount, tab: "checklist-flags" as Tab, color: health.pendingFlagsCount > 0 ? "text-amber-700" : "text-gray-400" },
+              { label: "Pending approvals", value: health.pendingApprovalsCount, tab: "approvals" as Tab, color: health.pendingApprovalsCount > 0 ? "text-amber-700" : "text-gray-400" },
+              { label: "Creator payouts", value: `£${(health.pendingCreatorPayoutCents / 100).toFixed(2)}`, tab: "creators" as Tab, color: health.pendingCreatorPayoutCents > 0 ? "text-amber-700" : "text-gray-400" },
+              { label: "Agent payout req.", value: health.pendingPayoutRequestsCount, tab: "agents" as Tab, color: health.pendingPayoutRequestsCount > 0 ? "text-amber-700" : "text-gray-400" },
+            ].map(({ label, value, tab: targetTab, color }) => (
+              <button
+                key={label}
+                onClick={() => navigate(`/admin?tab=${targetTab}`)}
+                className="rounded-lg border border-amber-200 bg-white p-3 text-center hover:border-amber-400 transition-colors cursor-pointer"
+              >
+                <div className={cn("text-lg font-black tabular-nums", color)}>{value}</div>
+                <div className="text-[10px] font-semibold text-gray-500 mt-0.5">{label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Env vars */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+            <Settings className="w-3.5 h-3.5" /> Environment Variables
+          </span>
+          <span className="text-[10.5px] font-semibold text-muted-foreground">
+            {Object.values(health.envVars).filter(Boolean).length} / {Object.values(health.envVars).length} set
+          </span>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {byCategory.map(({ category, vars }) => (
+            <div key={category} className="px-5 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{category}</p>
+              <div className="space-y-1.5">
+                {vars.map(({ key, label, optional }) => {
+                  const isSet = health.envVars[key];
+                  return (
+                    <div key={key} className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
+                        isSet ? "bg-emerald-100" : optional ? "bg-amber-100" : "bg-red-100"
+                      )}>
+                        {isSet
+                          ? <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          : <XCircle className={cn("w-3 h-3", optional ? "text-amber-500" : "text-red-500")} />
+                        }
+                      </div>
+                      <span className="text-xs font-medium text-foreground flex-1">{label}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{key}</span>
+                      {optional && !isSet && (
+                        <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-1.5 py-0.5">Pending</span>
+                      )}
+                      {!optional && !isSet && (
+                        <span className="text-[9.5px] font-bold bg-red-50 text-red-600 border border-red-200 rounded-full px-1.5 py-0.5">Missing</span>
+                      )}
+                      {isSet && (
+                        <span className="text-[9.5px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full px-1.5 py-0.5">Set ✓</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Solid status */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Confirmed solid
+          </span>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {[
+            { icon: Shield,       title: "Security headers",         desc: "CSP, X-Frame-Options, HSTS, Referrer-Policy on every response" },
+            { icon: Globe,        title: "Backend on Convex cloud",  desc: "ardent-pelican-768 — independent of your laptop, always on" },
+            { icon: Lock,         title: "RLS & tenant isolation",   desc: "Every mutation goes through getCurrentUserOrThrow() — no cross-user reads" },
+            { icon: RefreshCw,    title: "PWA service worker v6",    desc: "Network-first HTML, cache-first assets, push notifications wired" },
+            { icon: Sparkles,     title: "5 languages live",         desc: "EN · FR · ES · PT · AR · HI — checklist & core UI fully translated" },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="flex items-start gap-3 px-5 py-3">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">{title}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">{desc}</p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Watch list */}
+      <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-amber-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" /> Watch list — no action now
+          </span>
+        </div>
+        <div className="divide-y divide-amber-100/60">
+          {[
+            { title: "GitHub PAT token",       desc: "Rotate the personal access token in your git remote and switch to SSH keys" },
+            { title: "OG social share image",  desc: "Current share image is the app icon (512×512). A 1200×630 card improves link previews on WhatsApp/Twitter" },
+            { title: "Paystack secret key",    desc: "Nigerian card payments waiting on this key — everything else is live" },
+            { title: "Blog article translations", desc: "FR/ES/PT/AR/HI article copy still to be written — framework is ready" },
+            { title: "iOS launch splash screens", desc: "Brief white flash on iPhone PWA launch — cosmetic only, needs apple-touch-startup-image tags" },
+          ].map(({ title, desc }) => (
+            <div key={title} className="flex items-start gap-3 px-5 py-3">
+              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-amber-900">{title}</p>
+                <p className="text-[11px] text-amber-700/80 font-medium">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }

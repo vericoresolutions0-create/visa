@@ -50,14 +50,50 @@ function ChecklistItemCard({
   index,
   checked,
   onToggle,
+  origin,
+  destination,
+  visaType,
+  isAuthenticated,
 }: {
   item: ChecklistItem;
   index: number;
   checked: boolean;
   onToggle: () => void;
+  origin: string;
+  destination: string;
+  visaType: string;
+  isAuthenticated: boolean;
 }) {
   const { t } = useTranslation("checklist");
   const [expanded, setExpanded] = useState(false);
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [flagIssue, setFlagIssue] = useState<"requirement_changed" | "link_broken" | "missing_information" | "incorrect_information">("requirement_changed");
+  const [flagNotes, setFlagNotes] = useState("");
+  const [flagSubmitting, setFlagSubmitting] = useState(false);
+  const [flagDone, setFlagDone] = useState(false);
+  const submitFlag = useMutation(api.checklistFlags.submitFlag);
+
+  const handleFlagSubmit = async () => {
+    if (flagSubmitting || flagDone) return;
+    setFlagSubmitting(true);
+    try {
+      await submitFlag({
+        origin,
+        destination,
+        visaType,
+        requirementTitle: item.title,
+        issueType: flagIssue,
+        notes: flagNotes.trim() || undefined,
+      });
+      setFlagDone(true);
+      setFlagNotes("");
+      setTimeout(() => { setFlagOpen(false); setFlagDone(false); }, 2000);
+    } catch {
+      toast.error("Could not submit flag. Please try again.");
+    } finally {
+      setFlagSubmitting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -124,6 +160,70 @@ function ChecklistItemCard({
                   <Lightbulb className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "oklch(0.72 0.13 80)" }} />
                   <span className="text-sm" style={{ color: "oklch(0.45 0.1 70)" }}>{item.tip}</span>
                 </div>
+              )}
+
+              {/* Flag / Report issue */}
+              {isAuthenticated && !flagDone && !flagOpen && (
+                <button
+                  onClick={() => setFlagOpen(true)}
+                  className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground underline underline-offset-2 cursor-pointer transition-colors mt-1"
+                >
+                  Report an issue with this requirement
+                </button>
+              )}
+              {isAuthenticated && flagOpen && !flagDone && (
+                <div className="border border-border rounded-lg p-3 bg-background space-y-2.5 mt-1">
+                  <p className="text-xs font-semibold text-foreground">What's wrong?</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(["requirement_changed", "incorrect_information", "missing_information", "link_broken"] as const).map((opt) => {
+                      const LABELS = {
+                        requirement_changed: "Requirement changed",
+                        incorrect_information: "Info is incorrect",
+                        missing_information: "Info is missing",
+                        link_broken: "Link is broken",
+                      };
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => setFlagIssue(opt)}
+                          className={cn(
+                            "text-[11px] font-medium rounded-lg px-2.5 py-1.5 border text-left transition-colors cursor-pointer",
+                            flagIssue === opt
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          )}
+                        >
+                          {LABELS[opt]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <textarea
+                    value={flagNotes}
+                    onChange={(e) => setFlagNotes(e.target.value.slice(0, 200))}
+                    placeholder="Add details (optional, max 200 characters)"
+                    rows={2}
+                    className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleFlagSubmit}
+                      disabled={flagSubmitting}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-60"
+                    >
+                      {flagSubmitting ? "Sending…" : "Submit"}
+                    </button>
+                    <button
+                      onClick={() => { setFlagOpen(false); setFlagNotes(""); }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted/30 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {flagDone && (
+                <p className="text-[11px] text-green-600 font-medium mt-1">✓ Thanks — we'll check this and update the requirement if needed.</p>
               )}
             </div>
           </motion.div>
@@ -1303,6 +1403,10 @@ export default function ChecklistPage() {
                           index={idx}
                           checked={!!checkedItems[item.id]}
                           onToggle={() => toggleItem(item.id)}
+                          origin={origin}
+                          destination={destination}
+                          visaType={visaType as string}
+                          isAuthenticated={isAuthenticated && !isDemoAuthenticated}
                         />
                       ))}
                     </div>

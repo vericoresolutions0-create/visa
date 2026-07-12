@@ -16,7 +16,7 @@ export const getMyWatches = query({
     return await ctx.db
       .query("country_watches")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(15);
   },
 });
 
@@ -33,7 +33,7 @@ export const addWatch = mutation({
     const existing = await ctx.db
       .query("country_watches")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(15);
     if (args.countryName.length > 100)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Country name is too long." });
     if (existing.some((w) => w.countryName === args.countryName)) {
@@ -76,7 +76,7 @@ export const getMyFeed = query({
     const watches = await ctx.db
       .query("country_watches")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(15);
     const watchedCountries = new Set(watches.map((w) => w.countryName));
     if (watchedCountries.size === 0) return [];
 

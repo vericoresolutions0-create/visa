@@ -80,6 +80,7 @@ const BlogArticlePage = lazy(() => import("./pages/blog/article.tsx"));
 const GoogleLoginPage = lazy(() => import("./pages/google-login/page.tsx"));
 const MenuPage = lazy(() => import("./pages/menu/page.tsx"));
 const CommunityPage = lazy(() => import("./pages/community/page.tsx"));
+const ApprovalsPage = lazy(() => import("./pages/approvals/page.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const VisaHubPage = lazy(() => import("./pages/visa/index.tsx"));
 const VisaCorridorPage = lazy(() => import("./pages/visa/corridor.tsx"));
@@ -186,6 +187,7 @@ function AppRoutes() {
           <Route path="/risk-score" element={<RiskScorePage />} />
           <Route path="/risk-score/:resultId" element={<RiskScoreResultPage />} />
           <Route path="/wall-of-fame" element={<WallOfFamePage />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/wait-times" element={<WaitTimesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<LoginPage />} />

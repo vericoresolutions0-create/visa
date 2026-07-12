@@ -109,7 +109,7 @@ export const getMySubmissions = query({
       .query("wall_of_fame_stories")
       .withIndex("by_user", (q) => q.eq("submittedByUserId", user._id))
       .order("desc")
-      .collect();
+      .take(50);
   },
 });
 
@@ -121,7 +121,7 @@ export const listPendingStories = query({
       .query("wall_of_fame_stories")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("asc")
-      .collect();
+      .take(200);
   },
 });
 

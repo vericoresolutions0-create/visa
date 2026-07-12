@@ -49,7 +49,7 @@ export const inviteHouseholdMember = mutation({
     const existingLinks = await ctx.db
       .query("org_employee_links")
       .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId).eq("invitedEmail", email))
-      .collect();
+      .take(10);
     if (existingLinks.some((l) => l.status === "pending" || l.status === "accepted")) {
       throw new ConvexError({ code: "ALREADY_INVITED", message: "This person already has an active invite or is already linked." });
     }
@@ -112,7 +112,7 @@ export const listMyHousehold = query({
       .query("org_employee_links")
       .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
       .order("desc")
-      .collect();
+      .take(500);
 
     return await Promise.all(
       links.map(async (link) => {

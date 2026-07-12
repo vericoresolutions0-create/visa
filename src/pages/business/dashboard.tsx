@@ -13,12 +13,13 @@ import { SignInButton } from "@/components/ui/signin.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { downloadComplianceCsv } from "@/lib/compliance-export.ts";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
-  LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft,
+  LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft, LogOut,
 } from "lucide-react";
 
 type PipelineStage = "invited" | "accepted" | "in_progress" | "ready" | "relocated";
@@ -463,6 +464,11 @@ function DashboardInner() {
     }
   };
 
+  const accepted = (cohort as CohortRow[]).filter((r) => r.status === "accepted").length;
+  const pending = (cohort as CohortRow[]).filter((r) => r.status === "pending").length;
+  const active = (cohort as CohortRow[]).filter((r) => r.pipelineStage === "in_progress" || r.pipelineStage === "ready").length;
+  const relocated = (cohort as CohortRow[]).filter((r) => r.pipelineStage === "relocated").length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -481,6 +487,23 @@ function DashboardInner() {
           </Button>
         </div>
       </div>
+
+      {/* Stats bar — only shown once there are cohort members */}
+      {cohort.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Total", value: cohort.length, color: "text-primary" },
+            { label: "Invited", value: pending, color: "text-amber-600" },
+            { label: "Active", value: accepted + active, color: "text-blue-600" },
+            { label: "Completed", value: relocated, color: "text-emerald-600" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="rounded-xl border border-border bg-card px-4 py-3.5">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
+              <p className={cn("text-2xl font-bold tabular-nums", color)}>{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-xl p-4">
         <InviteEmployeeForm orgCtx={orgCtx} />
@@ -656,7 +679,9 @@ function DashboardInner() {
 export default function BusinessDashboardPage() {
   useSeo({ title: "Organisation Dashboard", description: "Track your cohort's visa readiness — employees, students, or clients — in one consent-first dashboard." });
   const { t } = useTranslation("business");
+  const navigate = useNavigate();
   const goBack = useSmartBack("/business");
+  const { signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -673,7 +698,16 @@ export default function BusinessDashboardPage() {
             {t("header_tag")}
           </span>
         </div>
-        <NotificationBell />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={async () => { await signOut(); navigate("/"); }}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-red-600 border border-border hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer px-3 py-1.5 rounded-lg"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-10">

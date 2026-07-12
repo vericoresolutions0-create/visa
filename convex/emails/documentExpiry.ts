@@ -32,7 +32,7 @@ export const sendDocumentExpiryEmail = internalAction({
         ? `EXPIRES IN ${args.daysRemaining} DAYS`
         : "EXPIRY WARNING — 30 DAYS";
 
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
 <!DOCTYPE html>
 <html>
@@ -113,7 +113,7 @@ export const sendTripDeadlineEmail = internalAction({
     const urgency = args.daysRemaining <= 3 ? "#dc2626" : "#d97706";
     const progressColor = args.progress >= 80 ? "#16a34a" : args.progress >= 50 ? "#d97706" : "#dc2626";
 
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
 <!DOCTYPE html>
 <html>

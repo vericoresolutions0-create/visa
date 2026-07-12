@@ -123,7 +123,7 @@ export const updateDocumentExpiry = mutation({
     // want to be reminded even without a tracked date.
     if (args.expiryDate) {
       const existingReminder = (
-        await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect()
+        await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(200)
       ).find((r) => r.vaultDocumentId === args.id && !r.sent);
 
       const dueDate = computeExpiryReminderDueDate(args.expiryDate);
@@ -163,7 +163,7 @@ export const createExpiryReminder = mutation({
     }
 
     const existingReminder = (
-      await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect()
+      await ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(200)
     ).find((r) => r.vaultDocumentId === args.id && !r.sent);
     if (existingReminder) {
       throw new ConvexError({ code: "ALREADY_EXISTS", message: "A reminder is already set for this document." });
@@ -197,7 +197,7 @@ export const listMyDocuments = query({
       .query("vault_documents")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
+      .take(200);
     return await Promise.all(
       docs.map(async (doc) => ({
         ...doc,

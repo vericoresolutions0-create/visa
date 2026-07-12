@@ -43,7 +43,7 @@ export const getReminders = query({
       .query("reminders")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("asc")
-      .collect();
+      .take(100);
   },
 });
 

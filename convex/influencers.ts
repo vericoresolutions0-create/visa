@@ -134,7 +134,7 @@ export const markCommissionsPaid = mutation({
       .query("influencer_commissions")
       .withIndex("by_code", (q) => q.eq("influencerCode", args.influencerCode))
       .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
+      .take(200);
 
     const paidAt = new Date().toISOString();
     await Promise.all(

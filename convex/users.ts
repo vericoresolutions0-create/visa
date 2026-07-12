@@ -425,6 +425,21 @@ export const completeCheckout = mutation({
         args.billingCycle,
         finalAmountCents,
       );
+      // Creator commission: month 1 of simulated checkout. Renewals on this
+      // path go through applyOneTimePlanPayment (same as Paystack) once the
+      // expiration cron triggers a re-checkout, which already logs commission.
+      if (user.creatorCode) {
+        const d = new Date();
+        const billingMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        await ctx.scheduler.runAfter(0, internal.creators.logMonthlyCommission, {
+          creatorSlug: user.creatorCode,
+          referredUserId: user._id,
+          plan: args.plan,
+          billingMonth,
+          subscriptionAmountCents: finalAmountCents,
+          monthsFromSignup: 1,
+        });
+      }
     }
 
     return {
@@ -583,31 +598,31 @@ export const deleteCurrentAccount = mutation({
       riskScoreResults,
       pendingRejectionUploads,
     ] = await Promise.all([
-      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("ai_assistant_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
-      ctx.db.query("wait_time_reports").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
-      ctx.db.query("client_intakes").withIndex("by_agent", (q) => q.eq("agentId", user._id)).collect(),
-      ctx.db.query("one_time_plan_expirations").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("pending_email_changes").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("rejection_analyser_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("org_members").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).collect(),
-      ctx.db.query("checklist_audits").withIndex("by_user_route", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("user_daily_usage").withIndex("by_user_resource_date", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).collect(),
-      ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).collect(),
-      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).take(5),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("ai_assistant_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).take(50),
+      ctx.db.query("wait_time_reports").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).take(500),
+      ctx.db.query("client_intakes").withIndex("by_agent", (q) => q.eq("agentId", user._id)).take(500),
+      ctx.db.query("one_time_plan_expirations").withIndex("by_user", (q) => q.eq("userId", user._id)).take(10),
+      ctx.db.query("pending_email_changes").withIndex("by_user", (q) => q.eq("userId", user._id)).take(10),
+      ctx.db.query("rejection_analyser_usage").withIndex("by_user_month", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("org_members").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).take(50),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).take(50),
+      ctx.db.query("checklist_audits").withIndex("by_user_route", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("user_daily_usage").withIndex("by_user_resource_date", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).take(500),
+      ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).take(50),
+      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", user._id)).take(10),
     ]);
 
     // Vault documents own real storage blobs — must be deleted first.
@@ -620,7 +635,7 @@ export const deleteCurrentAccount = mutation({
       const documents = await ctx.db
         .query("client_documents")
         .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-        .collect();
+        .take(30);
       for (const doc of documents) {
         await ctx.storage.delete(doc.storageId);
         await ctx.db.delete(doc._id);
@@ -638,7 +653,7 @@ export const deleteCurrentAccount = mutation({
       const notes = await ctx.db
         .query("org_employee_notes")
         .withIndex("by_link", (q) => q.eq("linkId", link._id))
-        .collect();
+        .take(100);
       for (const note of notes) {
         await ctx.db.delete(note._id);
       }
@@ -757,20 +772,20 @@ export const exportMyData = query({
       agentProfile,
       sentContactRequests,
     ] = await Promise.all([
-      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).collect(),
-      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).collect(),
-      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
-      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("vault_documents").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("rejection_analyses").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("community_posts").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
+      ctx.db.query("wall_of_fame_stories").withIndex("by_user", (q) => q.eq("submittedByUserId", user._id)).take(50),
+      ctx.db.query("country_watches").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("travel_trips").withIndex("by_user", (q) => q.eq("userId", user._id)).take(50),
+      ctx.db.query("managed_dependents").withIndex("by_parent", (q) => q.eq("parentUserId", user._id)).take(50),
+      ctx.db.query("visa_status").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
       ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).unique(),
-      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).collect(),
+      ctx.db.query("agent_contact_requests").withIndex("by_from_user", (q) => q.eq("fromUserId", user._id)).take(500),
     ]);
 
     return {

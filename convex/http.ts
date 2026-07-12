@@ -116,6 +116,26 @@ http.route({
         }
         break;
       }
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object;
+        // Skip the initial invoice — checkout.session.completed already handled
+        // month 1. Only renewals (subscription_cycle, subscription_update, manual)
+        // flow through here. "subscription_create" fires on the very first invoice
+        // that Stripe generates the moment a subscription is created, so filtering
+        // it out prevents a double-commission on that first payment.
+        if (
+          invoice.billing_reason !== "subscription_create" &&
+          invoice.subscription &&
+          (invoice.amount_paid ?? 0) > 0
+        ) {
+          await ctx.runMutation(internal.billing.applySubscriptionRenewal, {
+            stripeSubscriptionId: String(invoice.subscription),
+            amountCents: Number(invoice.amount_paid ?? 0),
+            stripeEventId: event.id,
+          });
+        }
+        break;
+      }
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
         await ctx.runMutation(internal.billing.applySubscriptionEnded, {

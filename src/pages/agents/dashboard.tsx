@@ -1378,6 +1378,8 @@ function OverviewSection({
   agentName,
   onConvertToClient,
   onGoToClients,
+  commissionStats,
+  onGoToEarnings,
 }: {
   intakes: Intake[];
   contactRequests: ContactRequest[];
@@ -1386,6 +1388,8 @@ function OverviewSection({
   agentName?: string;
   onConvertToClient: (payload: ConvertPayload) => void;
   onGoToClients: () => void;
+  commissionStats: { totalCommissionCents: number; payingClientCount: number; referredSignupCount: number; referralCode: string | null } | null;
+  onGoToEarnings: () => void;
 }) {
   const { t } = useTranslation("agent-dashboard");
   const markRead = useMutation(api.agents.markContactRequestRead);
@@ -1484,6 +1488,39 @@ function OverviewSection({
           );
         })}
       </div>
+
+      {/* Earnings summary bar — shown only when commission data is available */}
+      {commissionStats !== null && (
+        <button
+          type="button"
+          onClick={onGoToEarnings}
+          className="w-full rounded-2xl border border-accent/25 bg-accent/5 hover:bg-accent/10 transition-colors p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-left cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <CircleDollarSign className="w-5 h-5 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Your Earnings</p>
+              <p className="text-2xl font-bold text-accent tabular-nums leading-none">{formatCents(commissionStats.totalCommissionCents)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">total commission earned</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 sm:border-l sm:border-border sm:pl-6 flex-wrap">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Paying clients</p>
+              <p className="text-xl font-bold text-primary tabular-nums">{commissionStats.payingClientCount}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Total signups</p>
+              <p className="text-xl font-bold text-primary tabular-nums">{commissionStats.referredSignupCount}</p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-semibold text-accent group-hover:underline ml-auto shrink-0">
+              View full breakdown <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* Demand signals */}
       {demandSignals && (
@@ -1808,6 +1845,7 @@ function DashboardInner() {
   const intakesRaw = useQuery(api.clientIntakes.listMyIntakes, {}) as Intake[] | undefined;
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
   const contactRequests = (useQuery(api.agents.getMyContactRequests, {}) ?? []) as ContactRequest[];
+  const commissionStats = useQuery(api.agentReferralCommissions.getMyReferralCommissionStatus, {});
   const markDashboardViewed = useMutation(api.agents.markDashboardViewed);
 
   const lastViewedAt = myProfile?.lastDashboardViewAt;
@@ -1914,7 +1952,7 @@ function DashboardInner() {
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign out</span>
+                Sign out
               </button>
             </div>
           </div>
@@ -1995,7 +2033,7 @@ function DashboardInner() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} />}
+              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} commissionStats={commissionStats ?? null} onGoToEarnings={() => setSection("referrals")} />}
               {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
               {section === "pipeline"  && <PipelineSection intakes={intakes} />}
               {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} viewStats={viewStats} />}

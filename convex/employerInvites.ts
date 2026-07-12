@@ -100,8 +100,8 @@ export const listMyEmployerLinks = query({
     const user = await getCurrentUser(ctx);
     if (!user || !user.email) return [];
 
-    const byEmployeeId = await ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).collect();
-    const byEmail = await ctx.db.query("org_employee_links").withIndex("by_invited_email", (q) => q.eq("invitedEmail", user.email!.toLowerCase())).collect();
+    const byEmployeeId = await ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).take(50);
+    const byEmail = await ctx.db.query("org_employee_links").withIndex("by_invited_email", (q) => q.eq("invitedEmail", user.email!.toLowerCase())).take(50);
     const pendingByEmail = byEmail.filter((l) => l.status === "pending");
 
     const links = [...byEmployeeId, ...pendingByEmail.filter((l) => !byEmployeeId.some((b) => b._id === l._id))];

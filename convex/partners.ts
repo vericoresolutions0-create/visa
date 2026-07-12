@@ -121,7 +121,7 @@ export const listPartners = query({
         const events = await ctx.db
           .query("partner_referral_events")
           .withIndex("by_slug", (q) => q.eq("slug", partner.slug))
-          .collect();
+          .take(5000);
         return {
           _id: partner._id,
           slug: partner.slug,

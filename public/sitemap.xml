@@ -45,6 +45,23 @@
   <url><loc>https://visaclear.app/visa/philippines/united-arab-emirates/employment-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
   <!-- ── Brazil → Portugal ─────────────────────────── -->
-  <url><loc>https://visaclear.app/visa/brazil/portugal/d7-visa</loc><lastmod>2025-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://visaclear.app/visa/brazil/portugal/d7-visa</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+
+  <!-- ── Ghana → United Kingdom ────────────────────── -->
+  <url><loc>https://visaclear.app/visa/ghana/united-kingdom/standard-visitor</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/ghana/united-kingdom/skilled-worker</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+
+  <!-- ── Pakistan → United Kingdom ─────────────────── -->
+  <url><loc>https://visaclear.app/visa/pakistan/united-kingdom/standard-visitor</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+
+  <!-- ── India → Canada ────────────────────────────── -->
+  <url><loc>https://visaclear.app/visa/india/canada/study-permit</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://visaclear.app/visa/india/canada/express-entry</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.95</priority></url>
+
+  <!-- ── Ghana → Canada ─────────────────────────────── -->
+  <url><loc>https://visaclear.app/visa/ghana/canada/visitor-visa</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+
+  <!-- ── Kenya → United Kingdom ────────────────────── -->
+  <url><loc>https://visaclear.app/visa/kenya/united-kingdom/standard-visitor</loc><lastmod>2026-07-11</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
 
 </urlset>

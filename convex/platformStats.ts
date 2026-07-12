@@ -77,8 +77,8 @@ export const recalculatePlanCounters = internalMutation({
   args: {},
   handler: async (ctx) => {
     const [proUsers, expertUsers] = await Promise.all([
-      ctx.db.query("users").withIndex("by_plan", (q) => q.eq("plan", "pro")).collect(),
-      ctx.db.query("users").withIndex("by_plan", (q) => q.eq("plan", "expert")).collect(),
+      ctx.db.query("users").withIndex("by_plan", (q) => q.eq("plan", "pro")).take(5000),
+      ctx.db.query("users").withIndex("by_plan", (q) => q.eq("plan", "expert")).take(5000),
     ]);
     const row = await getOrCreateRow(ctx);
     if (!row) return;

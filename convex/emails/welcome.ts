@@ -11,7 +11,7 @@ export const sendWelcomeEmail = internalAction({
     const { to, name } = args;
     const displayName = name ?? "there";
     const subject = "Welcome to VisaClear — Your visa checklist is ready";
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
 <!DOCTYPE html>
 <html>

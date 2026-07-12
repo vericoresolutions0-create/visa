@@ -64,7 +64,7 @@ export const createCheckoutSession = action({
       });
     const amountCents = Math.round(baseAmountCents * (1 - discountPercent / 100));
 
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const successPath = args.product === "agent" ? "/agents/onboarding" : "/dashboard";
 
     let stripeCustomerId = user.stripeCustomerId;
@@ -140,7 +140,7 @@ export const createAgentBillingPortalSession = action({
       });
     }
 
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${siteUrl}/agents/dashboard`,
@@ -190,7 +190,7 @@ export const createLocalMethodCheckoutSession = action({
 
     const currency = LOCAL_METHOD_CURRENCY[args.method as LocalMethod];
     const amount = LOCAL_PLAN_PRICES[currency][args.plan][args.billingCycle];
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",

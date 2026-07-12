@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { useTranslation } from "react-i18next";
@@ -9,10 +11,11 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { trackEvent } from "@/hooks/use-analytics.ts";
 import { cn } from "@/lib/utils.ts";
+import { toast } from "sonner";
 import {
   Globe, ArrowLeft, CheckCircle2, Briefcase, Users,
   ChevronRight, ShieldCheck, LayoutDashboard, FileSpreadsheet,
-  GraduationCap, UserCheck, Scale, UserPlus,
+  GraduationCap, UserCheck, Scale, UserPlus, Send,
 } from "lucide-react";
 
 export default function BusinessLandingPage() {
@@ -65,6 +68,43 @@ export default function BusinessLandingPage() {
   ];
 
   const ctaTarget = myOrg ? "/business/dashboard" : "/business/onboarding";
+
+  const submitContact = useMutation(api.contact.submit);
+  const [bizName, setBizName] = useState("");
+  const [bizOrg, setBizOrg] = useState("");
+  const [bizEmail, setBizEmail] = useState("");
+  const [bizMessage, setBizMessage] = useState("");
+  const [bizSending, setBizSending] = useState(false);
+  const [bizSent, setBizSent] = useState(false);
+
+  const handleBizEnquiry = async () => {
+    const name = bizName.trim();
+    const org = bizOrg.trim();
+    const email = bizEmail.trim();
+    const msg = bizMessage.trim();
+    if (!name || !email || !msg) {
+      toast.error("Please fill in your name, email, and message.");
+      return;
+    }
+    setBizSending(true);
+    try {
+      await submitContact({
+        name,
+        email,
+        subject: `Business Enquiry${org ? ` — ${org}` : ""}`,
+        message: msg,
+      });
+      setBizSent(true);
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        toast.error((err.data as { message: string }).message);
+      } else {
+        toast.error("Could not send your message. Try again.");
+      }
+    } finally {
+      setBizSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -271,6 +311,119 @@ export default function BusinessLandingPage() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             {t("consent.body")}
           </p>
+        </div>
+      </section>
+
+      {/* Business enquiry — for orgs not ready to create an account */}
+      <section className="py-10 sm:py-14 px-4 sm:px-6">
+        <div className="max-w-xl mx-auto">
+          {bizSent ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-accent/8 border border-accent/20 rounded-2xl p-6 flex gap-4 items-start"
+            >
+              <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-foreground mb-1">Message received — we'll be in touch.</p>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                  While you wait, you can set up your organisation dashboard in under 2 minutes. No payment needed to get started.
+                </p>
+                <Button
+                  size="sm"
+                  className="cursor-pointer text-xs"
+                  onClick={() => navigate(ctaTarget)}
+                >
+                  Set up your organisation <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-card border border-border/60 rounded-2xl p-6"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                Not ready to create an account?
+              </p>
+              <p className="font-semibold text-sm text-foreground mb-1">Send us a quick note</p>
+              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
+                We'll follow up within 1 business day. No commitment required.
+              </p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                      Your name
+                    </label>
+                    <input
+                      type="text"
+                      value={bizName}
+                      onChange={(e) => setBizName(e.target.value)}
+                      placeholder="Your name"
+                      maxLength={200}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                      Organisation
+                    </label>
+                    <input
+                      type="text"
+                      value={bizOrg}
+                      onChange={(e) => setBizOrg(e.target.value)}
+                      placeholder="Company / university"
+                      maxLength={200}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                    Work email
+                  </label>
+                  <input
+                    type="email"
+                    value={bizEmail}
+                    onChange={(e) => setBizEmail(e.target.value)}
+                    placeholder="you@organisation.com"
+                    maxLength={254}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground block mb-1">
+                    How can we help?
+                  </label>
+                  <textarea
+                    value={bizMessage}
+                    onChange={(e) => setBizMessage(e.target.value)}
+                    placeholder="Tell us about your team size, relocation destinations, or what you're looking for…"
+                    maxLength={2000}
+                    rows={3}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  />
+                </div>
+                <Button
+                  onClick={() => void handleBizEnquiry()}
+                  disabled={bizSending}
+                  className="w-full cursor-pointer"
+                >
+                  {bizSending ? "Sending…" : (
+                    <>
+                      <Send className="w-3.5 h-3.5 mr-2" />
+                      Send message
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          )}
         </div>
       </section>
 

@@ -40,33 +40,6 @@ export const listTieredAgents = query({
 });
 
 // ─── Legacy paginated query — kept only while agents/page.tsx still imports it ─
-// Remove once all call sites migrate to listTieredAgents.
-export const listAgents = query({
-  args: { paginationOpts: paginationOptsValidator },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("agent_profiles")
-      .withIndex("by_verified", (q) => q.eq("verified", true))
-      .order("desc")
-      .paginate(args.paginationOpts);
-  },
-});
-
-// ─── Featured agents (real, paid-tier ranking) ────────────────────────────────
-// Paying for Featured Placement or Agency White-Label actually does
-// something now: those agents surface here, above the regular paginated
-// list. Premium-tier counts are inherently small, so this is a real indexed
-// lookup, not a scan — same shape as admin.ts's pro/expert user counts.
-export const getFeaturedAgents = query({
-  args: {},
-  handler: async (ctx) => {
-    const [whiteLabel, featured] = await Promise.all([
-      ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agency_white_label")).collect(),
-      ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agent_featured")).collect(),
-    ]);
-    return [...whiteLabel, ...featured].filter((a) => a.verified).slice(0, 10);
-  },
-});
 
 // ─── Get my agent profile ─────────────────────────────────────────────────────
 export const getMyProfile = query({
@@ -213,6 +186,86 @@ export const contactAgent = mutation({
   },
 });
 
+// Public guest enquiry — no account required. Rate-limited to one enquiry per
+// (email, agent) per day so the same address can't spam the same agent.
+// fromUserId is intentionally absent on these rows; agents see them as leads
+// with a name + email but no linked VisaClear account.
+export const contactAgentAsGuest = mutation({
+  args: {
+    agentProfileId: v.id("agent_profiles"),
+    guestName: v.string(),
+    guestEmail: v.string(),
+    message: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const name = args.guestName.trim();
+    const email = args.guestEmail.trim().toLowerCase();
+    const message = args.message?.trim();
+
+    if (!name || name.length > 200)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter your name." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
+    if (message && message.length > 2000)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Message must be under 2,000 characters." });
+
+    const agent = await ctx.db.get(args.agentProfileId);
+    if (!agent || !agent.verified)
+      throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found." });
+
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const existing = await ctx.db
+      .query("guest_enquiry_daily")
+      .withIndex("by_email_agent_date", (q) =>
+        q.eq("emailKey", email).eq("agentProfileId", args.agentProfileId).eq("dateKey", dateKey),
+      )
+      .first();
+
+    if (existing) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "You've already sent an enquiry to this agent today. Check your inbox for their reply.",
+      });
+    }
+
+    // Platform-wide daily backstop — prevents a botnet with many distinct
+    // email addresses from flooding all agents simultaneously.
+    const globalRow = await ctx.db
+      .query("guest_enquiry_global_daily")
+      .withIndex("by_date", (q) => q.eq("dateKey", dateKey))
+      .unique();
+
+    if (globalRow && globalRow.count >= 300) {
+      throw new ConvexError({
+        code: "RATE_LIMITED",
+        message: "We've hit our enquiry limit for today. Please try again tomorrow.",
+      });
+    }
+
+    if (globalRow) {
+      await ctx.db.patch(globalRow._id, { count: globalRow.count + 1 });
+    } else {
+      await ctx.db.insert("guest_enquiry_global_daily", { dateKey, count: 1 });
+    }
+
+    await ctx.db.insert("agent_contact_requests", {
+      agentProfileId: args.agentProfileId,
+      fromName: name,
+      fromEmail: email,
+      message,
+      createdAt: new Date().toISOString(),
+      read: false,
+    });
+
+    await ctx.db.insert("guest_enquiry_daily", {
+      emailKey: email,
+      agentProfileId: args.agentProfileId,
+      dateKey,
+      count: 1,
+    });
+  },
+});
+
 // ─── Agent: real enquiries that reached them through the marketplace ────────
 export const getMyContactRequests = query({
   args: {},
@@ -277,7 +330,7 @@ export const searchAgents = query({
     const allVerified = await ctx.db
       .query("agent_profiles")
       .withIndex("by_verified", (q) => q.eq("verified", true))
-      .collect();
+      .take(1000);
 
     const matches = allVerified.filter((a) => {
       const matchesVisa =
@@ -311,7 +364,18 @@ export const getAgentPublicProfile = query({
     if (!id) return null;
     const profile = await ctx.db.get(id);
     if (!profile || !profile.verified) return null;
-    return profile;
+    // Strip internal/sensitive fields before returning to any caller.
+    // email, userId, lastDashboardViewAt, creditBalance, region are never
+    // rendered on the public profile and shouldn't be exposed to scrapers.
+    const {
+      email: _e,
+      userId: _u,
+      lastDashboardViewAt: _l,
+      creditBalance: _c,
+      region: _r,
+      ...publicProfile
+    } = profile;
+    return publicProfile;
   },
 });
 
@@ -358,6 +422,10 @@ export const recordProfileView = mutation({
   handler: async (ctx, args) => {
     const profile = await ctx.db.get(args.agentProfileId);
     if (!profile || !profile.verified) return;
+
+    // Don't count the agent's own page visits — they'd skew their own stats.
+    const viewer = await getCurrentUser(ctx);
+    if (viewer && viewer._id === profile.userId) return;
 
     const dateKey = new Date().toISOString().slice(0, 10);
     const existing = await ctx.db

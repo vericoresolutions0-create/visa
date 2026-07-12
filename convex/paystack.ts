@@ -47,7 +47,7 @@ export const initializeTransaction = action({
     }
 
     const amountKobo = NGN_PLAN_PRICES_KOBO[args.plan][args.billingCycle];
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
 
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",

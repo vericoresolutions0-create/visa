@@ -556,7 +556,7 @@ export const adminList = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const articles = await ctx.db.query("blog_articles").collect();
+    const articles = await ctx.db.query("blog_articles").take(500);
     return articles.sort((a, b) =>
       (b.publishedAt ?? b._creationTime.toString()).localeCompare(
         a.publishedAt ?? a._creationTime.toString(),
@@ -635,7 +635,7 @@ export const adminSeedArticles = mutation({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const user = await getUserOrThrow(ctx);
-    const existing = await ctx.db.query("blog_articles").collect();
+    const existing = await ctx.db.query("blog_articles").take(1);
     if (existing.length > 0) {
       throw new ConvexError({ code: "CONFLICT", message: "Articles already exist. Seed was skipped." });
     }

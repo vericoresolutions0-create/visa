@@ -11,7 +11,7 @@ export const sendEmailChangeConfirmationEmail = internalAction({
     const { to, token, name } = args;
     const safeName = escapeHtml(name);
     const subject = "Confirm your new VisaClear email";
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const confirmUrl = `${siteUrl}/settings/confirm-email/${token}`;
     const html = `
 <!DOCTYPE html>
@@ -69,7 +69,7 @@ export const sendEmailChangeNoticeEmail = internalAction({
     const safeName = escapeHtml(name);
     const safeNewEmail = escapeHtml(newEmail);
     const subject = "Your VisaClear email is changing";
-    const siteUrl = process.env.SITE_URL || "http://localhost:4173";
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
 <!DOCTYPE html>
 <html>

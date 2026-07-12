@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { logSecurityEvent } from "./securityAudit.ts";
@@ -79,6 +79,51 @@ export const submitLead = mutation({
       status: "open",
       unlockCost: UNLOCK_COSTS[args.urgencyLevel] ?? 3,
       createdAt: new Date().toISOString(),
+    });
+  },
+});
+
+// ─── Auto-submit lead from Rejection Analyser (internal only) ────────────────
+// Called from convex/ai/rejectionAnalyser.ts when the user explicitly ticked the
+// GDPR consent checkbox before running their analysis. Never exposed publicly.
+// Silently skips if the user already has an open lead to avoid duplicates.
+export const submitLeadFromRejectionAnalysis = internalMutation({
+  args: {
+    userId: v.id("users"),
+    visaType: v.string(),
+    destinationCountry: v.string(),
+    applicantNationality: v.string(),
+    refusalCodes: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existingOpen = await ctx.db
+      .query("marketplace_leads")
+      .withIndex("by_user_and_status", (q) =>
+        q.eq("userId", args.userId).eq("status", "open"),
+      )
+      .first();
+    if (existingOpen) return;
+
+    const codes = args.refusalCodes.filter(Boolean).slice(0, 5).join(", ");
+    const notes = [
+      `Nationality: ${args.applicantNationality}`,
+      codes ? `Refusal codes: ${codes}` : null,
+    ]
+      .filter(Boolean)
+      .join(". ")
+      .slice(0, 1000);
+
+    await ctx.db.insert("marketplace_leads", {
+      userId: args.userId,
+      visaType: args.visaType.trim(),
+      destinationCountry: args.destinationCountry.trim(),
+      urgencyLevel: "urgent",
+      additionalNotes: notes || undefined,
+      status: "open",
+      unlockCost: UNLOCK_COSTS["urgent"] ?? 5,
+      createdAt: new Date().toISOString(),
+      leadSource: "rejection_analyser",
+      applicantNationality: args.applicantNationality,
     });
   },
 });
@@ -532,6 +577,9 @@ export const adminGetAllLeads = query({
       unlockCost: lead.unlockCost,
       createdAt: lead.createdAt,
       sentinelNotifiedAt: lead.sentinelNotifiedAt ?? null,
+      leadSource: lead.leadSource ?? null,
+      applicantNationality: lead.applicantNationality ?? null,
+      additionalNotes: lead.additionalNotes ?? null,
       submitterName: submitters[i]?.name ?? null,
       submitterEmail: submitters[i]?.email ?? null,
       unlockCount: unlockCounts[i],
