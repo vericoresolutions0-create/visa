@@ -24,7 +24,12 @@ export default function BlogArticlePage() {
   const baseArticle = useQuery(api.blog.getBySlug, id ? { slug: id } : "skip");
   const loading = baseArticle === undefined;
 
-  const overlay = baseArticle ? getLocalizedArticleOverlay(baseArticle.slug, i18n.language) : null;
+  const jsonOverlay = baseArticle ? getLocalizedArticleOverlay(baseArticle.slug, i18n.language) : null;
+  type LangTrans = { title?: string; category?: string; excerpt?: string; body?: string };
+  const dbOverlay = baseArticle
+    ? (baseArticle as { translations?: Record<string, LangTrans> }).translations?.[i18n.language] ?? null
+    : null;
+  const overlay = jsonOverlay ?? dbOverlay;
   const article = baseArticle && overlay ? {
     ...baseArticle,
     title: overlay.title ?? baseArticle.title,

@@ -42,7 +42,12 @@ export default function BlogPage() {
   const featuredCommunityPosts = useQuery(api.community.listFeaturedPosts) ?? [];
   const articlesRaw = useQuery(api.blog.listPublished);
   const articles = (articlesRaw ?? []).map((a) => {
-    const overlay = getLocalizedArticleOverlay(a.slug, i18n.language);
+    // Static JSON overlay covers the 10 original seeded articles (manually curated).
+    const jsonOverlay = getLocalizedArticleOverlay(a.slug, i18n.language);
+    // DB translations cover any article the admin translates via the admin panel.
+    type LangTrans = { title?: string; category?: string; excerpt?: string };
+    const dbOverlay = (a as { translations?: Record<string, LangTrans> }).translations?.[i18n.language] ?? null;
+    const overlay = jsonOverlay ?? dbOverlay;
     if (!overlay) return a;
     return {
       ...a,

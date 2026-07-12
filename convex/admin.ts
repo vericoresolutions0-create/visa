@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { bumpStat, bumpPlanCounters, readStats } from "./platformStats.ts";
@@ -345,3 +345,12 @@ export const processPayoutRequest = mutation({
 
 // Re-export the Id type alias used in the admin page
 export type { Id };
+
+// Used by "use node" actions that can't call requireAdmin directly.
+export const verifyAdminForAction = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return true;
+  },
+});

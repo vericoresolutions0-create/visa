@@ -615,6 +615,15 @@ export default defineSchema({
     published: v.boolean(),
     publishedAt: v.optional(v.string()),
     createdByUserId: v.optional(v.id("users")),
+    // AI-generated translations stored per article so new articles
+    // are fully multilingual without any code deploy.
+    translations: v.optional(v.object({
+      fr: v.optional(v.object({ title: v.string(), excerpt: v.string(), body: v.string(), category: v.optional(v.string()) })),
+      es: v.optional(v.object({ title: v.string(), excerpt: v.string(), body: v.string(), category: v.optional(v.string()) })),
+      pt: v.optional(v.object({ title: v.string(), excerpt: v.string(), body: v.string(), category: v.optional(v.string()) })),
+      ar: v.optional(v.object({ title: v.string(), excerpt: v.string(), body: v.string(), category: v.optional(v.string()) })),
+      hi: v.optional(v.object({ title: v.string(), excerpt: v.string(), body: v.string(), category: v.optional(v.string()) })),
+    })),
   })
     .index("by_slug", ["slug"])
     .index("by_published", ["published"])

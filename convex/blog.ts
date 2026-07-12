@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { requireAdmin } from "./admin.ts";
 import { getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
 
@@ -647,5 +647,38 @@ export const adminSeedArticles = mutation({
       });
     }
     return SEED_ARTICLES.length;
+  },
+});
+
+// ─── Internal helpers for AI translation ──────────────────────────────────────
+
+const translationLangValidator = v.optional(v.object({
+  title: v.string(),
+  excerpt: v.string(),
+  body: v.string(),
+  category: v.optional(v.string()),
+}));
+
+const translationsValidator = v.object({
+  fr: translationLangValidator,
+  es: translationLangValidator,
+  pt: translationLangValidator,
+  ar: translationLangValidator,
+  hi: translationLangValidator,
+});
+
+export const getArticleForTranslation = internalQuery({
+  args: { articleId: v.id("blog_articles") },
+  handler: async (ctx, { articleId }) => {
+    return await ctx.db.get(articleId);
+  },
+});
+
+export const saveArticleTranslations = internalMutation({
+  args: { articleId: v.id("blog_articles"), translations: translationsValidator },
+  handler: async (ctx, { articleId, translations }) => {
+    const article = await ctx.db.get(articleId);
+    if (!article) throw new ConvexError({ code: "NOT_FOUND", message: "Article not found." });
+    await ctx.db.patch(articleId, { translations });
   },
 });

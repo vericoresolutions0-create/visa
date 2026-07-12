@@ -24,6 +24,7 @@ import type * as auth from "../auth.js";
 import type * as authHelpers from "../authHelpers.js";
 import type * as billing from "../billing.js";
 import type * as blog from "../blog.js";
+import type * as blogAI from "../blogAI.js";
 import type * as checklistAudit from "../checklistAudit.js";
 import type * as checklistFlags from "../checklistFlags.js";
 import type * as checklists from "../checklists.js";
@@ -112,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   authHelpers: typeof authHelpers;
   billing: typeof billing;
   blog: typeof blog;
+  blogAI: typeof blogAI;
   checklistAudit: typeof checklistAudit;
   checklistFlags: typeof checklistFlags;
   checklists: typeof checklists;

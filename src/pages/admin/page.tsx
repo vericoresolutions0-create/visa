@@ -18,7 +18,7 @@ import {
   AlertCircle, UserCheck, Settings, Send, Clock, Star,
   Building2, Copy, Plus, Eye, UserPlus, ListChecks, MessageCircle,
   RefreshCw, Award, LogOut, Menu, X, Coins, Lock, LockOpen, Info,
-  Sparkles, CalendarClock,
+  Sparkles, CalendarClock, Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -2659,10 +2659,12 @@ function BlogAdminPanel() {
   const togglePublished = useMutation(api.blog.adminTogglePublished);
   const deleteArticle = useMutation(api.blog.adminDelete);
   const seedArticles = useMutation(api.blog.adminSeedArticles);
+  const translateArticle = useAction(api.blogAI.translateArticle);
 
   const [editing, setEditing] = useState<string | null>(null); // _id or "new"
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [translating, setTranslating] = useState<string | null>(null); // article _id being translated
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({
     slug: "", title: "", excerpt: "", body: "", category: "", readTime: "", featured: false, published: true, publishedAt: "",
@@ -2739,6 +2741,19 @@ function BlogAdminPanel() {
       else toast.error("Seed failed.");
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const handleTranslate = async (articleId: string) => {
+    setTranslating(articleId);
+    try {
+      await translateArticle({ articleId: articleId as Parameters<typeof translateArticle>[0]["articleId"] });
+      toast.success("Translated into FR · ES · PT · AR · HI. Live for all users immediately.");
+    } catch (err) {
+      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
+      else toast.error("Translation failed. Check your OpenAI key.");
+    } finally {
+      setTranslating(null);
     }
   };
 
@@ -2832,51 +2847,88 @@ function BlogAdminPanel() {
         </div>
       ) : (
         <div className="space-y-2">
-          {articles.map((a) => (
-            <div key={a._id} className="bg-card border border-border rounded-xl p-4 flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", a.published ? "text-green-700 bg-green-50 border-green-200" : "text-muted-foreground bg-muted border-border")}>
-                    {a.published ? "Published" : "Draft"}
-                  </span>
-                  {a.featured && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">Featured</span>}
-                  <span className="text-[10px] text-muted-foreground">{a.category}</span>
+          {articles.map((a) => {
+            type ArticleTrans = { translations?: Record<string, unknown> };
+            const transObj = (a as ArticleTrans).translations ?? {};
+            const transCount = ["fr", "es", "pt", "ar", "hi"].filter((l) => !!transObj[l]).length;
+            const isTranslating = translating === a._id;
+
+            return (
+              <div key={a._id} className="bg-card border border-border rounded-xl p-4 flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", a.published ? "text-green-700 bg-green-50 border-green-200" : "text-muted-foreground bg-muted border-border")}>
+                      {a.published ? "Published" : "Draft"}
+                    </span>
+                    {a.featured && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">Featured</span>}
+                    <span className="text-[10px] text-muted-foreground">{a.category}</span>
+                    {/* Translation status badge */}
+                    {transCount === 5 ? (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        5 langs ✓
+                      </span>
+                    ) : transCount > 0 ? (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {transCount}/5 langs
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
+                        EN only
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-foreground truncate">{a.title}</p>
+                  <p className="text-xs text-muted-foreground">/blog/{a.slug}</p>
                 </div>
-                <p className="text-sm font-semibold text-foreground truncate">{a.title}</p>
-                <p className="text-xs text-muted-foreground">/blog/{a.slug}</p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => void handleToggle(a._id)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
-                  title={a.published ? "Unpublish" : "Publish"}
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => openEdit(a)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
-                  title="Edit"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                </button>
-                {confirmDelete === a._id ? (
-                  <>
-                    <button onClick={() => void handleDelete(a._id)} className="text-xs font-semibold text-destructive cursor-pointer px-2 py-1 rounded hover:bg-destructive/10">Confirm</button>
-                    <button onClick={() => setConfirmDelete(null)} className="text-xs text-muted-foreground cursor-pointer px-1">Cancel</button>
-                  </>
-                ) : (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Translate button */}
                   <button
-                    onClick={() => setConfirmDelete(a._id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer transition-colors"
-                    title="Delete"
+                    onClick={() => void handleTranslate(a._id)}
+                    disabled={isTranslating}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors cursor-pointer",
+                      isTranslating
+                        ? "text-blue-400 bg-blue-50 animate-pulse"
+                        : transCount === 5
+                        ? "text-emerald-500 hover:bg-emerald-50"
+                        : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                    )}
+                    title={transCount === 5 ? "Re-translate (5 langs)" : "Translate to FR · ES · PT · AR · HI"}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Languages className="w-3.5 h-3.5" />
                   </button>
-                )}
+                  <button
+                    onClick={() => void handleToggle(a._id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                    title={a.published ? "Unpublish" : "Publish"}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => openEdit(a)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                    title="Edit"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
+                  {confirmDelete === a._id ? (
+                    <>
+                      <button onClick={() => void handleDelete(a._id)} className="text-xs font-semibold text-destructive cursor-pointer px-2 py-1 rounded hover:bg-destructive/10">Confirm</button>
+                      <button onClick={() => setConfirmDelete(null)} className="text-xs text-muted-foreground cursor-pointer px-1">Cancel</button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(a._id)}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </motion.div>
