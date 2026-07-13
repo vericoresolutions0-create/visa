@@ -4273,6 +4273,9 @@ function SystemHealthPanel() {
   const tgConfigured  = useQuery(api.telegramBot.isTelegramConfigured, {});
   const waConfigured  = useQuery(api.whatsappBot.isWhatsAppConfigured, {});
   const navigate = useNavigate();
+  const [patDismissed, setPatDismissed] = useState(() =>
+    localStorage.getItem("vc_admin_pat_fixed") === "1"
+  );
 
   if (health === undefined) {
     return (
@@ -4499,43 +4502,57 @@ function SystemHealthPanel() {
         </div>
       </div>
 
-      {/* Action Now */}
-      <div className="rounded-xl border border-red-200 bg-red-50/50 overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-red-200">
-          <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5" /> Action Now
-          </span>
-        </div>
-        <div className="divide-y divide-red-100/60">
-          <div className="flex items-start gap-3 px-5 py-3.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-red-900">GitHub PAT token — security risk</p>
-              <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
-                A personal access token is embedded in the git remote URL and is visible in git config. Rotate it on GitHub and replace the remote URL with SSH or a token-only credential. Do this before your next push.
-              </p>
-            </div>
-            <a
-              href="https://github.com/settings/tokens"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[9.5px] font-bold bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-red-200 transition-colors shrink-0"
-            >
-              GitHub →
-            </a>
+      {/* Action Now — only rendered when there are real outstanding items */}
+      {(!patDismissed || !health?.envVars?.PAYSTACK_SECRET_KEY) && (
+        <div className="rounded-xl border border-red-200 bg-red-50/50 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-red-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" /> Action Now
+            </span>
           </div>
-          <div className="flex items-start gap-3 px-5 py-3.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-red-900">Paystack secret key — Nigerian payments blocked</p>
-              <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
-                All other payment integrations are live. Nigerian card payments are gated on this key. Add <code className="bg-red-100 rounded px-0.5">PAYSTACK_SECRET_KEY</code> in the Convex Dashboard → Environment Variables when Paystack provides it.
-              </p>
-            </div>
-            <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">Waiting</span>
+          <div className="divide-y divide-red-100/60">
+            {!patDismissed && (
+              <div className="flex items-start gap-3 px-5 py-3.5">
+                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-red-900">GitHub PAT token — security risk</p>
+                  <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
+                    A personal access token is embedded in the git remote URL and is visible in git config. Rotate it on GitHub and replace the remote URL with SSH or a token-only credential. Do this before your next push.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[9.5px] font-bold bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-red-200 transition-colors text-center"
+                  >
+                    GitHub →
+                  </a>
+                  <button
+                    onClick={() => { localStorage.setItem("vc_admin_pat_fixed", "1"); setPatDismissed(true); }}
+                    className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-emerald-100 transition-colors cursor-pointer"
+                  >
+                    Mark fixed
+                  </button>
+                </div>
+              </div>
+            )}
+            {!health?.envVars?.PAYSTACK_SECRET_KEY && (
+              <div className="flex items-start gap-3 px-5 py-3.5">
+                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-red-900">Paystack secret key — Nigerian payments blocked</p>
+                  <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
+                    All other payment integrations are live. Nigerian card payments are gated on this key. Add <code className="bg-red-100 rounded px-0.5">PAYSTACK_SECRET_KEY</code> in the Convex Dashboard → Environment Variables when Paystack provides it.
+                  </p>
+                </div>
+                <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">Waiting</span>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Watch list */}
       <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
