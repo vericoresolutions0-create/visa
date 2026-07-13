@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useConvexAuth } from "convex/react";
 import {
   BrowserRouter,
@@ -95,6 +95,16 @@ const AgentMarketplaceLeadsPage = lazy(() => import("./pages/agents/marketplace-
 const FindAgentPage = lazy(() => import("./pages/dashboard/find-agent/page.tsx"));
 
 function PageLoader() {
+  // Only show the skeleton after a brief delay so cached-chunk navigations
+  // (the common case after first load) never flash a loading state.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 250);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!visible) return null;
+
   return (
     <div className="min-h-screen flex flex-col gap-4 p-8">
       {Array.from({ length: 4 }).map((_, i) => (
