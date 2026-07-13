@@ -4276,6 +4276,9 @@ function SystemHealthPanel() {
   const [patDismissed, setPatDismissed] = useState(() =>
     localStorage.getItem("vc_admin_pat_fixed") === "1"
   );
+  const [ogDismissed, setOgDismissed] = useState(() =>
+    localStorage.getItem("vc_admin_og_fixed") === "1"
+  );
 
   if (health === undefined) {
     return (
@@ -4554,23 +4557,31 @@ function SystemHealthPanel() {
         </div>
       )}
 
-      {/* Watch list */}
-      <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-amber-100">
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" /> Watch list — no urgency
-          </span>
-        </div>
-        <div className="divide-y divide-amber-100/60">
-          <div className="flex items-start gap-3 px-5 py-3">
-            <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-amber-900">OG social share image</p>
-              <p className="text-[11px] text-amber-700/80 font-medium">Current share image is the app icon (512×512). A 1200×630 landscape card improves link previews on WhatsApp, Twitter, and LinkedIn.</p>
+      {/* Watch list — only shown while items remain */}
+      {!ogDismissed && (
+        <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-amber-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" /> Watch list — no urgency
+            </span>
+          </div>
+          <div className="divide-y divide-amber-100/60">
+            <div className="flex items-start gap-3 px-5 py-3">
+              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-amber-900">OG social share image</p>
+                <p className="text-[11px] text-amber-700/80 font-medium">1200×630 og-image.png is deployed and wired in index.html — WhatsApp, Twitter and LinkedIn previews are live.</p>
+              </div>
+              <button
+                onClick={() => { localStorage.setItem("vc_admin_og_fixed", "1"); setOgDismissed(true); }}
+                className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-emerald-100 transition-colors cursor-pointer shrink-0"
+              >
+                Mark fixed
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );
