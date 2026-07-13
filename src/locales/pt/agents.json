@@ -137,5 +137,6 @@
   "onboarding.activate_listing": "Ativar listagem",
   "onboarding.preview_dashboard": "Pré-visualizar painel",
   "onboarding.back_to_signup": "Voltar ao cadastro",
-  "onboarding.footer_note": "Este fluxo de integração é intencionalmente diferente do painel de solicitante regular porque o produto de agente é um espaço de parceiro voltado para receita."
+  "onboarding.footer_note": "Este fluxo de integração é intencionalmente diferente do painel de solicitante regular porque o produto de agente é um espaço de parceiro voltado para receita.",
+  "why.p5": "O seu espaço de trabalho inclui agora um assistente IA — consulte o pipeline, redija acompanhamentos e identifique casos parados em segundos."
 }

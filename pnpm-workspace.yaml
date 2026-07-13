@@ -19,3 +19,4 @@ allowBuilds:
   '@swc/core': true
   core-js: true
   esbuild: true
+  sharp: set this to true or false

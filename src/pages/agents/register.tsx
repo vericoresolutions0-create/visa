@@ -69,6 +69,9 @@ export default function AgentRegisterPage() {
     specialisations: [] as string[],
     languages: [] as string[],
     region: "" as "" | "global" | "europe",
+    credentialType: "",
+    credentialNumber: "",
+    credentialVerifyUrl: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -98,6 +101,9 @@ export default function AgentRegisterPage() {
         specialisations: profile.specialisations,
         languages: profile.languages,
         region: (profile.region as "global" | "europe") || undefined,
+        credentialType: profile.credentialType.trim() || undefined,
+        credentialNumber: profile.credentialNumber.trim() || undefined,
+        credentialVerifyUrl: profile.credentialVerifyUrl.trim() || undefined,
       });
       setStep(3);
     } catch {
@@ -386,6 +392,44 @@ export default function AgentRegisterPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+                {/* Credentials — optional, shown to clients for trust */}
+                <div>
+                  <p className="text-sm font-medium mb-1">Professional credentials <span className="text-muted-foreground font-normal text-xs">(optional)</span></p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Adding your OISC, RCIC, Bar number, or similar reference gives clients a way to verify your registration independently.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="text-sm">Credential type
+                      <input
+                        value={profile.credentialType}
+                        onChange={(e) => setProfile((prev) => ({ ...prev, credentialType: e.target.value }))}
+                        className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                        placeholder="e.g. OISC Level 1, RCIC, Bar Membership"
+                        maxLength={100}
+                      />
+                    </label>
+                    <label className="text-sm">Reference number
+                      <input
+                        value={profile.credentialNumber}
+                        onChange={(e) => setProfile((prev) => ({ ...prev, credentialNumber: e.target.value }))}
+                        className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                        placeholder="e.g. F201912345"
+                        maxLength={100}
+                      />
+                    </label>
+                  </div>
+                  <label className="text-sm mt-3 block">Verification URL
+                    <input
+                      type="url"
+                      value={profile.credentialVerifyUrl}
+                      onChange={(e) => setProfile((prev) => ({ ...prev, credentialVerifyUrl: e.target.value }))}
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
+                      placeholder="https://oisc.homeoffice.gov.uk/Reg/..."
+                      maxLength={500}
+                    />
+                    <span className="text-[11px] text-muted-foreground">Link to your public listing on the regulator's website.</span>
+                  </label>
                 </div>
                 <div className="flex justify-between gap-3">
                   <Button variant="secondary" onClick={() => setStep(1)} className="cursor-pointer">{t("register.back")}</Button>

@@ -31,16 +31,22 @@ async function verifyStripeSignature(
   secret: string,
 ): Promise<boolean> {
   if (!signatureHeader) return false;
-  const parts = Object.fromEntries(
-    signatureHeader.split(",").map((part) => part.split("=") as [string, string]),
-  );
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) return false;
+  // Split on first "=" only — base64 values can contain "=".
+  // During Stripe signing-key rotation, multiple v1= entries are sent;
+  // collect all of them and accept if any matches.
+  const pairs = signatureHeader.split(",").map((part) => {
+    const eqIdx = part.indexOf("=");
+    return [part.slice(0, eqIdx), part.slice(eqIdx + 1)] as [string, string];
+  });
+  const timestamp = pairs.find(([k]) => k === "t")?.[1];
+  const signatures = pairs.filter(([k]) => k === "v1").map(([, v]) => v);
+  if (!timestamp || signatures.length === 0) return false;
 
-  // 5 minute tolerance — same default Stripe's own libraries use, guards
-  // against a captured/replayed webhook request being resent later.
-  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+  // 5-minute tolerance — guards against captured/replayed requests.
+  // Guard against a non-numeric timestamp (NaN) which would make the
+  // comparison trivially true.
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -58,12 +64,14 @@ async function verifyStripeSignature(
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 
-  if (expectedHex.length !== signature.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < expectedHex.length; i++) {
-    mismatch |= expectedHex.charCodeAt(i) ^ signature.charCodeAt(i);
-  }
-  return mismatch === 0;
+  return signatures.some((signature) => {
+    if (expectedHex.length !== signature.length) return false;
+    let mismatch = 0;
+    for (let i = 0; i < expectedHex.length; i++) {
+      mismatch |= expectedHex.charCodeAt(i) ^ signature.charCodeAt(i);
+    }
+    return mismatch === 0;
+  });
 }
 
 http.route({
@@ -100,6 +108,7 @@ http.route({
             plan: metadata.plan,
             billingCycle: metadata.billingCycle,
             amountCents: Number(metadata.amountCents) || 0,
+            stripeEventId: event.id,
           });
         } else {
           await ctx.runMutation(internal.billing.applyCheckoutCompleted, {
@@ -209,7 +218,7 @@ http.route({
           plan: metadata.plan,
           billingCycle: metadata.billingCycle,
           amountCents: Number(event.data?.amount) || 0,
-          paystackReference: String(event.data.reference ?? ""),
+          paystackReference: String(event.data?.reference ?? "") || undefined,
         });
       }
     }
@@ -236,9 +245,15 @@ http.route({
       return new Response("Invalid secret", { status: 401 });
     }
 
-    const update = await request.json();
-    const message = update.message;
-    const chatId = message?.chat?.id;
+    let update: Record<string, unknown>;
+    try {
+      update = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+    const message = update.message as Record<string, unknown> | null | undefined;
+    const chat = message?.chat as Record<string, unknown> | null | undefined;
+    const chatId = chat?.id;
     const text = message?.text;
 
     if (chatId && typeof text === "string") {

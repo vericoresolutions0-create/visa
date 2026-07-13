@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
+import { getEffectivePlan } from "./checklists.ts";
 
 const PAID_PLANS = ["pro", "expert"] as const;
 const MAX_TITLE_LENGTH = 120;
@@ -69,7 +70,7 @@ export const submitPost = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
 
-    if (!PAID_PLANS.includes(user.plan as (typeof PAID_PLANS)[number])) {
+    if (!PAID_PLANS.includes(getEffectivePlan(user) as (typeof PAID_PLANS)[number])) {
       throw new ConvexError({
         code: "FORBIDDEN",
         message: "Community posts are available on Pro and Expert plans.",
@@ -253,6 +254,11 @@ export const moderatePost = mutation({
       featured: args.featured ?? post.featured,
       moderatedAt: new Date().toISOString(),
       moderatedByUserId: admin._id,
+      // Clear accumulated flags so coordinated users can't permanently re-hide
+      // a post the admin has explicitly cleared.
+      ...(args.decision === "approved"
+        ? { flagCount: 0, flaggedByUserIds: [] }
+        : {}),
     });
 
     await logAdminAction(

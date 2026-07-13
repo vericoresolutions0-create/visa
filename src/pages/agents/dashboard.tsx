@@ -55,13 +55,15 @@ import {
   Users,
   X,
   Zap,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import { AgentAIChat } from "@/components/AgentAIChat.tsx";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type IntakeStatus = "awaiting_documents" | "documents_received" | "in_review" | "complete";
-type Section = "overview" | "clients" | "pipeline" | "analytics" | "referrals" | "license";
+type Section = "overview" | "clients" | "pipeline" | "analytics" | "referrals" | "license" | "ai";
 
 type IntakeDocument = {
   _id: string;
@@ -113,6 +115,7 @@ const NAV: { id: Section; labelKey: string; Icon: LucideIcon }[] = [
   { id: "analytics", labelKey: "nav.analytics",  Icon: BarChart3 },
   { id: "referrals", labelKey: "nav.referrals",  Icon: CircleDollarSign },
   { id: "license",   labelKey: "nav.license",    Icon: BadgeCheck },
+  { id: "ai",        labelKey: "nav.ai",         Icon: Sparkles },
 ];
 
 const STATUS_STYLES: Record<IntakeStatus, { dot: string; badge: string }> = {
@@ -1306,13 +1309,13 @@ function LicenseSection() {
         </div>
         <div className="rounded-2xl border border-border bg-card p-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("license.code_label")}</p>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3">
             <input
               value={code} onChange={(e) => setCode(e.target.value)}
               placeholder={t("license.placeholder")} disabled={redeeming}
-              className="flex-1 px-4 py-3 text-base rounded-xl border border-input bg-background font-mono disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 text-base rounded-xl border border-input bg-background font-mono disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <Button disabled={redeeming} onClick={() => { void handleRedeem(); }} className="cursor-pointer">
+            <Button disabled={redeeming} onClick={() => { void handleRedeem(); }} className="cursor-pointer w-full sm:w-auto">
               {redeeming ? t("license.redeeming") : t("license.redeem")}
             </Button>
           </div>
@@ -1361,6 +1364,62 @@ function LicenseSection() {
   );
 }
 
+// ─── AI Banner (shown once on Overview until dismissed) ──────────────────────
+
+function AIBanner({ mode, onTryIt }: { mode: "agent" | "business"; onTryIt: () => void }) {
+  const key = `vc_ai_banner_${mode}`;
+  const [visible, setVisible] = useState(() => localStorage.getItem(key) !== "1");
+
+  const dismiss = () => {
+    localStorage.setItem(key, "1");
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+      <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+        <Sparkles className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground leading-snug">
+          {mode === "agent" ? "AI Casework Assistant" : "AI HR Assistant"}{" "}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded px-1.5 py-0.5 ml-1 align-middle">New</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-snug hidden sm:block">
+          {mode === "agent"
+            ? "Ask who needs chasing, get a pipeline summary, or draft a client follow-up."
+            : "Check cohort readiness, flag stalled employees, or draft an HR follow-up."}
+        </p>
+      </div>
+      <button
+        onClick={onTryIt}
+        className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary rounded-lg px-3 py-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+      >
+        Try it →
+      </button>
+      <button
+        onClick={dismiss}
+        className="shrink-0 p-1 rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+        aria-label="Dismiss"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Section: AI Assistant ────────────────────────────────────────────────────
+
+function AISection() {
+  return (
+    <div className="h-[calc(100vh-10rem)] min-h-130">
+      <AgentAIChat mode="agent" className="h-full" />
+    </div>
+  );
+}
+
 // ─── Section: Overview ────────────────────────────────────────────────────────
 
 function greetingWord() {
@@ -1380,6 +1439,7 @@ function OverviewSection({
   onGoToClients,
   commissionStats,
   onGoToEarnings,
+  onGoToAI,
 }: {
   intakes: Intake[];
   contactRequests: ContactRequest[];
@@ -1390,6 +1450,7 @@ function OverviewSection({
   onGoToClients: () => void;
   commissionStats: { totalCommissionCents: number; payingClientCount: number; referredSignupCount: number; referralCode: string | null } | null;
   onGoToEarnings: () => void;
+  onGoToAI: () => void;
 }) {
   const { t } = useTranslation("agent-dashboard");
   const markRead = useMutation(api.agents.markContactRequestRead);
@@ -1424,6 +1485,7 @@ function OverviewSection({
 
   return (
     <div className="space-y-6">
+      <AIBanner mode="agent" onTryIt={onGoToAI} />
       {/* Daily greeting */}
       <div className="rounded-2xl bg-[#0f2040] text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -2033,12 +2095,13 @@ function DashboardInner() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} commissionStats={commissionStats ?? null} onGoToEarnings={() => setSection("referrals")} />}
+              {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} commissionStats={commissionStats ?? null} onGoToEarnings={() => setSection("referrals")} onGoToAI={() => setSection("ai")} />}
               {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
               {section === "pipeline"  && <PipelineSection intakes={intakes} />}
               {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} viewStats={viewStats} />}
               {section === "referrals" && <ReferralsSection />}
               {section === "license"   && <LicenseSection />}
+              {section === "ai"        && <AISection />}
             </motion.div>
           </AnimatePresence>
         </main>

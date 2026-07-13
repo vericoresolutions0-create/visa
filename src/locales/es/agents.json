@@ -137,5 +137,6 @@
   "onboarding.activate_listing": "Activar listado",
   "onboarding.preview_dashboard": "Vista previa del panel",
   "onboarding.back_to_signup": "Volver al registro",
-  "onboarding.footer_note": "Este flujo de incorporación es intencionalmente diferente del panel de solicitante habitual porque el producto de agente es un espacio de socio generador de ingresos."
+  "onboarding.footer_note": "Este flujo de incorporación es intencionalmente diferente del panel de solicitante habitual porque el producto de agente es un espacio de socio generador de ingresos.",
+  "why.p5": "Tu espacio de trabajo ahora incluye un asistente IA — consulta tu pipeline, redacta seguimientos e identifica casos paralizados en segundos."
 }

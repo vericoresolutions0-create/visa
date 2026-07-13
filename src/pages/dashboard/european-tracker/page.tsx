@@ -205,7 +205,7 @@ function GaugeBar({ used, limit, warning }: { used: number; limit: number; warni
       </div>
       <div className="flex justify-between text-[10px] text-slate-400 mt-1">
         <span>0</span>
-        <span className="text-amber-600">{warning} ⚠</span>
+        <span className="text-amber-600 inline-flex items-center gap-1">{warning} <AlertTriangle className="w-3.5 h-3.5 shrink-0" /></span>
         <span>{limit}</span>
       </div>
     </div>

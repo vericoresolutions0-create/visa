@@ -317,14 +317,20 @@ export const completeCheckout = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    // This simulated path is only valid when Stripe is not configured.
-    // When Stripe IS live every real payment flows through its webhook into
-    // applyCheckoutCompleted — calling this mutation directly would bypass
-    // that verification entirely.
+    // Demo-only path: only active when Stripe is not configured AND the
+    // deployment explicitly opts in with DEMO_CHECKOUT=true. This prevents
+    // the dev bypass from being live in a production deployment that simply
+    // hasn't configured Stripe yet.
     if (process.env.STRIPE_SECRET_KEY) {
       throw new ConvexError({
         code: "INVALID_OPERATION",
         message: "Checkout is handled via Stripe. Please use the Stripe checkout flow.",
+      });
+    }
+    if (!process.env.DEMO_CHECKOUT) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Payment processing is not configured. Please contact support.",
       });
     }
 
@@ -597,6 +603,9 @@ export const deleteCurrentAccount = mutation({
       employeeLinks,
       riskScoreResults,
       pendingRejectionUploads,
+      agentReviews,
+      marketplaceLeads,
+      approvalStories,
     ] = await Promise.all([
       ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
       ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(500),
@@ -623,6 +632,9 @@ export const deleteCurrentAccount = mutation({
       ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id)).take(50),
       ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", user._id)).take(20),
       ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", user._id)).take(10),
+      ctx.db.query("agent_reviews").withIndex("by_reviewer_agent", (q) => q.eq("reviewerUserId", user._id)).take(200),
+      ctx.db.query("marketplace_leads").withIndex("by_user", (q) => q.eq("userId", user._id)).take(200),
+      ctx.db.query("approval_stories").withIndex("by_submitter", (q) => q.eq("submittedByUserId", user._id)).take(200),
     ]);
 
     // Vault documents own real storage blobs — must be deleted first.
@@ -686,6 +698,9 @@ export const deleteCurrentAccount = mutation({
       ...employeeLinks,
       ...riskScoreResults,
       ...pendingRejectionUploads,
+      ...agentReviews,
+      ...marketplaceLeads,
+      ...approvalStories,
     ]) {
       await ctx.db.delete(row._id);
     }

@@ -66,4 +66,15 @@ crons.cron(
   {},
 );
 
+// Wednesday 9:00 AM UTC weekly — fetches each monitored embassy page, hashes
+// its text content, and flags it for admin review when the content changed.
+// Government visa pages don't update daily so weekly is the right cadence;
+// intermittent fetch errors are silently skipped to avoid false alerts.
+crons.cron(
+  "check embassy pages",
+  "0 9 * * 3",
+  internal.embassyMonitor.checkEmbassyPages,
+  {},
+);
+
 export default crons;

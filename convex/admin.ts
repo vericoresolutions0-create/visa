@@ -98,6 +98,16 @@ export const claimFirstAdmin = mutation({
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);
 
+    // Restrict to the configured founder email so a random user cannot
+    // claim the admin seat if they sign up before the founder does.
+    const founderEmail = process.env.FOUNDER_EMAIL;
+    if (founderEmail && user.email?.toLowerCase() !== founderEmail.toLowerCase()) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Admin seat claim is restricted to the platform owner.",
+      });
+    }
+
     const existingAdmin = await ctx.db
       .query("users")
       .withIndex("by_role", (q) => q.eq("role", "admin"))
@@ -148,6 +158,7 @@ export const deleteUser = mutation({
       expirations, pendingEmailChanges, rejectionAnalyserUsage, inAppNotifications,
       orgMembers, visaStatuses, travelTrips, managedDependents, checklistAudits,
       userDailyUsage, sentContactRequests, employeeLinks, riskScoreResults, pendingRejectionUploads,
+      agentReviews, marketplaceLeads, approvalStories,
     ] = await Promise.all([
       ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(500),
       ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(500),
@@ -174,6 +185,9 @@ export const deleteUser = mutation({
       ctx.db.query("org_employee_links").withIndex("by_employee_user", (q) => q.eq("employeeUserId", args.userId)).take(50),
       ctx.db.query("risk_score_results").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(20),
       ctx.db.query("pending_rejection_uploads").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(10),
+      ctx.db.query("agent_reviews").withIndex("by_reviewer_agent", (q) => q.eq("reviewerUserId", args.userId)).take(200),
+      ctx.db.query("marketplace_leads").withIndex("by_user", (q) => q.eq("userId", args.userId)).take(200),
+      ctx.db.query("approval_stories").withIndex("by_submitter", (q) => q.eq("submittedByUserId", args.userId)).take(200),
     ]);
 
     // Delete storage blobs before their rows.
@@ -212,6 +226,7 @@ export const deleteUser = mutation({
       ...rejectionAnalyserUsage, ...inAppNotifications, ...orgMembers, ...visaStatuses,
       ...travelTrips, ...managedDependents, ...checklistAudits, ...userDailyUsage,
       ...sentContactRequests, ...employeeLinks, ...riskScoreResults, ...pendingRejectionUploads,
+      ...agentReviews, ...marketplaceLeads, ...approvalStories,
     ]) {
       await ctx.db.delete(row._id);
     }
@@ -281,7 +296,7 @@ export const checkAdminExists = query({
   handler: async (ctx): Promise<boolean> => {
     const admin = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("role"), "admin"))
+      .withIndex("by_role", (q) => q.eq("role", "admin"))
       .first();
     return admin !== null;
   },
@@ -352,5 +367,95 @@ export const verifyAdminForAction = internalQuery({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     return true;
+  },
+});
+
+// ── AI Usage Analytics ────────────────────────────────────────────────────────
+// Real data from user_daily_usage. Admin-only. Full table scan is fine at this
+// scale — the table will have <10k rows for months, and this panel is admin-only.
+
+export const getAIUsage = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const allRows = await ctx.db.query("user_daily_usage").collect();
+
+    // Only care about AI rows
+    const aiRows = allRows.filter(
+      (r) => r.resource === "agent_ai_agent" || r.resource === "agent_ai_business",
+    );
+
+    // Build last-7-days date keys (UTC)
+    const today = new Date();
+    const days: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+
+    const todayKey = days[days.length - 1];
+
+    // Aggregate by day
+    const byDay: Record<string, { agent: number; business: number }> = {};
+    for (const day of days) byDay[day] = { agent: 0, business: 0 };
+    for (const row of aiRows) {
+      if (!byDay[row.dateKey]) continue;
+      if (row.resource === "agent_ai_agent") byDay[row.dateKey].agent += row.count;
+      else byDay[row.dateKey].business += row.count;
+    }
+
+    // Today's totals
+    const todayAgent = byDay[todayKey]?.agent ?? 0;
+    const todayBusiness = byDay[todayKey]?.business ?? 0;
+
+    // All-time totals
+    const totalAgent = aiRows.filter(r => r.resource === "agent_ai_agent").reduce((s, r) => s + r.count, 0);
+    const totalBusiness = aiRows.filter(r => r.resource === "agent_ai_business").reduce((s, r) => s + r.count, 0);
+
+    // Top users this week (last 7 days) — load emails from users table
+    const weekKeys = new Set(days);
+    const weekRows = aiRows.filter((r) => weekKeys.has(r.dateKey));
+    const userTotals: Record<string, { agent: number; business: number; userId: string }> = {};
+    for (const row of weekRows) {
+      const uid = row.userId;
+      if (!userTotals[uid]) userTotals[uid] = { agent: 0, business: 0, userId: uid };
+      if (row.resource === "agent_ai_agent") userTotals[uid].agent += row.count;
+      else userTotals[uid].business += row.count;
+    }
+
+    const topUserIds = Object.values(userTotals)
+      .sort((a, b) => (b.agent + b.business) - (a.agent + a.business))
+      .slice(0, 15);
+
+    const topUsers = await Promise.all(
+      topUserIds.map(async (entry) => {
+        const user = await ctx.db.get(entry.userId as Id<"users">);
+        return {
+          email: user?.email ?? "unknown",
+          name: user?.name ?? null,
+          agentMessages: entry.agent,
+          bizMessages: entry.business,
+          total: entry.agent + entry.business,
+        };
+      }),
+    );
+
+    return {
+      todayAgent,
+      todayBusiness,
+      todayTotal: todayAgent + todayBusiness,
+      totalAgent,
+      totalBusiness,
+      totalAllTime: totalAgent + totalBusiness,
+      trend: days.map((day) => ({
+        day,
+        agent: byDay[day].agent,
+        business: byDay[day].business,
+        total: byDay[day].agent + byDay[day].business,
+      })),
+      topUsers,
+    };
   },
 });

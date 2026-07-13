@@ -212,7 +212,7 @@ function AbsenceGauge({ used, limit, warning }: { used: number; limit: number; w
       <div className="w-full px-1">
         <div className="flex justify-between text-[10px] text-slate-400 mb-1">
           <span>0</span>
-          <span className="text-amber-600">{warning}⚠</span>
+          <span className="text-amber-600 inline-flex items-center gap-0.5">{warning} <AlertTriangle className="w-3.5 h-3.5 shrink-0" /></span>
           <span>{limit}</span>
         </div>
         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">

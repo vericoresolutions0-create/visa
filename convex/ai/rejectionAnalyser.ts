@@ -115,7 +115,7 @@ export const analyseRejection = action({
           const data = await parser.getText();
           await parser.destroy();
           if (data.text?.trim().length > 50) {
-            refusalText = data.text.trim();
+            refusalText = data.text.trim().slice(0, 10_000);
           }
         }
       } catch {

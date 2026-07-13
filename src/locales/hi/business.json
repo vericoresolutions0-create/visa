@@ -66,6 +66,7 @@
   "dashboard.export_compliance": "अनुपालन रिपोर्ट निर्यात करें",
   "dashboard.table_view": "तालिका",
   "dashboard.pipeline_view": "पाइपलाइन",
+  "dashboard.ai_view": "AI सहायक",
   "dashboard.search_placeholder": "नाम, ईमेल, विभाग खोजें…",
   "dashboard.all_statuses": "सभी स्थितियां",
   "dashboard.option_pending": "लंबित",

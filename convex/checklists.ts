@@ -14,7 +14,7 @@ function currentYearMonth(): string {
   return new Date().toISOString().slice(0, 7); // "YYYY-MM"
 }
 
-function getEffectivePlan(user: Doc<"users">): "free" | "pro" | "expert" {
+export function getEffectivePlan(user: Doc<"users">): "free" | "pro" | "expert" {
   const plan = user.plan ?? "free";
   const isTrialActive = user.trialStartedAt
     ? new Date() < new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -60,6 +60,10 @@ export const saveChecklist = mutation({
     const user = await getUserOrThrow(ctx);
     const plan = getEffectivePlan(user);
 
+    if (args.checkedItems.length > 300)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Checklist has too many items." });
+    if (args.checkedItems.some((s) => s.length > 500))
+      throw new ConvexError({ code: "BAD_REQUEST", message: "A checklist item key is too long." });
     if (args.origin.length > 100)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Origin must be under 100 characters." });
     if (args.destination.length > 100)

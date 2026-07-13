@@ -10,7 +10,10 @@
 
 import type * as admin from "../admin.js";
 import type * as adminOrgs from "../adminOrgs.js";
+import type * as agentAI from "../agentAI.js";
+import type * as agentAIHelpers from "../agentAIHelpers.js";
 import type * as agentReferralCommissions from "../agentReferralCommissions.js";
+import type * as agentReviews from "../agentReviews.js";
 import type * as agentTrials from "../agentTrials.js";
 import type * as agents from "../agents.js";
 import type * as ai__languageNames from "../ai/_languageNames.js";
@@ -49,6 +52,8 @@ import type * as emails_reminder from "../emails/reminder.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
 import type * as emails_settleIn from "../emails/settleIn.js";
 import type * as emails_welcome from "../emails/welcome.js";
+import type * as embassyData from "../embassyData.js";
+import type * as embassyMonitor from "../embassyMonitor.js";
 import type * as employerCohort from "../employerCohort.js";
 import type * as employerInvites from "../employerInvites.js";
 import type * as fileValidation from "../fileValidation.js";
@@ -99,7 +104,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminOrgs: typeof adminOrgs;
+  agentAI: typeof agentAI;
+  agentAIHelpers: typeof agentAIHelpers;
   agentReferralCommissions: typeof agentReferralCommissions;
+  agentReviews: typeof agentReviews;
   agentTrials: typeof agentTrials;
   agents: typeof agents;
   "ai/_languageNames": typeof ai__languageNames;
@@ -138,6 +146,8 @@ declare const fullApi: ApiFromModules<{
   "emails/sendEmail": typeof emails_sendEmail;
   "emails/settleIn": typeof emails_settleIn;
   "emails/welcome": typeof emails_welcome;
+  embassyData: typeof embassyData;
+  embassyMonitor: typeof embassyMonitor;
   employerCohort: typeof employerCohort;
   employerInvites: typeof employerInvites;
   fileValidation: typeof fileValidation;

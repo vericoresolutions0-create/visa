@@ -15,7 +15,7 @@ import {
   Globe, ArrowLeft, Users, Star, MapPin, ChevronRight,
   Plus, Check, Shield, MessageCircle, Search, Zap,
   Languages, Briefcase, Phone, BadgeCheck, LayoutDashboard,
-  TrendingUp, Gem,
+  TrendingUp, Gem, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -828,6 +828,15 @@ export default function AgentsPage() {
             <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p2")}</div>
             <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p3")}</div>
             <div className="rounded-2xl border border-border bg-background/80 p-4">{t("why.p4")}</div>
+          </div>
+          <div className="mt-3 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              <span className="font-semibold text-foreground">New — </span>
+              {t("why.p5")}
+            </p>
           </div>
         </motion.section>
 

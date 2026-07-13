@@ -20,7 +20,9 @@ import { cn } from "@/lib/utils.ts";
 import {
   Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
   LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft, LogOut,
+  Sparkles,
 } from "lucide-react";
+import { AgentAIChat } from "@/components/AgentAIChat.tsx";
 
 type PipelineStage = "invited" | "accepted" | "in_progress" | "ready" | "relocated";
 type LinkStatus = "pending" | "accepted" | "declined" | "revoked";
@@ -378,6 +380,47 @@ function PipelineBoard({ cohort, onAdvance, orgCtx }: { cohort: CohortRow[]; onA
   );
 }
 
+function AIBanner({ onTryIt }: { onTryIt: () => void }) {
+  const [visible, setVisible] = useState(() => localStorage.getItem("vc_ai_banner_business") !== "1");
+
+  const dismiss = () => {
+    localStorage.setItem("vc_ai_banner_business", "1");
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+      <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+        <Sparkles className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground leading-snug">
+          AI HR Assistant{" "}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded px-1.5 py-0.5 ml-1 align-middle">New</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-snug hidden sm:block">
+          Check cohort readiness, flag stalled employees, or draft an HR follow-up.
+        </p>
+      </div>
+      <button
+        onClick={onTryIt}
+        className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary rounded-lg px-3 py-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+      >
+        Try it →
+      </button>
+      <button
+        onClick={dismiss}
+        className="shrink-0 p-1 rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+        aria-label="Dismiss"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function DashboardInner() {
   const { t } = useTranslation("business");
   const navigate = useNavigate();
@@ -388,7 +431,7 @@ function DashboardInner() {
   const setPipelineStage = useMutation(api.employerCohort.setPipelineStage);
   const renameOrg = useMutation(api.organizations.renameOrganization);
 
-  const [view, setView] = useState<"table" | "pipeline">("table");
+  const [view, setView] = useState<"table" | "pipeline" | "ai">("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LinkStatus | "all">("all");
   const [selectedRow, setSelectedRow] = useState<CohortRow | null>(null);
@@ -471,6 +514,7 @@ function DashboardInner() {
 
   return (
     <div className="space-y-6">
+      <AIBanner onTryIt={() => setView("ai")} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-primary">{myOrg.name}</h1>
@@ -524,6 +568,12 @@ function DashboardInner() {
             >
               <LayoutDashboard className="w-3.5 h-3.5" /> {t("dashboard.pipeline_view")}
             </button>
+            <button
+              onClick={() => setView("ai")}
+              className={cn("flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md cursor-pointer", view === "ai" ? "bg-card text-primary shadow-sm" : "text-muted-foreground")}
+            >
+              <Sparkles className="w-3.5 h-3.5" /> {t("dashboard.ai_view")}
+            </button>
           </div>
         </div>
         {view === "table" && (
@@ -547,7 +597,11 @@ function DashboardInner() {
         )}
       </div>
 
-      {cohort.length === 0 ? (
+      {view === "ai" ? (
+        <div className="h-[calc(100vh-10rem)] min-h-130">
+          <AgentAIChat mode="business" className="h-full" />
+        </div>
+      ) : cohort.length === 0 ? (
         <div className="border border-dashed border-border rounded-xl p-10 text-center text-sm text-muted-foreground">
           {orgCtx.emptyCohort}
         </div>

@@ -28,9 +28,31 @@ export class ErrorBoundary extends Component<
     };
   }
 
+  componentDidMount() {
+    // Clear the chunk-reload counter once the app loads successfully.
+    if (!this.state.hasError) {
+      sessionStorage.removeItem("vc_chunk_reload");
+    }
+  }
+
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("App runtime error:", error, info.componentStack);
     captureException(error, { componentStack: info.componentStack });
+
+    // A stale chunk reference after a new deploy causes a dynamic-import
+    // failure. Force a single hard reload to pick up the new asset hashes.
+    const isChunkError =
+      error.message.includes("dynamically imported module") ||
+      error.message.includes("Failed to fetch dynamically imported") ||
+      (error as Error & { name: string }).name === "ChunkLoadError";
+
+    if (isChunkError) {
+      const count = Number(sessionStorage.getItem("vc_chunk_reload") ?? "0");
+      if (count < 2) {
+        sessionStorage.setItem("vc_chunk_reload", String(count + 1));
+        window.location.reload();
+      }
+    }
   }
 
   render() {

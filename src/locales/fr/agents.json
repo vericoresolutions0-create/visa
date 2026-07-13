@@ -137,5 +137,6 @@
   "onboarding.activate_listing": "Activer l'annonce",
   "onboarding.preview_dashboard": "Aperçu du tableau de bord",
   "onboarding.back_to_signup": "Retour à l'inscription",
-  "onboarding.footer_note": "Ce flux d'intégration est volontairement différent du tableau de bord candidat habituel car le produit agent est un espace partenaire générateur de revenus."
+  "onboarding.footer_note": "Ce flux d'intégration est volontairement différent du tableau de bord candidat habituel car le produit agent est un espace partenaire générateur de revenus.",
+  "why.p5": "Votre espace de travail inclut désormais un assistant IA — consultez votre pipeline, rédigez des relances et identifiez les dossiers bloqués en quelques secondes."
 }

@@ -66,6 +66,7 @@
   "dashboard.export_compliance": "Exportar relatório de conformidade",
   "dashboard.table_view": "Tabela",
   "dashboard.pipeline_view": "Pipeline",
+  "dashboard.ai_view": "Assistente IA",
   "dashboard.search_placeholder": "Buscar nome, email, departamento…",
   "dashboard.all_statuses": "Todos os status",
   "dashboard.option_pending": "Pendente",

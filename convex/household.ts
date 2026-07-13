@@ -54,6 +54,14 @@ export const inviteHouseholdMember = mutation({
       throw new ConvexError({ code: "ALREADY_INVITED", message: "This person already has an active invite or is already linked." });
     }
 
+    const allOrgLinks = await ctx.db
+      .query("org_employee_links")
+      .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId))
+      .take(51);
+    if (allOrgLinks.filter((l) => l.status === "pending" || l.status === "accepted").length >= 50) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Household has reached the maximum of 50 members." });
+    }
+
     const token = generateToken();
     await ctx.db.insert("org_employee_links", {
       organizationId,

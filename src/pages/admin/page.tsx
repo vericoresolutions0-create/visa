@@ -25,13 +25,14 @@ import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 
-type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health";
+type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage";
 
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
-  { id: "overview",       icon: BarChart3,     label: "Overview" },
-  { id: "users",          icon: Users,         label: "Users" },
-  { id: "agents",         icon: UserCheck,     label: "Agents" },
-  { id: "setup",          icon: Settings,      label: "Setup" },
+  { id: "overview",          icon: BarChart3,     label: "Overview" },
+  { id: "users",             icon: Users,         label: "Users" },
+  { id: "agents",            icon: UserCheck,     label: "Agents" },
+  { id: "risk-mitigations",  icon: Shield,        label: "Risk Mitigations" },
+  { id: "setup",             icon: Settings,      label: "Setup" },
   { id: "country-watch",  icon: Globe,         label: "Country Watch" },
   { id: "data-freshness", icon: RefreshCw,     label: "Data Freshness" },
   { id: "telegram-bot",   icon: MessageCircle, label: "Telegram Bot" },
@@ -53,6 +54,9 @@ const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "approvals",             icon: Award,         label: "Approvals" },
   { id: "creators",              icon: Sparkles,      label: "Creators" },
   { id: "health",                icon: Shield,        label: "System Health" },
+  { id: "agent-reports",         icon: AlertCircle,   label: "Agent Reports" },
+  { id: "embassy-monitor",       icon: Globe,         label: "Embassy Monitor" },
+  { id: "ai-usage",             icon: Sparkles,      label: "AI Usage" },
 ];
 
 // Isolates a single admin tab panel from crashing the whole page.
@@ -81,9 +85,12 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { error: str
   }
 }
 
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number | string; sub?: string }) {
+function StatCard({ icon, label, value, sub, onClick }: { icon: React.ReactNode; label: string; value: number | string; sub?: string; onClick?: () => void }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+    <div
+      className={`bg-white border border-gray-100 rounded-2xl p-6 shadow-sm${onClick ? " cursor-pointer hover:border-[#0f2040]/20 hover:shadow-md transition-shadow" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</span>
         <div className="w-9 h-9 rounded-xl bg-[#0f2040]/8 flex items-center justify-center text-[#0f2040]">
@@ -92,6 +99,393 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
       </div>
       <div className="font-serif text-4xl font-semibold text-[#0f2040]">{value}</div>
       {sub && <div className="text-xs text-gray-400 mt-2">{sub}</div>}
+    </div>
+  );
+}
+
+// ─── Risk Mitigations panel ──────────────────────────────────────────────────
+function RiskMitigationsPanel() {
+  const pendingReviews = useQuery(api.agentReviews.listPending, {});
+  const pendingReports = useQuery(api.embassyData.listAgentReports, {});
+  const embassyAlerts = useQuery(api.embassyData.listActiveAlerts, {});
+  const allSnapshots = useQuery(api.embassyData.listAllSnapshots, {});
+
+  const features: {
+    risk: string;
+    num: string;
+    title: string;
+    description: string;
+    status: "live" | "attention";
+    action?: string;
+    actionTab?: Tab;
+    metric?: string;
+  }[] = [
+    {
+      risk: "Risk 1",
+      num: "01",
+      title: "Checklist freshness badge",
+      description: "Last-verified date and embassy link shown on every checklist card so users can see how current the data is.",
+      status: "live",
+      metric: "Active on all checklists",
+    },
+    {
+      risk: "Risk 1",
+      num: "02",
+      title: "Embassy page monitor",
+      description: "Weekly cron hashes each embassy page. Change alerts fire here when content differs from the stored baseline.",
+      status: (embassyAlerts?.length ?? 0) > 0 ? "attention" : "live",
+      metric: allSnapshots !== undefined
+        ? `${allSnapshots.length} destinations monitored · ${embassyAlerts?.length ?? 0} active alert${(embassyAlerts?.length ?? 0) !== 1 ? "s" : ""}`
+        : "Loading…",
+      action: "View alerts",
+      actionTab: "embassy-monitor",
+    },
+    {
+      risk: "Risk 2",
+      num: "03",
+      title: "AI score band labels",
+      description: "Raw probability number replaced with plain-English bands (Application looks strong / Some gaps / Significant gaps) + inline disclaimer.",
+      status: "live",
+      metric: "Active on Dashboard + Rejection Analyser",
+    },
+    {
+      risk: "Risk 3",
+      num: "04",
+      title: "Agent credentials",
+      description: "OISC, RCIC, Bar number and verification URL on agent profiles. Verifiable / Not independently verified badge shown publicly.",
+      status: "live",
+      metric: "Agents can add via their registration form",
+    },
+    {
+      risk: "Risk 3",
+      num: "05",
+      title: "Client reviews",
+      description: "1–5 star reviews with comments, held pending until you approve them. Agent average rating updates atomically on approval.",
+      status: (pendingReviews?.length ?? 0) > 0 ? "attention" : "live",
+      metric: pendingReviews !== undefined
+        ? `${pendingReviews.length} pending review${pendingReviews.length !== 1 ? "s" : ""} awaiting approval`
+        : "Loading…",
+      action: "Moderate reviews",
+      actionTab: "agents",
+    },
+    {
+      risk: "Risk 3",
+      num: "06",
+      title: "Agent report button",
+      description: "Flag button on every agent profile. Reports come here with reason + details for review. No login required to report.",
+      status: (pendingReports?.length ?? 0) > 0 ? "attention" : "live",
+      metric: pendingReports !== undefined
+        ? `${pendingReports.length} pending report${pendingReports.length !== 1 ? "s" : ""} to review`
+        : "Loading…",
+      action: "Review reports",
+      actionTab: "agent-reports",
+    },
+  ];
+
+  const attentionCount = features.filter((f) => f.status === "attention").length;
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="font-serif text-xl font-semibold text-[#0f2040] mb-1">Risk Mitigations</h2>
+            <p className="text-sm text-gray-500">6 trust and safety features live in production. All deployed 12 Jul 2026.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {attentionCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
+                <AlertCircle className="w-3.5 h-3.5" /> {attentionCount} need{attentionCount === 1 ? "s" : ""} attention
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-50 border border-green-100 text-green-700">
+                <CheckCircle2 className="w-3.5 h-3.5" /> All clear
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#0f2040]/8 text-[#0f2040]">
+              6 / 6 live
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {features.map((f) => (
+          <div
+            key={f.num}
+            className={cn(
+              "bg-white rounded-2xl border shadow-sm p-5",
+              f.status === "attention" ? "border-amber-200" : "border-gray-100",
+            )}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <div className="font-serif text-2xl font-bold text-[#c9a84c] leading-none min-w-[28px]">{f.num}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-gray-400">{f.risk}</span>
+                  {f.status === "attention" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
+                      <AlertCircle className="w-2.5 h-2.5" /> Needs attention
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-50 border border-green-100 text-green-700">
+                      <CheckCircle2 className="w-2.5 h-2.5" /> Live
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-[#0f2040]">{f.title}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed mb-3">{f.description}</p>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className={cn("text-xs font-semibold", f.status === "attention" ? "text-amber-700" : "text-gray-400")}>
+                {f.metric}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Agent Review Moderation panel ───────────────────────────────────────────
+function AgentReviewModerationPanel() {
+  const pending = useQuery(api.agentReviews.listPending, {});
+  const moderate = useMutation(api.agentReviews.moderate);
+  const [processing, setProcessing] = useState<string | null>(null);
+
+  const handleDecision = async (reviewId: Id<"agent_reviews">, decision: "approved" | "rejected") => {
+    setProcessing(reviewId);
+    try {
+      await moderate({ reviewId, decision });
+      toast.success(decision === "approved" ? "Review approved and published." : "Review rejected.");
+    } catch {
+      toast.error("Could not moderate review.");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h3 className="font-serif text-base font-semibold text-[#0f2040] mb-1">Pending Reviews</h3>
+      <p className="text-xs text-gray-400 mb-4">Reviews submitted by users waiting for approval before going public on agent profiles.</p>
+      {pending === undefined ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : pending.length === 0 ? (
+        <p className="text-sm text-gray-400">No pending reviews.</p>
+      ) : (
+        <div className="space-y-3">
+          {pending.map((review) => (
+            <div key={review._id} className="border border-gray-100 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="flex gap-0.5 mb-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star key={n} className={cn("w-3.5 h-3.5", n <= review.starRating ? "fill-amber-400 text-amber-400" : "text-gray-200")} />
+                    ))}
+                  </div>
+                  {review.comment && <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Agent: <span className="font-mono">{review.agentProfileId}</span>
+                    {" · "}{new Date(review.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    disabled={processing === review._id}
+                    onClick={() => void handleDecision(review._id, "approved")}
+                    className="text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    disabled={processing === review._id}
+                    onClick={() => void handleDecision(review._id, "rejected")}
+                    className="text-xs font-semibold text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Agent Reports panel ─────────────────────────────────────────────────────
+function AgentReportsPanel() {
+  const reports = useQuery(api.embassyData.listAgentReports, {});
+  const process = useMutation(api.embassyData.processAgentReport);
+  const [processing, setProcessing] = useState<string | null>(null);
+
+  const handleProcess = async (reportId: Id<"agent_reports">, decision: "reviewed" | "dismissed") => {
+    setProcessing(reportId);
+    try {
+      await process({ reportId, decision });
+      toast.success(decision === "reviewed" ? "Marked as reviewed." : "Report dismissed.");
+    } catch {
+      toast.error("Could not process report.");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  if (reports === undefined) return <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 className="font-serif text-xl font-semibold text-[#0f2040] mb-1">Agent Reports</h2>
+      <p className="text-sm text-gray-500 mb-5">User-submitted reports about agent profiles. Review each one and take action outside the platform as needed.</p>
+      {reports.length === 0 ? (
+        <p className="text-sm text-gray-400 py-6 text-center">No pending reports.</p>
+      ) : (
+        <div className="space-y-3">
+          {reports.map((report) => (
+            <div key={report._id} className="border border-gray-100 rounded-xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-semibold text-[#0f2040]">{report.reason.replace(/_/g, " ")}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Agent profile: <span className="font-mono">{report.agentProfileId}</span>
+                  </p>
+                  {report.details && (
+                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">{report.details}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">{new Date(report.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={processing === report._id}
+                    onClick={() => void handleProcess(report._id, "reviewed")}
+                    className="cursor-pointer text-xs"
+                  >
+                    Mark reviewed
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={processing === report._id}
+                    onClick={() => void handleProcess(report._id, "dismissed")}
+                    className="cursor-pointer text-xs text-gray-400"
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Embassy Monitor panel ────────────────────────────────────────────────────
+function EmbassyMonitorPanel() {
+  const alerts = useQuery(api.embassyData.listActiveAlerts, {});
+  const allSnapshots = useQuery(api.embassyData.listAllSnapshots, {});
+  const dismiss = useMutation(api.embassyData.dismissAlert);
+  const [dismissing, setDismissing] = useState<string | null>(null);
+
+  const handleDismiss = async (destination: string) => {
+    setDismissing(destination);
+    try {
+      await dismiss({ destination });
+      toast.success("Alert dismissed.");
+    } catch {
+      toast.error("Could not dismiss alert.");
+    } finally {
+      setDismissing(null);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+      <div>
+        <h2 className="font-serif text-xl font-semibold text-[#0f2040] mb-1">Embassy Monitor</h2>
+        <p className="text-sm text-gray-500">
+          Weekly automated checks compare a text fingerprint of each embassy page against the stored baseline.
+          A change alert fires when the content differs — review the linked page and update the checklist if needed.
+        </p>
+      </div>
+
+      {/* Active alerts */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Active alerts</h3>
+        {alerts === undefined ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : alerts.length === 0 ? (
+          <p className="text-sm text-gray-400">No active alerts.</p>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((row) => (
+              <div key={row._id} className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-semibold text-[#0f2040]">{row.destination}</p>
+                  <a href={/^https?:\/\//.test(row.url) ? row.url : "#"} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline break-all">{row.url}</a>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Changed: {row.changedAt ? new Date(row.changedAt).toLocaleString() : "—"}
+                    {" · "}Last checked: {new Date(row.lastCheckedAt).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={dismissing === row.destination}
+                  onClick={() => void handleDismiss(row.destination)}
+                  className="cursor-pointer text-xs shrink-0"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* All snapshots */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">All monitored destinations</h3>
+        {allSnapshots === undefined ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : allSnapshots.length === 0 ? (
+          <p className="text-sm text-gray-400">No snapshots recorded yet. The weekly cron will populate this on its first run.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 text-gray-400 text-left">
+                  <th className="pb-2 pr-4 font-semibold">Destination</th>
+                  <th className="pb-2 pr-4 font-semibold">Last checked</th>
+                  <th className="pb-2 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allSnapshots.map((row) => (
+                  <tr key={row._id} className="border-b border-gray-50 last:border-b-0">
+                    <td className="py-2 pr-4 font-medium text-[#0f2040]">{row.destination}</td>
+                    <td className="py-2 pr-4 text-gray-500">{new Date(row.lastCheckedAt).toLocaleDateString()}</td>
+                    <td className="py-2">
+                      {row.changedAt && !row.alertDismissedAt ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Changed</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">OK</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -110,6 +504,7 @@ function AdminInner() {
   const deleteUser = useMutation(api.admin.deleteUser);
   const verifyAgent = useMutation(api.admin.verifyAgent);
   const systemHealth = useQuery(api.admin.getSystemHealth, {});
+  const aiUsage = useQuery(api.admin.getAIUsage, {});
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const handlePlanChange = async (userId: Doc<"users">["_id"], plan: "free" | "pro" | "expert") => {
@@ -272,6 +667,20 @@ function AdminInner() {
                     label={t("overview.free_users")}
                     value={`${stats.totalUsers > 0 ? Math.round((stats.freeUsers / stats.totalUsers) * 100) : 0}%`}
                     sub={t("overview.on_free_plan")}
+                  />
+                  <StatCard
+                    icon={<Sparkles className="w-4 h-4" />}
+                    label="AI Messages Today"
+                    value={aiUsage?.todayTotal ?? "—"}
+                    sub={`${aiUsage?.todayAgent ?? 0} agent · ${aiUsage?.todayBusiness ?? 0} business`}
+                    onClick={() => setTab("ai-usage")}
+                  />
+                  <StatCard
+                    icon={<Sparkles className="w-4 h-4" />}
+                    label="AI Messages All-Time"
+                    value={aiUsage?.totalAllTime ?? "—"}
+                    sub={`${aiUsage?.totalAgent ?? 0} agent · ${aiUsage?.totalBusiness ?? 0} business`}
+                    onClick={() => setTab("ai-usage")}
                   />
                 </div>
               )}
@@ -464,6 +873,9 @@ function AdminInner() {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <PayoutRequestsAdminPanel />
               </div>
+
+              {/* Review moderation */}
+              <AgentReviewModerationPanel />
             </motion.div>
           )}
 
@@ -496,6 +908,10 @@ function AdminInner() {
           {tab === "approvals" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><ApprovalsAdminPanel /></div>}
           {tab === "creators" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><CreatorsAdminPanel /></div>}
           {tab === "health" && <SystemHealthPanel />}
+          {tab === "agent-reports" && <AgentReportsPanel />}
+          {tab === "embassy-monitor" && <EmbassyMonitorPanel />}
+          {tab === "risk-mitigations" && <RiskMitigationsPanel />}
+          {tab === "ai-usage" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AIUsagePanel /></div>}
 
         </PanelErrorBoundary>
         </main>
@@ -2931,6 +3347,109 @@ function BlogAdminPanel() {
           })}
         </div>
       )}
+    </motion.div>
+  );
+}
+
+// ── AI Usage Panel ────────────────────────────────────────────────────────────
+
+function AIUsagePanel() {
+  const data = useQuery(api.admin.getAIUsage, {});
+
+  if (data === undefined) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+      </div>
+    );
+  }
+
+  const maxTrend = Math.max(...data.trend.map((d) => d.total), 1);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Today — Agent", value: data.todayAgent, color: "text-blue-600" },
+          { label: "Today — Business", value: data.todayBusiness, color: "text-purple-600" },
+          { label: "All-time Agent", value: data.totalAgent, color: "text-blue-400" },
+          { label: "All-time Business", value: data.totalBusiness, color: "text-purple-400" },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+            <p className={`text-3xl font-bold tabular-nums ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 7-day trend */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">7-Day Trend</p>
+        <div className="flex items-end gap-2 h-28">
+          {data.trend.map((d) => (
+            <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full flex flex-col gap-0.5" style={{ height: "80px", justifyContent: "flex-end" }}>
+                {/* Business on top */}
+                {d.business > 0 && (
+                  <div
+                    className="w-full rounded-t bg-purple-400"
+                    style={{ height: `${Math.round((d.business / maxTrend) * 72)}px`, minHeight: "3px" }}
+                  />
+                )}
+                {/* Agent below */}
+                {d.agent > 0 && (
+                  <div
+                    className="w-full bg-blue-500"
+                    style={{ height: `${Math.round((d.agent / maxTrend) * 72)}px`, minHeight: "3px", borderRadius: d.business > 0 ? "0 0 4px 4px" : "4px" }}
+                  />
+                )}
+                {d.total === 0 && <div className="w-full rounded bg-gray-100" style={{ height: "3px" }} />}
+              </div>
+              <span className="text-[10px] text-gray-400 tabular-nums">{d.day.slice(5)}</span>
+              <span className="text-[10px] font-semibold text-gray-600 tabular-nums">{d.total || ""}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 mt-3">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" />Agent</span>
+          <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-2.5 h-2.5 rounded-sm bg-purple-400 inline-block" />Business</span>
+        </div>
+      </div>
+
+      {/* Top users this week */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Top Users — Last 7 Days</p>
+        </div>
+        {data.topUsers.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">No AI messages sent yet.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-400 uppercase tracking-wide">
+              <tr>
+                <th className="text-left px-5 py-3">User</th>
+                <th className="text-right px-4 py-3">Agent</th>
+                <th className="text-right px-4 py-3">Business</th>
+                <th className="text-right px-5 py-3">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.topUsers.map((u, i) => (
+                <tr key={i} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <p className="font-medium text-gray-800 truncate max-w-[220px]">{u.email}</p>
+                    {u.name && <p className="text-xs text-gray-400 truncate">{u.name}</p>}
+                  </td>
+                  <td className="px-4 py-3.5 text-right tabular-nums font-medium text-blue-600">{u.agentMessages || "—"}</td>
+                  <td className="px-4 py-3.5 text-right tabular-nums font-medium text-purple-600">{u.bizMessages || "—"}</td>
+                  <td className="px-5 py-3.5 text-right tabular-nums font-bold text-gray-800">{u.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </motion.div>
   );
 }

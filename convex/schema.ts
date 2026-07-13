@@ -294,6 +294,13 @@ export default defineSchema({
     creditBalance: v.optional(v.number()),
     // EU/Global market split for lead marketplace routing and search filtering.
     region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
+    // Self-reported professional credential. VisaClear does not verify this
+    // independently — admin cross-checks before marking verified: true.
+    // Agents who submit a credential get a "Credential submitted" badge;
+    // those who don't get an "Unverified" label visible to all users.
+    credentialType: v.optional(v.string()),    // "OISC", "RCIC", "Bar Member", etc.
+    credentialNumber: v.optional(v.string()),  // the registration/member number
+    credentialVerifyUrl: v.optional(v.string()), // direct link to the public register
   })
     .index("by_user", ["userId"])
     .index("by_tier", ["tier"])
@@ -1193,6 +1200,58 @@ export default defineSchema({
     .index("by_corridor", ["corridor"])
     .index("by_submitted", ["submittedAt"]),
 
+  // Client-written star ratings for agent profiles. Each authenticated user
+  // may submit one review per agent; reviews go to "pending" and only show
+  // publicly after admin approval. Rating/reviewCount on agent_profiles are
+  // updated atomically when a review is approved.
+  agent_reviews: defineTable({
+    agentProfileId: v.id("agent_profiles"),
+    reviewerUserId: v.id("users"),
+    starRating: v.number(),             // 1–5 integer
+    comment: v.optional(v.string()),    // max 500 chars, optional
+    createdAt: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+  })
+    .index("by_agent_status", ["agentProfileId", "status"])
+    .index("by_reviewer_agent", ["reviewerUserId", "agentProfileId"])
+    .index("by_status", ["status"]),
+
+  // User-filed quality flags on agent profiles. Anonymous reports are allowed
+  // (reportedByUserId is optional) so users who haven't signed in can still
+  // flag a scam agent. Admin reviews and either acts or dismisses.
+  agent_reports: defineTable({
+    agentProfileId: v.id("agent_profiles"),
+    reportedByUserId: v.optional(v.id("users")),
+    reason: v.union(
+      v.literal("fake_credentials"),
+      v.literal("inappropriate_behavior"),
+      v.literal("scam"),
+      v.literal("misleading_information"),
+      v.literal("other"),
+    ),
+    details: v.optional(v.string()),  // max 1000 chars
+    createdAt: v.string(),
+    status: v.union(v.literal("pending"), v.literal("reviewed"), v.literal("dismissed")),
+  })
+    .index("by_agent", ["agentProfileId"])
+    .index("by_status", ["status"]),
+
+  // Per-destination hash of the official embassy page's stripped text content.
+  // A weekly cron compares the live page against the stored hash; if it
+  // changes, changedAt is set and the admin sees an alert. Admin dismisses
+  // alerts after reviewing and updating the checklist if needed.
+  embassy_page_snapshots: defineTable({
+    destination: v.string(),              // "United Kingdom", etc.
+    url: v.string(),                      // official embassy URL we monitor
+    contentHash: v.string(),              // SHA-256 of stripped text content
+    lastCheckedAt: v.string(),            // ISO datetime of last successful fetch
+    changedAt: v.optional(v.string()),    // when hash last changed (alert trigger)
+    previousHash: v.optional(v.string()), // hash before the change
+    alertDismissedAt: v.optional(v.string()), // admin reviewed this change
+  })
+    .index("by_destination", ["destination"])
+    .index("by_changed", ["changedAt"]),
+
   // Real visa approval stories from paid members — moderated by admin before
   // going public. Deliberately lightweight (no name, no photo, no userId in
   // published queries) so it reads as a trust signal, not a testimonials wall.
@@ -1207,8 +1266,10 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
     moderatedAt: v.optional(v.string()),
     moderatedByUserId: v.optional(v.id("users")),
+    submittedByUserId: v.optional(v.id("users")),
   })
     .index("by_status", ["status"])
     .index("by_corridor_status", ["corridor", "status"])
-    .index("by_submitted", ["submittedAt"]),
+    .index("by_submitted", ["submittedAt"])
+    .index("by_submitter", ["submittedByUserId"]),
 });

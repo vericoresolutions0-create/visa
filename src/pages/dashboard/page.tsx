@@ -105,6 +105,12 @@ const DEMO_REMINDERS = [
 // ─── Trip Timeline ─────────────────────────────────────────────────────────────
 const TRIP_TIMELINE_KEY = "vc_trip_date";
 
+function approvalBand(p: number): { label: string; color: string } {
+  if (p >= 70) return { label: "Application looks strong", color: "text-green-600 dark:text-green-400" };
+  if (p >= 40) return { label: "Some gaps to address", color: "text-amber-600 dark:text-amber-400" };
+  return { label: "Significant gaps", color: "text-red-600 dark:text-red-400" };
+}
+
 function getDaysUntil(dateStr: string): number {
   const target = new Date(dateStr);
   const now = new Date();
@@ -1697,21 +1703,26 @@ function TripWorkspace() {
           </div>
         ) : scoreResult ? (
           <div className="mt-3">
-            <div className="flex items-baseline gap-1.5 mb-2">
-              <span className="text-3xl font-bold text-primary">{scoreResult.probability}</span>
-              <span className="text-sm text-muted-foreground">/100 estimated approval odds</span>
-            </div>
-            <p className="text-sm text-foreground/90 mb-3 leading-relaxed">{scoreResult.reasoning}</p>
-            {scoreResult.recommendations.length > 0 && (
-              <ul className="space-y-1 mb-3">
-                {scoreResult.recommendations.map((r, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-accent">●</span> {r}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="text-[11px] text-muted-foreground/70 italic">{scoreResult.disclaimer}</p>
+            {(() => {
+              const band = approvalBand(scoreResult.probability);
+              return (
+                <>
+                  <p className={`text-lg font-semibold mb-1 ${band.color}`}>{band.label}</p>
+                  <p className="text-sm text-muted-foreground mb-2">AI estimate — not a guarantee. Always verify with official sources.</p>
+                  <p className="text-sm text-foreground/90 mb-3 leading-relaxed">{scoreResult.reasoning}</p>
+                  {scoreResult.recommendations.length > 0 && (
+                    <ul className="space-y-1 mb-3">
+                      {scoreResult.recommendations.map((r, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <span className="text-accent">●</span> {r}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-sm text-muted-foreground/80 italic">{scoreResult.disclaimer}</p>
+                </>
+              );
+            })()}
             <Button
               size="sm"
               variant="outline"

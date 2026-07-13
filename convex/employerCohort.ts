@@ -39,6 +39,14 @@ export const inviteEmployee = mutation({
       throw new ConvexError({ code: "ALREADY_INVITED", message: "This person already has an active invite or is already linked." });
     }
 
+    const allOrgLinks = await ctx.db
+      .query("org_employee_links")
+      .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId))
+      .take(501);
+    if (allOrgLinks.filter((l) => l.status === "pending" || l.status === "accepted").length >= 500) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Organisation has reached the maximum of 500 members." });
+    }
+
     const org = await ctx.db.get(organizationId);
     const token = generateToken();
     await ctx.db.insert("org_employee_links", {

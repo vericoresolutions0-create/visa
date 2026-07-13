@@ -193,7 +193,7 @@ export const generateUploadUrl = mutation({
     const existingDocs = await ctx.db
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-      .take(30);
+      .take(500);
     if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
       throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }
@@ -230,7 +230,7 @@ export const recordDocument = mutation({
     const existingDocs = await ctx.db
       .query("client_documents")
       .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
-      .take(30);
+      .take(500);
     if (existingDocs.filter((d) => d.uploadedAt.startsWith(today)).length >= 30) {
       throw new ConvexError({ code: "RATE_LIMITED", message: "Too many uploads today. Try again tomorrow." });
     }

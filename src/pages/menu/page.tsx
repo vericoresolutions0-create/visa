@@ -21,6 +21,7 @@ import {
   BadgeCheck,
   LogIn,
   Briefcase,
+  Sparkles,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -94,6 +95,13 @@ const SECTIONS = [
         desc: "Sign in to your agent account — manage clients and earnings.",
         href: "/agents/login",
         color: "text-violet-600 bg-violet-50 dark:bg-violet-900/30",
+      },
+      {
+        icon: Sparkles,
+        title: "AI Assistant",
+        desc: "Ask about your pipeline, draft follow-ups, and flag stalled cases — inside your agent dashboard.",
+        href: "/agents/login",
+        color: "text-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-900/30",
       },
       {
         icon: Tag,

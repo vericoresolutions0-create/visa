@@ -79,7 +79,7 @@ export const getMyReferralCommissionStatus = query({
     const commissions = await ctx.db
       .query("agent_referral_commissions")
       .withIndex("by_agent", (q) => q.eq("agentUserId", user._id))
-      .take(5000);
+      .take(10_000);
 
     const totalCommissionCents = commissions.reduce((sum, c) => sum + c.commissionCents, 0);
     const payingClientCount = new Set(commissions.map((c) => c.payingUserId)).size;
@@ -87,7 +87,7 @@ export const getMyReferralCommissionStatus = query({
     const referredSignups = await ctx.db
       .query("users")
       .withIndex("by_referred_by_code", (q) => q.eq("referredByCode", user.referralCode))
-      .take(5000);
+      .take(10_000);
 
     return {
       referralCode: user.referralCode,
@@ -135,11 +135,11 @@ export const requestPayout = mutation({
       ctx.db
         .query("agent_referral_commissions")
         .withIndex("by_agent", (q) => q.eq("agentUserId", user._id))
-        .take(500),
+        .take(10_000),
       ctx.db
         .query("payout_requests")
         .withIndex("by_agent_status", (q) => q.eq("agentUserId", user._id).eq("status", "paid"))
-        .take(200),
+        .take(10_000),
     ]);
 
     const totalEarned = commissions.reduce((sum, c) => sum + c.commissionCents, 0);

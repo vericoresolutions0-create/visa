@@ -137,5 +137,6 @@
   "onboarding.activate_listing": "Activate listing",
   "onboarding.preview_dashboard": "Preview dashboard",
   "onboarding.back_to_signup": "Back to sign-up",
-  "onboarding.footer_note": "This onboarding flow is intentionally different from the regular applicant dashboard because the agent product is a revenue-facing partner workspace."
+  "onboarding.footer_note": "This onboarding flow is intentionally different from the regular applicant dashboard because the agent product is a revenue-facing partner workspace.",
+  "why.p5": "Your workspace now includes an AI Casework Assistant — ask about your pipeline, draft client follow-ups, and flag stalled cases in seconds."
 }

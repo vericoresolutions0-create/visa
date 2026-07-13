@@ -31,7 +31,7 @@ Agent details:
 - Country: ${country}
 - Years of experience: ${yearsExperience}
 - Specialisations: ${specialisations.join(", ")}
-- Their own words: ${bio}
+- Their own words: ${bio.slice(0, 500)}
 ${region ? `- Market focus: ${region === "europe" ? "Europe / EU" : "Global"}` : ""}
 
 Write a 2-3 sentence professional bio in third person that highlights their expertise, experience, and the types of applicants they can best help. Keep it direct and specific — no filler phrases like "passionate about" or "dedicated to". Mention their specialisations naturally.`;

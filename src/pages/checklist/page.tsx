@@ -20,7 +20,7 @@ import {
   Download, FileText, MessageSquare, Send, Bot,
   TrendingUp, X, Share2, Copy, Check,
   ThumbsUp, ThumbsDown, LayoutDashboard, Settings, LogOut,
-  Users, UserPlus,
+  Users, UserPlus, Brain, Camera, Bell, Link2,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { downloadChecklistPDF, downloadBankLetterPDF } from "@/lib/pdf-export.ts";
@@ -1640,15 +1640,17 @@ export default function ChecklistPage() {
                       </p>
                     </div>
                     <div className="space-y-3 mb-5">
-                      {[
-                        { emoji: "🤖", label: t("unlock.f1_label"), desc: t("unlock.f1_desc") },
-                        { emoji: "📸", label: t("unlock.f2_label"), desc: t("unlock.f2_desc") },
-                        { emoji: "📄", label: t("unlock.f3_label"), desc: t("unlock.f3_desc") },
-                        { emoji: "🔔", label: t("unlock.f4_label"), desc: t("unlock.f4_desc") },
-                        { emoji: "🔗", label: t("unlock.f5_label"), desc: t("unlock.f5_desc") },
-                      ].map((f) => (
+                      {(
+                        [
+                          { Icon: Brain,    label: t("unlock.f1_label"), desc: t("unlock.f1_desc") },
+                          { Icon: Camera,   label: t("unlock.f2_label"), desc: t("unlock.f2_desc") },
+                          { Icon: FileText, label: t("unlock.f3_label"), desc: t("unlock.f3_desc") },
+                          { Icon: Bell,     label: t("unlock.f4_label"), desc: t("unlock.f4_desc") },
+                          { Icon: Link2,    label: t("unlock.f5_label"), desc: t("unlock.f5_desc") },
+                        ] as const
+                      ).map((f) => (
                         <div key={f.label} className="flex items-start gap-3">
-                          <span className="text-lg shrink-0 mt-0.5">{f.emoji}</span>
+                          <f.Icon className="w-[18px] h-[18px] shrink-0 mt-0.5 text-white/75" />
                           <div>
                             <div className="font-semibold text-sm text-white">{f.label}</div>
                             <div className="text-xs text-primary-foreground/55 leading-snug">{f.desc}</div>

@@ -291,17 +291,20 @@ function RejectionAnalyserInner() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-bold text-xl text-primary-foreground">{prob}%</span>
+                  <svg viewBox="0 0 20 20" className="w-6 h-6">
+                    <circle cx="10" cy="10" r="8" fill={color} opacity="0.9" />
+                  </svg>
                 </div>
               </div>
               {/* Text */}
               <div className="flex-1 text-center sm:text-left">
                 <p className="text-xs font-semibold tracking-widest uppercase text-primary-foreground/50 mb-1">
-                  Re-application success chance
+                  Re-application outlook
                 </p>
-                <h2 className="font-serif text-xl font-semibold text-primary-foreground mb-2">
+                <h2 className="font-serif text-xl font-semibold text-primary-foreground mb-1">
                   {probabilityLabel(prob)}
                 </h2>
+                <p className="text-xs text-primary-foreground/50 mb-2">AI estimate — not a guarantee. Verify with a qualified adviser.</p>
                 <p className="text-sm text-primary-foreground/70 leading-relaxed">{result.summary}</p>
               </div>
               {/* Stats */}

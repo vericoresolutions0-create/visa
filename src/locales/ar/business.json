@@ -66,6 +66,7 @@
   "dashboard.export_compliance": "تصدير تقرير الامتثال",
   "dashboard.table_view": "جدول",
   "dashboard.pipeline_view": "خط الأنابيب",
+  "dashboard.ai_view": "المساعد الذكي",
   "dashboard.search_placeholder": "بحث بالاسم، البريد، القسم…",
   "dashboard.all_statuses": "جميع الحالات",
   "dashboard.option_pending": "قيد الانتظار",

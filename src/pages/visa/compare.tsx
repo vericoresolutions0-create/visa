@@ -11,6 +11,7 @@ import {
   Check,
   Minus,
   ChevronRight,
+  Globe,
 } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import {
@@ -422,7 +423,7 @@ export default function VisaComparePage() {
         {/* ── Empty state ───────────────────────────────────────────────────── */}
         {selected.length === 0 && !showPicker && (
           <div className="rounded-2xl border border-border/50 bg-muted/20 p-12 text-center">
-            <div className="text-4xl mb-4">🌍</div>
+            <Globe className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-lg font-bold text-foreground mb-2">No corridors selected yet</h2>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
               Add up to {MAX_COMPARE} corridors using the button above to compare processing

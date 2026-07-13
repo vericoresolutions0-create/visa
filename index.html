@@ -9,7 +9,7 @@
          real HTTP header (vercel.json / vite.config.ts) instead. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self' https:; upgrade-insecure-requests"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
     />
 
     <title>VisaClear by Vericore — Precise Visa Document Checklists</title>
@@ -40,8 +40,10 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://visaclear.app" />
-    <meta property="og:image" content="/icon/icon-512.png" />
+    <meta property="og:image" content="/og-image.png" />
     <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="VisaClear by Vericore" />
     <meta property="og:locale" content="en_GB" />
 
@@ -52,7 +54,7 @@
       name="twitter:description"
       content="60-second personalised visa checklists for African, Asian & LatAm applicants. Built with GDPR & NDPA Principles."
     />
-    <meta name="twitter:image" content="/icon/icon-512.png" />
+    <meta name="twitter:image" content="/og-image.png" />
 
     <!-- Prevent white flash on iOS PWA launch: sets the app background before
          external CSS loads so the user sees navy instead of a white blink. -->

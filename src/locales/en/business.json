@@ -111,6 +111,7 @@
   "dashboard.export_compliance": "Export Compliance Report",
   "dashboard.table_view": "Table",
   "dashboard.pipeline_view": "Pipeline",
+  "dashboard.ai_view": "AI Assistant",
   "dashboard.search_placeholder": "Search name, email, department…",
   "dashboard.all_statuses": "All statuses",
   "dashboard.option_pending": "Pending",

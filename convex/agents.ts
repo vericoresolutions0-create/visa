@@ -67,6 +67,9 @@ export const upsertProfile = mutation({
     languages: v.array(v.string()),
     destinations: v.optional(v.array(v.string())),
     region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
+    credentialType: v.optional(v.string()),
+    credentialNumber: v.optional(v.string()),
+    credentialVerifyUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -77,6 +80,17 @@ export const upsertProfile = mutation({
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
     if (args.phone && args.phone.length > 30)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Phone number is too long." });
+    if (args.credentialNumber && args.credentialNumber.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Credential number is too long." });
+    if (args.credentialType && args.credentialType.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Credential type is too long." });
+    if (args.credentialVerifyUrl && args.credentialVerifyUrl.length > 500)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Credential verify URL is too long." });
+    if (args.credentialVerifyUrl) {
+      const u = args.credentialVerifyUrl.trim();
+      if (!u.startsWith("https://") && !u.startsWith("http://"))
+        throw new ConvexError({ code: "BAD_REQUEST", message: "Credential verify URL must start with https:// or http://." });
+    }
     if (!args.bio.trim() || args.bio.length > 1000)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Bio is required and must be under 1000 characters." });
     if (args.country.length > 100)
@@ -105,6 +119,9 @@ export const upsertProfile = mutation({
         languages: args.languages,
         destinations: args.destinations,
         region: args.region,
+        credentialType: args.credentialType,
+        credentialNumber: args.credentialNumber,
+        credentialVerifyUrl: args.credentialVerifyUrl,
       });
       return existing._id;
     }
@@ -121,6 +138,9 @@ export const upsertProfile = mutation({
       languages: args.languages,
       destinations: args.destinations,
       region: args.region,
+      credentialType: args.credentialType,
+      credentialNumber: args.credentialNumber,
+      credentialVerifyUrl: args.credentialVerifyUrl,
       verified: false,
       createdAt: new Date().toISOString(),
       // Backfill from users.agentPlan in case this agent paid for Featured
@@ -367,6 +387,9 @@ export const getAgentPublicProfile = query({
     // Strip internal/sensitive fields before returning to any caller.
     // email, userId, lastDashboardViewAt, creditBalance, region are never
     // rendered on the public profile and shouldn't be exposed to scrapers.
+    // Credential fields (credentialType, credentialNumber, credentialVerifyUrl)
+    // are intentionally kept — they're public information users need to
+    // independently verify the agent's professional registration.
     const {
       email: _e,
       userId: _u,
@@ -522,5 +545,47 @@ export const getMyDemandSignals = query({
       isFeatured: FEATURED_TIERS.has(profile.tier ?? ""),
       specialisations: profile.specialisations,
     };
+  },
+});
+
+// ─── Public: flag an agent for admin review ───────────────────────────────────
+// No auth required so unregistered users can still report a scam agent.
+// Anonymous reports are allowed; authenticated user id stored when available.
+// Rate-limited to one report per (ip-equivalent: same userId) per agent per day
+// via the user_daily_usage table when authenticated.
+export const reportAgent = mutation({
+  args: {
+    agentProfileId: v.id("agent_profiles"),
+    reason: v.union(
+      v.literal("fake_credentials"),
+      v.literal("inappropriate_behavior"),
+      v.literal("scam"),
+      v.literal("misleading_information"),
+      v.literal("other"),
+    ),
+    details: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (args.details && args.details.trim().length > 1000) {
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Details must be under 1,000 characters." });
+    }
+
+    const agent = await ctx.db.get(args.agentProfileId);
+    if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found." });
+
+    const user = await getCurrentUser(ctx);
+
+    if (user) {
+      await checkUserDailyLimit(ctx, user._id, "reportAgent", 3, "You can submit up to 3 agent reports per day.");
+    }
+
+    await ctx.db.insert("agent_reports", {
+      agentProfileId: args.agentProfileId,
+      reportedByUserId: user?._id,
+      reason: args.reason,
+      details: args.details?.trim(),
+      createdAt: new Date().toISOString(),
+      status: "pending",
+    });
   },
 });

@@ -1800,7 +1800,7 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
 const BASE_DESTINATIONS = ["United Kingdom", "Canada", "United States", "Germany", "Poland", "France", "Australia", "Netherlands", "Ireland", "Italy", "Spain", "Sweden", "Norway", "Finland", "Denmark", "Portugal", "Austria", "Belgium", "Switzerland", "Japan", "South Korea", "UAE", "New Zealand", "Singapore"];
 
 // Official embassy / immigration portal links per destination
-const EMBASSY_URLS: Record<string, string> = {
+export const EMBASSY_URLS: Record<string, string> = {
   "United Kingdom": "https://www.gov.uk/apply-uk-visa",
   "Canada": "https://www.canada.ca/en/immigration-refugees-citizenship/services/application.html",
   "United States": "https://ceac.state.gov/genniv/",

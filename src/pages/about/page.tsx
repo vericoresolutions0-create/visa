@@ -14,7 +14,7 @@ export default function AboutPage() {
   const { t } = useTranslation("about");
 
   const TEAM = [
-    { name: t("team.name"), role: t("team.role"), desc: t("team.desc") },
+    { name: t("team.name"), role: t("team.role"), desc: t("team.desc"), desc2: t("team.desc2") },
   ];
 
   const VALUES = [
@@ -144,6 +144,7 @@ export default function AboutPage() {
               <h3 className="font-serif text-xl font-semibold text-primary mb-1">{member.name}</h3>
               <p className="text-xs text-accent font-semibold uppercase tracking-widest mb-3">{member.role}</p>
               <p className="text-muted-foreground leading-relaxed">{member.desc}</p>
+              <p className="text-muted-foreground leading-relaxed mt-5 pt-5 border-t border-border/50">{member.desc2}</p>
             </div>
           ))}
         </div>
