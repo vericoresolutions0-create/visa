@@ -168,6 +168,19 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function SiteFooter() {
+  const { pathname } = useLocation();
+  if (pathname === "/") return null;
+  return (
+    <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
+      <p className="text-center text-[11px] text-muted-foreground/60 py-1.5 bg-background/80 backdrop-blur-sm border-t border-border/30 leading-none">
+        <span className="font-medium text-muted-foreground/80">"It's all about Privacy."</span>
+        {" "}© {new Date().getFullYear()} Vericore Ltd. All rights reserved.
+      </p>
+    </div>
+  );
+}
+
 function AppRoutes() {
   useServiceWorker();
   useAnalytics();
@@ -261,6 +274,7 @@ function AppRoutes() {
         </Routes>
       </Suspense>
     </OnboardingGate>
+      <SiteFooter />
     </NavigationDepthProvider>
   );
 }
