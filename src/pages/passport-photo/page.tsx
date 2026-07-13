@@ -75,6 +75,7 @@ export default function PassportPhotoPage() {
   const [loading, setLoading] = useState(false);
   const [usageCount, setUsageCount] = useState(getDailyPhotoCheckUsage);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
   const checkPhoto = useAction(api.ai.photoChecker.checkPassportPhoto);
 
   const handleFileChange = useCallback((file: File) => {
@@ -127,11 +128,11 @@ export default function PassportPhotoPage() {
     setResult(null);
   };
 
-  // Scroll to top when photo check results arrive.
+  // Scroll to the result card when photo check results arrive.
   useEffect(() => {
-    if (result) {
+    if (result && resultRef.current) {
       requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: "instant" });
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
   }, [result]);
@@ -320,6 +321,7 @@ export default function PassportPhotoPage() {
         <AnimatePresence>
           {result && (
             <motion.div
+              ref={resultRef}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
