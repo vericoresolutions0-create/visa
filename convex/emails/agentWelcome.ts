@@ -82,14 +82,36 @@ Write a 2-3 sentence professional bio in third person that highlights their expe
         <tr>
           <td style="padding:40px 40px 24px;">
             <p style="font-size:15px;color:#333;margin:0 0 12px;">Hi ${escapeHtml(agentName)},</p>
-            <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 16px;font-weight:600;">Your agent profile is live.</h2>
-            <p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 16px;">
-              You're now listed on VisaClear as an immigration professional. Once our team verifies your credentials,
-              your profile will appear in applicant searches and you'll start receiving lead marketplace notifications.
+            <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 16px;font-weight:600;">Your agent workspace is ready.</h2>
+            <p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 20px;">
+              Your agent account is live. Here's what's waiting for you:
             </p>
-            <p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 24px;">
-              Specialisations on file: <strong style="color:#333;">${escapeHtml(specialisations.join(", "))}</strong>.
-            </p>
+            <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
+                  <span style="font-size:14px;color:#0f2040;font-weight:600;">Client pipeline</span>
+                  <span style="font-size:14px;color:#666;"> — manage intakes, track cases, upload documents</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
+                  <span style="font-size:14px;color:#0f2040;font-weight:600;">Lead Marketplace</span>
+                  <span style="font-size:14px;color:#666;"> — browse real applicants looking for help right now</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
+                  <span style="font-size:14px;color:#0f2040;font-weight:600;">AI Casework Assistant</span>
+                  <span style="font-size:14px;color:#666;"> — ask about your cases, draft follow-ups, flag stalled clients</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;">
+                  <span style="font-size:14px;color:#0f2040;font-weight:600;">White-label option</span>
+                  <span style="font-size:14px;color:#666;"> — run VisaClear under your own brand</span>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         ${bioPart}
@@ -97,7 +119,7 @@ Write a 2-3 sentence professional bio in third person that highlights their expe
         <tr>
           <td style="padding:0 40px 32px;">
             <a href="${dashboardUrl}" style="display:inline-block;background:#0f2040;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.02em;">
-              Go to your agent dashboard →
+              Get started →
             </a>
           </td>
         </tr>
@@ -124,6 +146,14 @@ Write a 2-3 sentence professional bio in third person that highlights their expe
             </table>
           </td>
         </tr>
+        <!-- Reply line -->
+        <tr>
+          <td style="padding:0 40px 32px;">
+            <p style="font-size:14px;color:#666;line-height:1.7;margin:0;">
+              Any questions, reply to this email — we're here.
+            </p>
+          </td>
+        </tr>
         <!-- Footer -->
         <tr>
           <td style="background:#f8f6f2;padding:24px 40px;text-align:center;">
@@ -143,7 +173,7 @@ Write a 2-3 sentence professional bio in third person that highlights their expe
 
     await sendEmail({
       to,
-      subject: `Welcome to VisaClear, ${agentName} — your agent profile is live`,
+      subject: `Welcome to VisaClear, ${agentName} — your agent workspace is ready`,
       html,
     });
   },
