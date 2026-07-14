@@ -29,34 +29,34 @@ import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage";
 
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
-  { id: "overview",          icon: BarChart3,     label: "Overview" },
-  { id: "users",             icon: Users,         label: "Users" },
-  { id: "agents",            icon: UserCheck,     label: "Agents" },
-  { id: "risk-mitigations",  icon: Shield,        label: "Risk Mitigations" },
-  { id: "setup",             icon: Settings,      label: "Setup" },
-  { id: "country-watch",  icon: Globe,         label: "Country Watch" },
-  { id: "data-freshness", icon: RefreshCw,     label: "Data Freshness" },
-  { id: "telegram-bot",   icon: MessageCircle, label: "Telegram Bot" },
-  { id: "whatsapp-bot",   icon: MessageCircle, label: "WhatsApp Bot" },
-  { id: "wall-of-fame",   icon: Award,         label: "Wall of Fame" },
-  { id: "community",      icon: Users,         label: "Community" },
-  { id: "wait-times",     icon: Clock,         label: "Wait Times" },
-  { id: "partners",       icon: Building2,     label: "Partners" },
-  { id: "leads",          icon: UserPlus,      label: "Leads" },
-  { id: "messages",       icon: MessageCircle, label: "Messages" },
-  { id: "employers",      icon: Building2,     label: "Employers" },
-  { id: "marketplace-leads", icon: UserPlus,    label: "Marketplace Leads" },
-  { id: "credit-mgmt",    icon: Star,          label: "Credit Management" },
-  { id: "security-log",          icon: Shield,        label: "Security Log" },
-  { id: "audit-log",             icon: ListChecks,    label: "Audit Log" },
-  { id: "blog",                  icon: FileText,      label: "Blog" },
-  { id: "corridor-intelligence", icon: BarChart3,     label: "Corridor Intel" },
-  { id: "checklist-flags",       icon: AlertCircle,   label: "Checklist Flags" },
-  { id: "approvals",             icon: Award,         label: "Approvals" },
-  { id: "creators",              icon: Sparkles,      label: "Creators" },
-  { id: "health",                icon: Shield,        label: "System Health" },
-  { id: "agent-reports",         icon: AlertCircle,   label: "Agent Reports" },
-  { id: "embassy-monitor",       icon: Globe,         label: "Embassy Monitor" },
+  { id: "overview",             icon: BarChart3,     label: "Overview" },
+  { id: "users",                icon: Users,         label: "Users" },
+  { id: "agents",               icon: UserCheck,     label: "Agents" },
+  { id: "security-log",         icon: ShieldAlert,   label: "Security Intelligence" },
+  { id: "risk-mitigations",     icon: Shield,        label: "Risk Mitigations" },
+  { id: "audit-log",            icon: ListChecks,    label: "Audit Log" },
+  { id: "setup",                icon: Settings,      label: "Setup" },
+  { id: "country-watch",        icon: Globe,         label: "Country Watch" },
+  { id: "data-freshness",       icon: RefreshCw,     label: "Data Freshness" },
+  { id: "telegram-bot",         icon: MessageCircle, label: "Telegram Bot" },
+  { id: "whatsapp-bot",         icon: MessageCircle, label: "WhatsApp Bot" },
+  { id: "wall-of-fame",         icon: Award,         label: "Wall of Fame" },
+  { id: "community",            icon: Users,         label: "Community" },
+  { id: "wait-times",           icon: Clock,         label: "Wait Times" },
+  { id: "partners",             icon: Building2,     label: "Partners" },
+  { id: "leads",                icon: UserPlus,      label: "Leads" },
+  { id: "messages",             icon: MessageCircle, label: "Messages" },
+  { id: "employers",            icon: Building2,     label: "Employers" },
+  { id: "marketplace-leads",    icon: UserPlus,      label: "Marketplace Leads" },
+  { id: "credit-mgmt",          icon: Star,          label: "Credit Management" },
+  { id: "blog",                 icon: FileText,      label: "Blog" },
+  { id: "corridor-intelligence", icon: BarChart3,    label: "Corridor Intel" },
+  { id: "checklist-flags",      icon: AlertCircle,   label: "Checklist Flags" },
+  { id: "approvals",            icon: Award,         label: "Approvals" },
+  { id: "creators",             icon: Sparkles,      label: "Creators" },
+  { id: "health",               icon: Shield,        label: "System Health" },
+  { id: "agent-reports",        icon: AlertCircle,   label: "Agent Reports" },
+  { id: "embassy-monitor",      icon: Globe,         label: "Embassy Monitor" },
   { id: "ai-usage",             icon: Sparkles,      label: "AI Usage" },
 ];
 
@@ -582,7 +582,7 @@ function AdminInner() {
           );
         })}
       </div>
-      <div className="px-4 py-4 border-t border-white/10 flex flex-col gap-2">
+      <div className="px-4 pt-4 pb-4 border-t border-white/10 flex flex-col gap-2" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-xs text-white/60 hover:text-white/90 transition-colors cursor-pointer"

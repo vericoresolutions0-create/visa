@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAction, useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -199,10 +198,12 @@ function RejectionAnalyserInner() {
       setLeadSubmittedAfterAnalysis(consentToLead);
     } catch (err: unknown) {
       let msg = "Analysis failed. Please try again.";
-      if (err instanceof ConvexError) {
-        const data = err.data as { message?: string };
-        msg = data?.message ?? msg;
-      } else if (err instanceof Error) {
+      // ConvexError instanceof check can fail across module version boundaries.
+      // Read err.data directly — all Convex errors carry structured data this way.
+      const convexData = (err as { data?: { message?: string } }).data;
+      if (convexData?.message) {
+        msg = convexData.message;
+      } else if (err instanceof Error && err.message && !err.message.startsWith("[CONVEX") && !err.message.includes("Server Error")) {
         msg = err.message;
       }
       toast.error(msg);
