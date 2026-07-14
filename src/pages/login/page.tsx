@@ -11,7 +11,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
 const FEATURES = [
   { icon: FileText, text: "Personalised visa checklists in 60 seconds" },
-  { icon: Zap, text: "AI rejection analyser — know exactly what to fix" },
+  { icon: Zap, text: "AI rejection analyser (Expert) — know exactly what to fix" },
   { icon: Shield, text: "Passport photo checker against embassy standards" },
   { icon: CheckCircle2, text: "Deadline reminders so nothing slips through" },
 ];
