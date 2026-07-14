@@ -122,7 +122,18 @@ export const createCheckoutSession = action({
       return c.id;
     };
 
-    let stripeCustomerId = user.stripeCustomerId ?? (await createCustomer());
+    // Every Stripe API call from here down is wrapped so any failure — customer
+    // creation, session creation, or the "no such customer" retry — surfaces as
+    // a ConvexError with the real Stripe message instead of the generic fallback.
+    let stripeCustomerId: string;
+    try {
+      stripeCustomerId = user.stripeCustomerId ?? (await createCustomer());
+    } catch (err: unknown) {
+      throw new ConvexError({
+        code: "STRIPE_API_ERROR",
+        message: stripeErrMsg(err) || "Could not create a billing account. Please try again.",
+      });
+    }
 
     let session: Stripe.Checkout.Session;
     try {
@@ -134,8 +145,8 @@ export const createCheckoutSession = action({
         (err as { code?: string }).code === "resource_missing" &&
         String((err as { message?: string }).message ?? "").toLowerCase().includes("customer");
       if (isNoSuchCustomer) {
-        stripeCustomerId = await createCustomer();
         try {
+          stripeCustomerId = await createCustomer();
           session = await stripe.checkout.sessions.create(sessionParams(stripeCustomerId));
         } catch (retryErr: unknown) {
           throw new ConvexError({
