@@ -17,9 +17,10 @@ export const isPaystackConfigured = query({
 // (not live FX-converted), reviewed periodically — same discipline as the
 // visa checklist's "lastVerified" dates. Set 2026-06-25 from then-current
 // USD/NGN ≈ 1,375 (official) / ≈ 1,400 (parallel market).
+// Amounts are in kobo (100 kobo = ₦1).
 const NGN_PLAN_PRICES_KOBO = {
-  pro: { monthly: 1_300_00, yearly: 11_000_00 }, // ₦13,000 / ₦110,000
-  expert: { monthly: 2_700_00, yearly: 21_000_00 }, // ₦27,000 / ₦210,000
+  pro:    { monthly: 1_300_000, yearly: 11_000_000 },  // ₦13,000 / ₦110,000
+  expert: { monthly: 2_700_000, yearly: 21_000_000 },  // ₦27,000 / ₦210,000
 } as const;
 
 const PLAN_LABELS: Record<string, string> = {

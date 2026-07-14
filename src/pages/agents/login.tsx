@@ -84,7 +84,7 @@ export default function AgentLoginPage() {
       </div>
 
       {/* ── Right panel — auth form ── */}
-      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
+      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0" style={{ background: "#f2f0fb" }}>
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md">
           <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -119,10 +119,10 @@ export default function AgentLoginPage() {
               <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#7c3aed" }}>
                 Agent Portal
               </p>
-              <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3 leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-3 leading-tight" style={{ color: "#1a1060" }}>
                 Sign in to your<br />agent account.
               </h1>
-              <p className="text-base text-muted-foreground leading-relaxed">
+              <p className="text-base leading-relaxed" style={{ color: "#4a4070" }}>
                 Access your client dashboard, manage intakes, and track your referral earnings.
               </p>
             </div>

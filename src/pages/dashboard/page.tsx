@@ -1230,19 +1230,21 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-primary" />
             <span className="font-semibold text-sm text-primary">
-              Upgrade to Pro
+              Upgrade your plan
             </span>
           </div>
+          <p className="text-xs text-muted-foreground leading-relaxed mb-1">
+            <span className="font-semibold text-foreground">Pro</span> — Unlimited checklists, deadline reminders, PDF exports, and passport photo checking.
+          </p>
           <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-            Unlock AI Rejection Analyser, unlimited checklists, deadline
-            reminders, PDF exports, and passport photo checking.
+            <span className="font-semibold text-foreground">Expert</span> — Everything in Pro, plus the AI Rejection Analyser and full case intelligence tools.
           </p>
           <Button
             size="sm"
             className="cursor-pointer"
             onClick={() => navigate("/pricing")}
           >
-            See Pro Plans <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            See plans <ChevronRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
       )}

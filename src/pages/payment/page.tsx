@@ -404,12 +404,13 @@ export default function PaymentPage() {
       toast.success(`${selectedPlan.name} is active.`);
       navigate(selectedPlan.successPath, { replace: true });
     } catch (error) {
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message: string }).message
-          : error instanceof Error
-            ? error.message
-            : t("toast.payment_failed");
+      // ConvexError instanceof check can fail across module version boundaries —
+      // read err.data directly to get the structured backend message.
+      const convexData = (error as { data?: { message?: string } }).data;
+      const message = convexData?.message
+        ?? (error instanceof Error && error.message && !error.message.startsWith("[CONVEX") && !error.message.includes("Server Error")
+          ? error.message
+          : t("toast.payment_failed"));
       toast.error(message);
     } finally {
       setSaving(false);
