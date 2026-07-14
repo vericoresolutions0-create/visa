@@ -31,6 +31,16 @@ const AGENT_PLAN = v.union(
 );
 const BILLING_CYCLE = v.union(v.literal("monthly"), v.literal("yearly"));
 
+// Saves the Stripe customer ID immediately after customer creation in the
+// checkout action, before the session exists. Prevents duplicate customers
+// on retry and ensures the billing portal link is always available.
+export const persistStripeCustomerId = internalMutation({
+  args: { userId: v.id("users"), stripeCustomerId: v.string() },
+  handler: async (ctx, { userId, stripeCustomerId }) => {
+    await ctx.db.patch(userId, { stripeCustomerId });
+  },
+});
+
 // Called only from the Stripe webhook handler in http.ts, once a Checkout
 // Session actually completes — this is the single place a subscription
 // becomes "active" for real money, as opposed to completeCheckout's

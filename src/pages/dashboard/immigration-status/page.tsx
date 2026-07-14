@@ -282,6 +282,15 @@ function ILRTimeline({ grantDate, qualifyingYears }: { grantDate: string; qualif
 }
 
 // ── PDF export ────────────────────────────────────────────────────────────────
+function esc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function printTravelHistory(
   trips: Doc<"travel_trips">[],
   visaStatus: Doc<"visa_status"> | null,
@@ -289,12 +298,12 @@ function printTravelHistory(
 ) {
   const rows = trips.map((t) => `
     <tr>
-      <td>${t.destinationEmoji ?? "🌍"} ${t.destination}</td>
+      <td>${esc(t.destinationEmoji ?? "🌍")} ${esc(t.destination)}</td>
       <td>${fmtDate(t.departureDate)}</td>
       <td>${fmtDate(t.returnDate)}</td>
       <td style="text-align:center;font-weight:700">${t.daysAbsent}</td>
-      <td>${t.purpose ?? "—"}</td>
-      <td>${t.notes ?? "—"}</td>
+      <td>${esc(t.purpose ?? "—")}</td>
+      <td>${esc(t.notes ?? "—")}</td>
     </tr>`).join("");
 
   const totalDays = trips.reduce((s, t) => s + t.daysAbsent, 0);
@@ -328,7 +337,7 @@ function printTravelHistory(
 <div class="header">
   <div>
     <h1>VisaClear — Travel History Report</h1>
-    <p>Prepared for: <strong>${userName}</strong> &nbsp;·&nbsp; Generated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+    <p>Prepared for: <strong>${esc(userName)}</strong> &nbsp;·&nbsp; Generated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
   </div>
   <div style="text-align:right;font-size:11px;color:#64748B">
     <div style="font-weight:700;color:#1A56DB;font-size:13px">VisaClear</div>
@@ -338,15 +347,15 @@ function printTravelHistory(
 <div class="meta">
   <div class="meta-box">
     <label>Visa Type</label>
-    <span>${visaStatus?.visaType ?? "Not set"}</span>
+    <span>${esc(visaStatus?.visaType ?? "Not set")}</span>
   </div>
   <div class="meta-box">
     <label>Host Country</label>
-    <span>${visaStatus?.hostCountry ?? "Not set"}</span>
+    <span>${esc(visaStatus?.hostCountry ?? "Not set")}</span>
   </div>
   <div class="meta-box">
     <label>Route</label>
-    <span>${jurisdiction?.label.replace(/^.* — /, "") ?? "Not set"}</span>
+    <span>${esc(jurisdiction?.label.replace(/^.* — /, "") ?? "Not set")}</span>
   </div>
   <div class="meta-box">
     <label>Visa Grant Date</label>

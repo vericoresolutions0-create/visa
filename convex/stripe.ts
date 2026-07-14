@@ -2,7 +2,7 @@
 
 import Stripe from "stripe";
 import { ConvexError, v } from "convex/values";
-import { action, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { PLAN_PRICES_CENTS, AGENT_PLAN_PRICES_CENTS } from "./users.ts";
 
@@ -13,15 +13,6 @@ const PLAN_LABELS: Record<string, string> = {
   agent_featured: "VisaClear Agent Featured Placement",
   agency_white_label: "VisaClear Agency White-Label",
 };
-
-// Saves a Stripe customer ID to the user record immediately after creation so
-// we never create duplicate customers on retry and the portal link always works.
-export const persistStripeCustomerId = internalMutation({
-  args: { userId: v.id("users"), stripeCustomerId: v.string() },
-  handler: async (ctx, { userId, stripeCustomerId }) => {
-    await ctx.db.patch(userId, { stripeCustomerId });
-  },
-});
 
 function stripeErrMsg(err: unknown): string {
   const msg = (err as { message?: string }).message ?? "";
@@ -124,7 +115,7 @@ export const createCheckoutSession = action({
         name: user.name,
         metadata: { userId: user._id },
       });
-      await ctx.runMutation(internal.stripe.persistStripeCustomerId, {
+      await ctx.runMutation(internal.billing.persistStripeCustomerId, {
         userId: user._id,
         stripeCustomerId: c.id,
       });
