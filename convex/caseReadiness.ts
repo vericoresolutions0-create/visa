@@ -8,6 +8,7 @@ function now() {
   return new Date().toISOString();
 }
 
+
 // ── Public mutations ───────────────────────────────────────────────────────────
 
 /**
@@ -199,7 +200,8 @@ export const computeReadiness = mutation({
 });
 
 /**
- * resolveFixItem — agent marks a fix item as done. Tenant-isolated.
+ * resolveFixItem — agent marks a fix item as done. Syncs the readiness row
+ * counts so the client card badge reflects the change immediately.
  */
 export const resolveFixItem = mutation({
   args: { fixItemId: v.id("case_fix_items") },
@@ -213,11 +215,30 @@ export const resolveFixItem = mutation({
     }
 
     await ctx.db.patch(args.fixItemId, { resolvedAt: now() });
+
+    // Reads after writes in the same mutation see the updated state, so querying
+    // now gives us the correct post-patch counts for the badge.
+    const allFixes = await ctx.db
+      .query("case_fix_items")
+      .withIndex("by_intake", (q) => q.eq("intakeId", fix.intakeId))
+      .take(200);
+    const readiness = await ctx.db
+      .query("case_readiness")
+      .withIndex("by_intake", (q) => q.eq("intakeId", fix.intakeId))
+      .unique();
+    if (readiness) {
+      await ctx.db.patch(readiness._id, {
+        criticalCount:  allFixes.filter((f) => f.severity === "critical"  && !f.resolvedAt).length,
+        mediumCount:    allFixes.filter((f) => f.severity === "medium"    && !f.resolvedAt).length,
+        recommendCount: allFixes.filter((f) => f.severity === "recommend" && !f.resolvedAt).length,
+      });
+    }
   },
 });
 
 /**
- * unresolveFixItem — agent reverses a resolution.
+ * unresolveFixItem — agent reverses a resolution. Syncs the readiness row
+ * counts so the client card badge reflects the change immediately.
  */
 export const unresolveFixItem = mutation({
   args: { fixItemId: v.id("case_fix_items") },
@@ -231,11 +252,29 @@ export const unresolveFixItem = mutation({
     }
 
     await ctx.db.patch(args.fixItemId, { resolvedAt: undefined });
+
+    // Reads after writes in the same mutation see the updated state.
+    const allFixes = await ctx.db
+      .query("case_fix_items")
+      .withIndex("by_intake", (q) => q.eq("intakeId", fix.intakeId))
+      .take(200);
+    const readiness = await ctx.db
+      .query("case_readiness")
+      .withIndex("by_intake", (q) => q.eq("intakeId", fix.intakeId))
+      .unique();
+    if (readiness) {
+      await ctx.db.patch(readiness._id, {
+        criticalCount:  allFixes.filter((f) => f.severity === "critical"  && !f.resolvedAt).length,
+        mediumCount:    allFixes.filter((f) => f.severity === "medium"    && !f.resolvedAt).length,
+        recommendCount: allFixes.filter((f) => f.severity === "recommend" && !f.resolvedAt).length,
+      });
+    }
   },
 });
 
 /**
- * reviewFraudSignal — agent marks a fraud signal as reviewed (acknowledged).
+ * reviewFraudSignal — agent marks a fraud signal as reviewed. Syncs the
+ * fraudSignalCount on the readiness row so the badge updates immediately.
  */
 export const reviewFraudSignal = mutation({
   args: { signalId: v.id("fraud_signals") },
@@ -249,6 +288,21 @@ export const reviewFraudSignal = mutation({
     }
 
     await ctx.db.patch(args.signalId, { reviewedAt: now() });
+
+    // Reads after writes in the same mutation see the updated state.
+    const allSignals = await ctx.db
+      .query("fraud_signals")
+      .withIndex("by_intake", (q) => q.eq("intakeId", signal.intakeId))
+      .take(100);
+    const readiness = await ctx.db
+      .query("case_readiness")
+      .withIndex("by_intake", (q) => q.eq("intakeId", signal.intakeId))
+      .unique();
+    if (readiness) {
+      await ctx.db.patch(readiness._id, {
+        fraudSignalCount: allSignals.filter((s) => !s.reviewedAt).length,
+      });
+    }
   },
 });
 

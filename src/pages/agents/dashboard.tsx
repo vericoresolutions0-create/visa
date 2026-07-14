@@ -509,7 +509,7 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Required documents</p>
                     <div className="rounded-xl border border-border overflow-hidden">
                       {requiredDocLabels.map((label, i) => {
-                        const uploadedNorm = intake.documents.map((d) => d.label.toLowerCase());
+                        const uploadedNorm = (intake.documents ?? []).map((d) => d.label.toLowerCase());
                         const matched = uploadedNorm.some(
                           (u) => u.includes(label.toLowerCase()) || label.toLowerCase().includes(u),
                         );
