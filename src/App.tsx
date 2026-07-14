@@ -180,7 +180,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
 
 function SiteFooter() {
   const { pathname } = useLocation();
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname.startsWith("/admin")) return null;
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 pointer-events-none">
       <p className="text-center text-[11px] text-muted-foreground/60 py-1.5 bg-background/80 backdrop-blur-sm border-t border-border/30 leading-none">

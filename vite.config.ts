@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
@@ -44,7 +45,26 @@ export default defineConfig({
   preview: {
     headers: SECURITY_HEADERS,
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Stamp the service worker cache name with the build timestamp on every
+    // production build so browsers always pick up fresh assets automatically —
+    // no manual version bump ever needed again.
+    {
+      name: "sw-build-stamp",
+      apply: "build" as const,
+      closeBundle() {
+        const swPath = path.resolve(__dirname, "dist/sw.js");
+        if (!fs.existsSync(swPath)) return;
+        const stamp = Date.now();
+        fs.writeFileSync(
+          swPath,
+          fs.readFileSync(swPath, "utf-8").replace("BUILD_STAMP", String(stamp)),
+        );
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@/convex": path.resolve(__dirname, "./convex"),
