@@ -608,11 +608,60 @@ function AdminInner() {
         {sidebarGrid}
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — standalone flex-col, does NOT reuse sidebarGrid.
+          The overlay is fixed inset-0 (explicit viewport height). The w-56 child
+          gets that height via flex align-items:stretch, then distributes it with
+          flex-col: header=shrink-0, nav=flex-1 (scrollable), footer=shrink-0. */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="relative w-56 bg-[#0f2040] shadow-2xl">
-            {sidebarGrid}
+          <div className="w-56 bg-[#0f2040] shadow-2xl flex flex-col">
+            <div className="px-4 py-5 border-b border-white/10 shrink-0">
+              <button onClick={() => { navigate("/"); setSidebarOpen(false); }} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="font-serif text-base font-semibold text-white leading-tight">VisaClear</div>
+                  <div className="text-[9px] text-white/65 tracking-widest uppercase">Admin Panel</div>
+                </div>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-3">
+              {NAV_ITEMS.map((item) => {
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all cursor-pointer text-left",
+                      active
+                        ? "bg-white/10 text-white border-r-2 border-[#b8a06a]"
+                        : "text-white/50 hover:text-white hover:bg-white/5 border-r-2 border-transparent"
+                    )}
+                  >
+                    <item.icon className={cn("w-4 h-4 shrink-0", active ? "text-[#b8a06a]" : "")} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="px-4 pt-4 border-t border-white/10 flex flex-col gap-2 shrink-0" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
+              <button
+                onClick={() => { navigate("/"); setSidebarOpen(false); }}
+                className="flex items-center gap-2 text-xs text-white/60 hover:text-white/90 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to site
+              </button>
+              <button
+                onClick={async () => { await signOut(); navigate("/"); }}
+                className="flex items-center gap-2 text-xs text-white/60 hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign out
+              </button>
+            </div>
           </div>
           <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />
         </div>

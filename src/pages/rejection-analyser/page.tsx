@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -131,6 +131,7 @@ function RejectionAnalyserInner() {
   const generateUploadUrl = useMutation(api.rejections.generateRejectionUploadUrl);
   const confirmUpload = useMutation(api.rejections.confirmRejectionUpload);
   const analyseRejection = useAction(api.ai.rejectionAnalyser.analyseRejection);
+  const currentUser = useQuery(api.users.getCurrentUser);
 
   const visibleDestinations = showAllCountries ? REJECTION_DESTINATIONS : REJECTION_DESTINATIONS.slice(0, 12);
   const canAnalyse = !!destination && !!visaType && !!origin && (refusalText.trim().length > 50 || !!pdfStorageId);
@@ -234,6 +235,69 @@ function RejectionAnalyserInner() {
     setConsentToLead(false);
     setLeadSubmittedAfterAnalysis(false);
   };
+
+  // ── Plan gate — show upgrade prompt for non-Expert users ─────────────────
+  if (currentUser === undefined) {
+    return (
+      <div className="space-y-4 py-4">
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+      </div>
+    );
+  }
+  if ((currentUser?.plan ?? "free") !== "expert") {
+    const plan = currentUser?.plan ?? "free";
+    return (
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:p-8 flex flex-col items-center text-center gap-5">
+          <div className="w-14 h-14 rounded-2xl bg-white border border-amber-200 shadow-sm flex items-center justify-center">
+            <Lock className="w-7 h-7 text-amber-600" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-amber-200 text-xs font-semibold text-amber-700 mb-3 uppercase tracking-wide">
+              Your plan: {plan === "pro" ? "Pro" : "Free"}
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-primary mb-2">Expert Plan Required</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+              The AI Rejection Analyser is an Expert-only tool. It reads your refusal letter and builds a full recovery plan in under 30 seconds.
+            </p>
+          </div>
+          <ul className="text-sm text-left space-y-2.5 w-full max-w-xs">
+            {[
+              "AI reads and analyses your refusal letter",
+              "Identifies the exact refusal codes used",
+              "Personalised document fix guide",
+              "Appeal letter drafted for your case",
+              "Success probability score",
+              "Week-by-week recovery timeline",
+            ].map((f) => (
+              <li key={f} className="flex items-center gap-2.5 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="w-full max-w-xs flex flex-col gap-2.5">
+            <Button
+              size="lg"
+              className="w-full cursor-pointer font-semibold shadow-md"
+              onClick={() => navigate("/pricing")}
+            >
+              Upgrade to Expert <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+            {plan === "free" && (
+              <p className="text-xs text-muted-foreground text-center">
+                Already subscribed?{" "}
+                <button className="underline hover:text-primary cursor-pointer transition-colors" onClick={() => navigate("/settings/profile")}>
+                  Check your account settings
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Loading view ──────────────────────────────────────────────────────────
   if (loading) {
