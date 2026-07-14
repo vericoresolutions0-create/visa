@@ -549,8 +549,8 @@ function AdminInner() {
   const currentNav = NAV_ITEMS.find((n) => n.id === tab) ?? NAV_ITEMS[0];
 
   const Sidebar = (
-    <nav className="flex flex-col flex-1 min-h-0">
-      <div className="px-4 py-5 border-b border-white/10 shrink-0">
+    <nav className="h-screen grid" style={{ gridTemplateRows: "auto 1fr auto" }}>
+      <div className="px-4 py-5 border-b border-white/10">
         <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
             <Globe className="w-4 h-4 text-white" />
@@ -561,7 +561,7 @@ function AdminInner() {
           </div>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0 py-3">
+      <div className="overflow-y-auto py-3">
         {NAV_ITEMS.map((item) => {
           const active = tab === item.id;
           return (
@@ -581,7 +581,7 @@ function AdminInner() {
           );
         })}
       </div>
-      <div className="px-4 py-4 border-t border-white/10 flex flex-col gap-2 shrink-0">
+      <div className="px-4 py-4 border-t border-white/10 flex flex-col gap-2">
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-xs text-white/60 hover:text-white/90 transition-colors cursor-pointer"
@@ -603,14 +603,14 @@ function AdminInner() {
   return (
     <div className="flex h-full">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 bg-[#0f2040] flex-col shrink-0 sticky top-0 h-screen">
+      <aside className="hidden md:block w-56 bg-[#0f2040] shrink-0 sticky top-0">
         {Sidebar}
       </aside>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-56 bg-[#0f2040] flex flex-col h-screen shadow-2xl">
+          <div className="w-56 bg-[#0f2040] shadow-2xl">
             {Sidebar}
           </div>
           <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />
