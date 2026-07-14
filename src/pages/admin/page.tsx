@@ -549,8 +549,8 @@ function AdminInner() {
   const isLoading = stats === undefined;
   const currentNav = NAV_ITEMS.find((n) => n.id === tab) ?? NAV_ITEMS[0];
 
-  const SidebarContent = (
-    <nav className="w-full h-full grid" style={{ gridTemplateRows: "auto 1fr auto" }}>
+  const sidebarGrid = (
+    <div className="absolute inset-0 grid" style={{ gridTemplateRows: "auto 1fr auto" }}>
       <div className="px-4 py-5 border-b border-white/10">
         <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
@@ -598,21 +598,21 @@ function AdminInner() {
           Sign out
         </button>
       </div>
-    </nav>
+    </div>
   );
 
   return (
     <div className="flex">
-      {/* Desktop sidebar — fixed to viewport, no sticky/dvh ambiguity */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-[#0f2040] z-30 flex-col">
-        {SidebarContent}
+      {/* Desktop: fixed aside, absolute-fill grid — no height chain, no dvh, no flex */}
+      <aside className="hidden md:block fixed inset-y-0 left-0 w-56 bg-[#0f2040] z-30">
+        {sidebarGrid}
       </aside>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-56 bg-[#0f2040] shadow-2xl flex flex-col">
-            {SidebarContent}
+          <div className="relative w-56 bg-[#0f2040] shadow-2xl">
+            {sidebarGrid}
           </div>
           <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />
         </div>

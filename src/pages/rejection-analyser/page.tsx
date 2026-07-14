@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAction, useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -197,8 +198,14 @@ function RejectionAnalyserInner() {
       setActiveTab("overview");
       setLeadSubmittedAfterAnalysis(consentToLead);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Analysis failed. Please try again.";
-      toast.error(msg.replace("ConvexError:", "").trim());
+      let msg = "Analysis failed. Please try again.";
+      if (err instanceof ConvexError) {
+        const data = err.data as { message?: string };
+        msg = data?.message ?? msg;
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -927,10 +934,6 @@ export default function RejectionAnalyserPage() {
         </Authenticated>
       </div>
 
-      <footer className="border-t border-border mt-10 py-6 px-6 text-center">
-        <p className="text-xs text-muted-foreground italic mb-1">&ldquo;It&apos;s all about Privacy.&rdquo;</p>
-        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Vericore Ltd.</p>
-      </footer>
     </div>
   );
 }

@@ -180,6 +180,10 @@ function ProfileSettingsInner() {
       toast.error(t("toast.name_required"));
       return;
     }
+    if (phone.trim() && !/^[+\d][\d\s\-().]{5,19}$/.test(phone.trim())) {
+      toast.error("Enter a valid phone number (e.g. +44 7700 900123).");
+      return;
+    }
 
     setSavingProfile(true);
     try {

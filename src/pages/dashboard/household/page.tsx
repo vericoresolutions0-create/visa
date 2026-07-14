@@ -599,12 +599,6 @@ export default function HouseholdPage() {
         )}
       </div>
 
-      <footer className="border-t border-border mt-10 py-6 px-6 text-center">
-        <p className="text-xs text-muted-foreground italic mb-1">&ldquo;It&apos;s all about Privacy.&rdquo;</p>
-        <p className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Vericore Ltd. · VisaClear is a guidance tool, not legal advice.
-        </p>
-      </footer>
     </div>
   );
 }

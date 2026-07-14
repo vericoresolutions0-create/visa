@@ -71,6 +71,16 @@ export function AuthAccessPanel({
       setError("Please enter your password.");
       return;
     }
+    if (authMode === "signUp") {
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+      if (/^\d+$/.test(password)) {
+        setError("Password cannot be all numbers. Add at least one letter.");
+        return;
+      }
+    }
     if (requiresConsent && !agreedToTerms) {
       setError("Please agree to the Terms of Service and Privacy Policy to create an account.");
       return;

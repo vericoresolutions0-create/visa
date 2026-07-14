@@ -1015,6 +1015,17 @@ export default function ChecklistPage() {
               {checklist ? (
                 <div className="space-y-5">
 
+                  {/* EU/EEA citizen notice — shown when origin is "Other" and destination is a Schengen/EU country */}
+                  {origin === "Other" && ["Germany","France","Netherlands","Italy","Spain","Belgium","Austria","Switzerland","Poland","Sweden","Norway","Denmark","Finland","Portugal","Ireland"].includes(destination) && (
+                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                      <span className="text-lg leading-none mt-0.5">⚠️</span>
+                      <p>
+                        <span className="font-semibold">EU/EEA citizens do not need a visa for this destination.</span>{" "}
+                        If you hold an EU or EEA passport (e.g. Estonian, German, French), you have free movement and these requirements do not apply to you. This checklist is for non-EU/EEA nationals only.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Header card */}
                   <div className="bg-primary rounded-xl p-6 text-primary-foreground">
                     <div className="flex items-start justify-between gap-4 mb-5">
