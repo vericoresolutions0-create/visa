@@ -549,7 +549,7 @@ function AdminInner() {
   const currentNav = NAV_ITEMS.find((n) => n.id === tab) ?? NAV_ITEMS[0];
 
   const Sidebar = (
-    <nav className="flex flex-col h-full">
+    <nav className="flex flex-col flex-1 min-h-0">
       <div className="px-4 py-5 border-b border-white/10">
         <button onClick={() => navigate("/")} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
@@ -610,7 +610,7 @@ function AdminInner() {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-56 bg-[#0f2040] flex flex-col h-full shadow-2xl">
+          <div className="w-56 bg-[#0f2040] flex flex-col h-screen shadow-2xl">
             {Sidebar}
           </div>
           <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />

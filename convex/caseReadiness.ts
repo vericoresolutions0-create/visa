@@ -110,7 +110,7 @@ export const computeReadiness = mutation({
         action:
           "Follow up with the client via WhatsApp or email. Resend the client portal upload link.",
       });
-    } else if (intake.status === "awaiting_documents" && daysSinceCreated >= 5) {
+    } else if (intake.status === "awaiting_documents" && daysSinceCreated >= 5 && uploadedCount === 0) {
       fixItems.push({
         severity: "medium",
         category: "stale_intake",
@@ -471,7 +471,15 @@ export const storeAIResults = internalMutation({
       });
     }
 
-    // Mark AI analysis timestamp on readiness row.
+    // Recount all fix items (including newly inserted AI items) and update readiness row.
+    const allFixes = await ctx.db
+      .query("case_fix_items")
+      .withIndex("by_intake", (q) => q.eq("intakeId", args.intakeId))
+      .take(200);
+    const criticalCount = allFixes.filter((f) => f.severity === "critical" && !f.resolvedAt).length;
+    const mediumCount = allFixes.filter((f) => f.severity === "medium" && !f.resolvedAt).length;
+    const recommendCount = allFixes.filter((f) => f.severity === "recommend" && !f.resolvedAt).length;
+
     const readiness = await ctx.db
       .query("case_readiness")
       .withIndex("by_intake", (q) => q.eq("intakeId", args.intakeId))
@@ -480,6 +488,9 @@ export const storeAIResults = internalMutation({
       await ctx.db.patch(readiness._id, {
         aiAnalysisRunAt: ts,
         fraudSignalCount: args.fraudSignals.length,
+        criticalCount,
+        mediumCount,
+        recommendCount,
       });
     }
   },

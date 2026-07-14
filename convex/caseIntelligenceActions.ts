@@ -162,8 +162,13 @@ Return ONLY valid JSON. No text outside the JSON object.`;
           description: String(f.description ?? "").slice(0, 500),
           action: String(f.action ?? "").slice(0, 500),
         }));
-    } catch {
-      // Non-fatal: store empty results so the panel shows "No issues detected".
+    } catch (err) {
+      // Re-throw so prior AI results are preserved — storeAIResults must NOT
+      // be called with empty arrays on error as it would wipe existing data.
+      throw new ConvexError({
+        code: "INTERNAL",
+        message: "AI analysis failed. Your previous results are preserved. Check the OpenAI key and try again.",
+      });
     }
 
     await ctx.runMutation(internal.caseReadiness.storeAIResults, {
@@ -273,7 +278,13 @@ Return the letter text only — no subject line, no JSON wrapper.`;
         issuesAddressed.push("Fraud signal context acknowledged");
       }
     } catch {
-      letterContent = `Dear Visa Officer,\n\nThis letter accompanies the ${args.visaRoute} application of ${intake.clientName}.\n\nPlease find all supporting documents enclosed.\n\nYours sincerely,\n[Agent name]`;
+      // Re-throw to preserve the agent's previously saved letter edits.
+      // storeCoverLetter must NOT be called on failure as it would overwrite
+      // editedContent with undefined, destroying the agent's draft.
+      throw new ConvexError({
+        code: "INTERNAL",
+        message: "Letter generation failed. Your saved edits are preserved. Check the OpenAI key and try again.",
+      });
     }
 
     await ctx.runMutation(internal.caseReadiness.storeCoverLetter, {
