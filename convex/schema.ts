@@ -100,6 +100,9 @@ export default defineSchema({
     // Separate from influencerCode (?af=) and referredByCode (peer referral).
     creatorCode: v.optional(v.string()),
     creatorTrackedAt: v.optional(v.string()),
+    isSuspended: v.optional(v.boolean()),
+    suspendedAt: v.optional(v.string()),
+    suspendedByAdminId: v.optional(v.id("users")),
   })
     .index("email", ["email"])
     .index("phone", ["phone"])
@@ -1217,6 +1220,26 @@ export default defineSchema({
   })
     .index("by_actor", ["actorUserId"])
     .index("by_action", ["action"])
+    .index("by_created", ["createdAt"]),
+
+  security_threat_actions: defineTable({
+    eventId: v.optional(v.id("security_audit_logs")),
+    actorUserId: v.id("users"),
+    adminId: v.id("users"),
+    action: v.union(
+      v.literal("reviewed"),
+      v.literal("dismissed"),
+      v.literal("note_added"),
+      v.literal("user_suspended"),
+      v.literal("user_unsuspended"),
+      v.literal("leads_revoked"),
+    ),
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_actor", ["actorUserId"])
+    .index("by_admin", ["adminId"])
     .index("by_created", ["createdAt"]),
 
   // Corridor-level policy alert subscriptions — public, no-sign-in, deduped

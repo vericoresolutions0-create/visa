@@ -100,3 +100,88 @@ export const adminGetActorEvents = query({
     }
   },
 });
+
+export const adminGetSecurityStats = query({
+  args: {},
+  handler: async (ctx, _args) => {
+    await requireAdmin(ctx);
+    try {
+      const all = await ctx.db
+        .query("security_audit_logs")
+        .withIndex("by_created")
+        .order("desc")
+        .take(1000);
+      const mitigations = await ctx.db
+        .query("security_threat_actions")
+        .withIndex("by_created")
+        .order("desc")
+        .take(2000);
+      return {
+        total: all.length,
+        critical: all.filter((e) => e.severity === "critical").length,
+        warn: all.filter((e) => e.severity === "warn").length,
+        info: all.filter((e) => e.severity === "info").length,
+        mitigated: mitigations.filter(
+          (a) => a.action === "reviewed" || a.action === "dismissed",
+        ).length,
+      };
+    } catch {
+      return { total: 0, critical: 0, warn: 0, info: 0, mitigated: 0 };
+    }
+  },
+});
+
+export const adminGetThreatActions = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    try {
+      return await ctx.db
+        .query("security_threat_actions")
+        .withIndex("by_created")
+        .order("desc")
+        .take(args.limit ?? 500);
+    } catch {
+      return [];
+    }
+  },
+});
+
+export const adminTakeAction = mutation({
+  args: {
+    eventId: v.optional(v.id("security_audit_logs")),
+    actorUserId: v.id("users"),
+    action: v.union(
+      v.literal("reviewed"),
+      v.literal("dismissed"),
+      v.literal("note_added"),
+      v.literal("user_suspended"),
+      v.literal("user_unsuspended"),
+      v.literal("leads_revoked"),
+    ),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const now = new Date().toISOString();
+
+    if (args.action === "user_suspended") {
+      await ctx.db.patch(args.actorUserId, {
+        isSuspended: true,
+        suspendedAt: now,
+        suspendedByAdminId: admin._id,
+      });
+    } else if (args.action === "user_unsuspended") {
+      await ctx.db.patch(args.actorUserId, { isSuspended: false });
+    }
+
+    await ctx.db.insert("security_threat_actions", {
+      eventId: args.eventId,
+      actorUserId: args.actorUserId,
+      adminId: admin._id,
+      action: args.action,
+      notes: args.notes,
+      createdAt: now,
+    });
+  },
+});
