@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
@@ -12,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { Globe, Building2, GraduationCap, Scale, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
 
 type OrgType = "employer" | "university" | "law_firm";
@@ -48,11 +47,7 @@ function CreateOrgForm() {
       toast.success(t("onboarding.created"));
       navigate("/business/dashboard");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("onboarding.create_failed"));
-      }
+      toast.error(convexErrMsg(err) ?? t("onboarding.create_failed"));
     } finally {
       setSubmitting(false);
     }

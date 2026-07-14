@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate, Link } from "react-router-dom";
 import { usePaginatedQuery, useMutation, useQuery } from "convex/react";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import {
   ArrowLeft, CheckCircle2, Plus, Globe, ChevronDown,
@@ -20,7 +20,7 @@ import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { AVAILABLE_DESTINATIONS, VISA_TYPES } from "@/lib/visa-data.ts";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 
 const ATTEMPTS_LABEL: Record<number, string> = {
   1: "First attempt",
@@ -118,9 +118,7 @@ function SubmitStoryForm({ onDone }: { onDone: () => void }) {
       toast.success("Story submitted for review. It'll appear here once approved.");
       onDone();
     } catch (err) {
-      const msg = err instanceof ConvexError
-        ? (err.data as { message?: string })?.message ?? "Something went wrong."
-        : "Something went wrong.";
+      const msg = convexErrMsg(err) ?? "Something went wrong.";
       toast.error(msg);
     } finally {
       setSubmitting(false);

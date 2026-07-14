@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery } from "convex/react";
 import type { Doc, Id as ConvexId } from "@/convex/_generated/dataModel.js";
-import { ConvexError } from "convex/values";
+
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { AVAILABLE_DESTINATIONS, getAvailableVisaTypes, getChecklist, VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
@@ -1611,8 +1611,7 @@ function ReferralsSection() {
       setPayoutAmountStr("");
       setPayoutNotes("");
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Could not submit request. Try again.");
+      toast.error(convexErrMsg(err) ?? "Could not submit request. Try again.");
     } finally {
       setSubmittingPayout(false);
     }
@@ -1811,11 +1810,7 @@ function LicenseSection() {
       const { url } = await openBillingPortal({});
       window.location.href = url;
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not open billing portal. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not open billing portal. Try again.");
       setOpeningPortal(false);
     }
   };
@@ -1828,8 +1823,7 @@ function LicenseSection() {
       toast.success(t("license.toast_activated", { plan: TIER_LABELS[result.plan] ?? result.plan }));
       setCode("");
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("license.toast_error"));
+      toast.error(convexErrMsg(err) ?? t("license.toast_error"));
     } finally { setRedeeming(false); }
   };
 

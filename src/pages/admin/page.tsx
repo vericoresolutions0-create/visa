@@ -21,9 +21,8 @@ import {
   Sparkles, CalendarClock, Languages, Brain, ShieldAlert, AlertTriangle,
   Search, UserX,
 } from "lucide-react";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
-import { ConvexError } from "convex/values";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 
 type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage";
@@ -1543,7 +1542,7 @@ function PartnersAdminPanel() {
       setSlug("");
       setShowForm(false);
     } catch (err) {
-      const message = err instanceof ConvexError ? (err.data as { message: string }).message : t("partners.toast_create_error");
+      const message = convexErrMsg(err) ?? t("partners.toast_create_error");
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -2003,8 +2002,7 @@ function IssueCodeControl({ applicationId, email, requestedPlan }: { application
       setIssuedCode(result.code);
       toast.success(t("license.toast_issued"));
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("license.toast_issue_failed"));
+      toast.error(convexErrMsg(err) ?? t("license.toast_issue_failed"));
     } finally {
       setIssuing(false);
     }
@@ -2333,7 +2331,7 @@ function TrialManagementPanel({ agents }: { agents: Doc<"agent_profiles">[] }) {
       setGrantNote("");
       setGrantDays(30);
     } catch (err) {
-      const msg = err instanceof ConvexError ? (err.data as { message?: string })?.message ?? "Failed." : "Failed.";
+      const msg = convexErrMsg(err) ?? "Failed.";
       toast.error(msg);
     } finally {
       setGranting(false);
@@ -2347,7 +2345,7 @@ function TrialManagementPanel({ agents }: { agents: Doc<"agent_profiles">[] }) {
       await revokeTrial({ agentUserId: userId });
       toast.success(`Trial revoked for ${name}.`);
     } catch (err) {
-      const msg = err instanceof ConvexError ? (err.data as { message?: string })?.message ?? "Failed." : "Failed.";
+      const msg = convexErrMsg(err) ?? "Failed.";
       toast.error(msg);
     } finally {
       setRevoking(null);
@@ -2851,7 +2849,7 @@ function CreditManagementPanel() {
       setGrantAmount("10");
       setGrantNote("");
     } catch (err) {
-      const msg = err instanceof ConvexError ? (err.data as { message?: string })?.message ?? "Failed." : "Failed.";
+      const msg = convexErrMsg(err) ?? "Failed.";
       toast.error(msg);
     } finally {
       setGranting(false);
@@ -3450,8 +3448,7 @@ function BlogAdminPanel() {
       toast.success(editing === "new" ? "Article created." : "Article saved.");
       setEditing(null);
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Failed to save.");
+      toast.error(convexErrMsg(err) ?? "Failed to save.");
     } finally {
       setSaving(false);
     }
@@ -3481,8 +3478,7 @@ function BlogAdminPanel() {
       const count = await seedArticles({});
       toast.success(`${count} articles loaded successfully.`);
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Seed failed.");
+      toast.error(convexErrMsg(err) ?? "Seed failed.");
     } finally {
       setSeeding(false);
     }
@@ -3494,8 +3490,7 @@ function BlogAdminPanel() {
       await translateArticle({ articleId: articleId as Parameters<typeof translateArticle>[0]["articleId"] });
       toast.success("Translated into FR · ES · PT · AR · HI. Live for all users immediately.");
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Translation failed. Check your OpenAI key.");
+      toast.error(convexErrMsg(err) ?? "Translation failed. Check your OpenAI key.");
     } finally {
       setTranslating(null);
     }
@@ -3798,9 +3793,7 @@ export default function AdminPage() {
       // Role query is reactive — AdminInner renders automatically once
       // currentUser.role flips to "admin". No manual navigation needed.
     } catch (err) {
-      const msg = err instanceof ConvexError
-        ? (err.data as { message: string }).message
-        : "Could not claim admin access.";
+      const msg = convexErrMsg(err) ?? "Could not claim admin access.";
       toast.error(msg);
     } finally {
       setClaiming(false);
@@ -4249,7 +4242,7 @@ function CreatorsAdminPanel() {
       setCName(""); setCEmail(""); setCSlug(""); setCRate(20);
       setCUnlimited(true); setCMonths(6); setCNotes("");
     } catch (err) {
-      const message = err instanceof ConvexError ? (err.data as { message: string }).message : "Failed to create creator.";
+      const message = convexErrMsg(err) ?? "Failed to create creator.";
       toast.error(message);
     } finally {
       setSubmitting(false);

@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, Award, CheckCircle2, XCircle, Plus, Clock, MessageSquare, ChevronRight,
@@ -21,6 +20,7 @@ import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { VISA_TYPES } from "@/lib/visa-data.ts";
 import { WORLD_DESTINATIONS } from "@/lib/countries.ts";
+import { convexErrMsg } from "@/lib/utils.ts";
 
 function StoryCard({ story }: { story: { destination: string; visaType: string; refusalCount: number; whatWentWrong: string; whatFixedIt: string; createdAt: string } }) {
   const { t } = useTranslation("wall-of-fame");
@@ -85,7 +85,7 @@ function SubmitStoryForm({ onClose }: { onClose: () => void }) {
       toast.success(t("form.success_toast"));
       onClose();
     } catch (err) {
-      const message = err instanceof ConvexError ? (err.data as { message: string }).message : t("form.error_toast");
+      const message = convexErrMsg(err) ?? t("form.error_toast");
       toast.error(message);
     } finally {
       setSubmitting(false);

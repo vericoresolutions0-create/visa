@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
+import { convexErrMsg } from "@/lib/utils.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
@@ -25,9 +25,7 @@ function ConfirmFlow({ token }: { token: string }) {
       setResultEmail(result.newEmail);
       setState("done");
     } catch (err) {
-      setErrorMessage(
-        err instanceof ConvexError ? (err.data as { message: string }).message : t("error.fallback"),
-      );
+      setErrorMessage(convexErrMsg(err) ?? t("error.fallback"));
       setState("error");
     }
   };

@@ -7,7 +7,6 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { ConvexError } from "convex/values";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -33,7 +32,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
 
 type PayoutMethod = "bank" | "mobile_money" | "paypal";
@@ -168,8 +167,7 @@ function ProfileSettingsInner() {
       const result = await redeemReferralReward({});
       toast.success(t(result.monthsGranted === 1 ? "toast.redeemed_one" : "toast.redeemed_other", { count: result.monthsGranted }));
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("toast.redeem_error"));
+      toast.error(convexErrMsg(err) ?? t("toast.redeem_error"));
     } finally {
       setRedeemingReward(false);
     }
@@ -219,8 +217,7 @@ function ProfileSettingsInner() {
       setNewEmailInput("");
       setShowEmailChangeForm(false);
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("toast.email_change_error"));
+      toast.error(convexErrMsg(err) ?? t("toast.email_change_error"));
     } finally {
       setRequestingEmailChange(false);
     }

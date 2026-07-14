@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { api } from "@/convex/_generated/api.js";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -477,10 +477,7 @@ function MarketplaceLeadsContent() {
         `Lead unlocked! ${result.creditsSpent} credit${result.creditsSpent === 1 ? "" : "s"} spent. Balance: ${result.remainingBalance}`,
       );
     } catch (err) {
-      const msg =
-        err instanceof ConvexError
-          ? (err.data as { message?: string })?.message ?? "Failed to unlock lead."
-          : "Failed to unlock lead.";
+      const msg = convexErrMsg(err) ?? "Failed to unlock lead.";
       if (msg.includes("Insufficient credits")) {
         toast.error(msg, {
           action: { label: "Top up", onClick: () => setShowTopUp(true) },

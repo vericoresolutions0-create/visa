@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import {
   Globe,
@@ -32,7 +32,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import type { Id } from "@/convex/_generated/dataModel.js";
 
 type Category = "experience" | "question" | "tip" | "complaint";
@@ -131,10 +131,7 @@ function SubmitPostForm({ onClose }: { onClose: () => void }) {
       toast.success("Post submitted. It will appear once reviewed.");
       onClose();
     } catch (err) {
-      const msg =
-        err instanceof ConvexError
-          ? (err.data as { message: string }).message
-          : "Something went wrong. Please try again.";
+      const msg = convexErrMsg(err) ?? "Something went wrong. Please try again.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -248,9 +245,7 @@ function CommunityFeed({ isPaidUser }: { isPaidUser: boolean }) {
       await flagPost({ postId });
       toast.success("Post flagged for review. Thank you.");
     } catch (err) {
-      const msg = err instanceof ConvexError
-        ? (err.data as { message: string }).message
-        : "Could not flag this post.";
+      const msg = convexErrMsg(err) ?? "Could not flag this post.";
       toast.error(msg);
     }
   };

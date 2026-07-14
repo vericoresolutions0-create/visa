@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { useTranslation } from "react-i18next";
@@ -10,7 +9,7 @@ import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { trackEvent } from "@/hooks/use-analytics.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, CheckCircle2, Briefcase, Users,
@@ -96,11 +95,7 @@ export default function BusinessLandingPage() {
       });
       setBizSent(true);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not send your message. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not send your message. Try again.");
     } finally {
       setBizSending(false);
     }

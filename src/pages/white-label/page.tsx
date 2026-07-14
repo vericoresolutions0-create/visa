@@ -3,14 +3,13 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { StatsBar } from "@/components/stats-bar.tsx";
@@ -138,11 +137,7 @@ export default function WhiteLabelPage() {
       setSubmitted(true);
       toast.success(t("form.success_toast"));
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("form.error_toast"));
-      }
+      toast.error(convexErrMsg(err) ?? t("form.error_toast"));
     } finally {
       setSubmitting(false);
     }

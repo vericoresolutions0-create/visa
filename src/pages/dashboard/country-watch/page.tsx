@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDemoGate } from "@/components/DemoGateModal.tsx";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, Shield, Plus, X, Bell,
@@ -15,6 +15,7 @@ import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
+import { convexErrMsg } from "@/lib/utils.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { api } from "@/convex/_generated/api.js";
@@ -95,11 +96,7 @@ export default function CountryWatchPage() {
       toast.success(t("toast.added", { country: selected }));
       setSelected("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("toast.add_error"));
-      }
+      toast.error(convexErrMsg(err) ?? t("toast.add_error"));
     }
   };
 

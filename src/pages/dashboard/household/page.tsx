@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDemoGate } from "@/components/DemoGateModal.tsx";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import {
   Globe, ArrowLeft, Users, LayoutDashboard, Settings, LogOut, LogIn,
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { api } from "@/convex/_generated/api.js";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 
 type DemoHouseholdMember = {
   linkId: string;
@@ -68,7 +68,7 @@ const DEMO_DEPENDENTS: DemoDependent[] = [
 ];
 
 function errMessage(err: unknown, fallback: string) {
-  return err instanceof ConvexError ? (err.data as { message: string }).message : fallback;
+  return convexErrMsg(err) ?? fallback;
 }
 
 function StatusBadge({ status }: { status: string }) {

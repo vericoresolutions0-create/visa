@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -17,7 +17,7 @@ import {
   Languages, Briefcase, Phone, BadgeCheck, LayoutDashboard,
   TrendingUp, Gem, Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { AGENT_PLANS, SPECIALISATIONS, LANGUAGES_LIST } from "@/lib/agent-plans.ts";
 import { AVAILABLE_DESTINATIONS } from "@/lib/visa-data.ts";
@@ -90,11 +90,7 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
       setContacted(true);
       toast.success(t("card.toast_sent", { name: agent.fullName }));
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("card.toast_failed"));
-      }
+      toast.error(convexErrMsg(err) ?? t("card.toast_failed"));
     } finally {
       setSending(false);
     }

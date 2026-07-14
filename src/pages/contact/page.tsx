@@ -11,7 +11,7 @@ import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { ConvexError } from "convex/values";
+import { convexErrMsg } from "@/lib/utils.ts";
 import {
   Globe, ArrowLeft, Mail, Briefcase,
   Shield, Clock, CheckCircle2,
@@ -58,12 +58,7 @@ export default function ContactPage() {
       setSent(true);
       toast.success(t("form.success_toast"));
     } catch (err) {
-      if (err instanceof ConvexError) {
-        const { message } = err.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error(t("form.error_toast"));
-      }
+      toast.error(convexErrMsg(err) ?? t("form.error_toast"));
     } finally {
       setSubmitting(false);
     }

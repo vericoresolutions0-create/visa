@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
   ArrowLeft, MapPin, Briefcase, Languages, Check, MessageCircle,
   Phone, BadgeCheck, Star, Globe, ChevronRight, Gem, ExternalLink,
@@ -129,11 +129,7 @@ export default function AgentProfilePage() {
       setShowMessageBox(false);
       toast.success(`Enquiry sent to ${profile.fullName}.`);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not send enquiry. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not send enquiry. Try again.");
     } finally {
       setSending(false);
     }
@@ -159,11 +155,7 @@ export default function AgentProfilePage() {
       setGuestSent(true);
       toast.success(`Enquiry sent to ${profile.fullName}.`);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not send enquiry. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not send enquiry. Try again.");
     } finally {
       setGuestSending(false);
     }
@@ -184,11 +176,7 @@ export default function AgentProfilePage() {
       setReviewStars(0);
       setReviewComment("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not submit review. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not submit review. Try again.");
     } finally {
       setReviewSubmitting(false);
     }
@@ -208,11 +196,7 @@ export default function AgentProfilePage() {
       setShowReportForm(false);
       toast.success("Report submitted. Our team will review it.");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not submit report. Try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not submit report. Try again.");
     } finally {
       setReportSubmitting(false);
     }

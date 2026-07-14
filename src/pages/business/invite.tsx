@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
+import { convexErrMsg } from "@/lib/utils.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { Globe, Building2, LogIn, FileWarning, ShieldCheck, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 
@@ -30,8 +30,7 @@ function AcceptFlow({ token, organizationName, isHousehold }: { token: string; o
       await declineInvite({ token });
       toast.success(t("invite.declined_toast"));
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("invite.decline_failed"));
+      toast.error(convexErrMsg(err) ?? t("invite.decline_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -46,8 +45,7 @@ function AcceptFlow({ token, organizationName, isHousehold }: { token: string; o
       });
       toast.success(t("invite.accepted_toast", { org: organizationName }));
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error(t("invite.accept_failed"));
+      toast.error(convexErrMsg(err) ?? t("invite.accept_failed"));
     } finally {
       setSubmitting(false);
     }

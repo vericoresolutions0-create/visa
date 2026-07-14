@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
@@ -16,7 +15,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { downloadComplianceCsv } from "@/lib/compliance-export.ts";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
   Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
   LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft, LogOut,
@@ -151,11 +150,7 @@ function InviteEmployeeForm({ orgCtx }: { orgCtx: OrgCtx }) {
       toast.success(t("dashboard.invite_sent"));
       setEmail("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("dashboard.invite_failed"));
-      }
+      toast.error(convexErrMsg(err) ?? t("dashboard.invite_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -500,8 +495,7 @@ function DashboardInner() {
       setShowRenameForm(false);
       setNewOrgName("");
     } catch (err) {
-      if (err instanceof ConvexError) toast.error((err.data as { message: string }).message);
-      else toast.error("Could not save. Try again.");
+      toast.error(convexErrMsg(err) ?? "Could not save. Try again.");
     } finally {
       setRenamingSaving(false);
     }

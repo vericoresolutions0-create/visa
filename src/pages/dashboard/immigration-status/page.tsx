@@ -5,9 +5,9 @@ import { api } from "@/convex/_generated/api.js";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
-import { ConvexError } from "convex/values";
+
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { canUseDocumentVault, canUseRejectionAnalyser } from "@/lib/plan-gates.ts";
@@ -716,7 +716,7 @@ export default function ImmigrationStatusPage() {
       setEditingVisa(false);
       toast.success("Visa status saved.");
     } catch (e) {
-      const msg = e instanceof ConvexError ? String((e.data as { message?: string }).message ?? e) : "Failed to save.";
+      const msg = convexErrMsg(e) ?? "Failed to save.";
       toast.error(msg);
       throw e;
     }
@@ -741,7 +741,7 @@ export default function ImmigrationStatusPage() {
       setShowTripForm(false);
       toast.success("Trip logged.");
     } catch (e) {
-      const msg = e instanceof ConvexError ? String((e.data as { message?: string }).message ?? e) : "Failed to add trip.";
+      const msg = convexErrMsg(e) ?? "Failed to add trip.";
       toast.error(msg);
       throw e;
     }
@@ -754,7 +754,7 @@ export default function ImmigrationStatusPage() {
       setEditingTrip(null);
       toast.success("Trip updated.");
     } catch (e) {
-      const msg = e instanceof ConvexError ? String((e.data as { message?: string }).message ?? e) : "Failed to update.";
+      const msg = convexErrMsg(e) ?? "Failed to update.";
       toast.error(msg);
       throw e;
     }

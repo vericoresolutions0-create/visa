@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { ConvexError } from "convex/values";
+
 import { Button } from "@/components/ui/button.tsx";
 import { Globe, ArrowLeft, Clock, ChevronRight, BookOpen, Tag, Plane, HelpCircle, Lightbulb, AlertCircle, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,7 @@ import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { getLocalizedArticleOverlay } from "@/lib/blog-content-i18n.ts";
 
@@ -74,11 +74,7 @@ export default function BlogPage() {
       toast.success(result.alreadySubscribed ? t("toast.already_subscribed") : t("toast.subscribed"));
       setNewsletterEmail("");
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error(t("toast.subscribe_failed"));
-      }
+      toast.error(convexErrMsg(err) ?? t("toast.subscribe_failed"));
     } finally {
       setSubscribing(false);
     }

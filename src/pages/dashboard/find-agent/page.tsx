@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { api } from "@/convex/_generated/api.js";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -197,10 +197,7 @@ function SubmitLeadForm({
       toast.success("Your request is live! Verified agents can now reach out to you.");
       onSuccess();
     } catch (err) {
-      const msg =
-        err instanceof ConvexError
-          ? (err.data as { message?: string })?.message ?? "Could not submit your request."
-          : "Could not submit your request.";
+      const msg = convexErrMsg(err) ?? "Could not submit your request.";
       toast.error(msg);
     } finally {
       setSubmitting(false);

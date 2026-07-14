@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { toast } from "sonner";
 import { Globe, ArrowLeft, Clock, Plus, CheckCircle2, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
+import { convexErrMsg } from "@/lib/utils.ts";
 import { VISA_TYPES } from "@/lib/visa-data.ts";
 import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { WORLD_DESTINATIONS } from "@/lib/countries.ts";
@@ -45,7 +46,7 @@ function SubmitReportForm({ destination, visaType, onClose }: { destination: str
       toast.success(t("form.success_toast"));
       onClose();
     } catch (err) {
-      const message = err instanceof ConvexError ? (err.data as { message: string }).message : t("form.error_toast");
+      const message = convexErrMsg(err) ?? t("form.error_toast");
       toast.error(message);
     } finally {
       setSubmitting(false);

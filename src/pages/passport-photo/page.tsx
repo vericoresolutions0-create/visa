@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useAction } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -18,7 +18,7 @@ import {
 import { api } from "@/convex/_generated/api.js";
 import { AVAILABLE_DESTINATIONS } from "@/lib/visa-data.ts";
 import { DESTINATION_FLAGS as DEST_FLAGS } from "@/lib/destination-flags.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 
 // This action is unauthenticated and free for anyone to call, so cap usage
@@ -112,11 +112,7 @@ export default function PassportPhotoPage() {
       incrementDailyPhotoCheckUsage();
       setUsageCount(getDailyPhotoCheckUsage());
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Photo analysis failed. Please try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Photo analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }

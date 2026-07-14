@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Mail, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { convexErrMsg } from "@/lib/utils.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { DemoSignInButton } from "@/components/ui/signin.tsx";
 import { api } from "@/convex/_generated/api.js";
@@ -103,11 +103,10 @@ export function AuthAccessPanel({
       navigate(safeReturn, { replace: true });
     } catch (err) {
       const message =
-        err instanceof ConvexError
-          ? (err.data as { message: string }).message
-          : authMode === "signIn"
-            ? "Incorrect email or password, or you don't have an account yet — try \"Create an account\" below."
-            : "Could not create your account. It may already exist — try signing in instead.";
+        convexErrMsg(err) ??
+        (authMode === "signIn"
+          ? "Incorrect email or password, or you don't have an account yet — try \"Create an account\" below."
+          : "Could not create your account. It may already exist — try signing in instead.");
       setError(message);
       toast.error(message);
     } finally {

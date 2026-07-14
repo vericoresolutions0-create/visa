@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
+
 import { api } from "@/convex/_generated/api.js";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
@@ -47,7 +47,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
@@ -1561,11 +1561,7 @@ function TripWorkspace() {
       });
       setScoreResult(result);
     } catch (err) {
-      if (err instanceof ConvexError) {
-        toast.error((err.data as { message: string }).message);
-      } else {
-        toast.error("Could not estimate your success probability. Please try again.");
-      }
+      toast.error(convexErrMsg(err) ?? "Could not estimate your success probability. Please try again.");
     } finally {
       setScoreLoading(false);
     }

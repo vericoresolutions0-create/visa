@@ -30,7 +30,7 @@ import {
 } from "@/lib/visa-data.ts";
 import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import { LiveDataDisclaimer } from "@/components/live-data-disclaimer.tsx";
 import { UpgradeModal } from "@/components/upgrade-modal.tsx";
@@ -39,7 +39,7 @@ import {
   canDownloadPDF, canUseAI, canSetReminders,
   canAccessDestination, FREE_DESTINATION_LIMIT,
 } from "@/lib/plan-gates.ts";
-import { ConvexError } from "convex/values";
+
 import { trackEvent } from "@/hooks/use-analytics.ts";
 
 const DEST_FLAGS = DESTINATION_FLAGS;
@@ -341,9 +341,7 @@ function AIAssistant({
       });
       setMessages((prev) => [...prev, { role: "assistant", text: answer, feedback: null }]);
     } catch (err) {
-      const message = err instanceof ConvexError
-        ? (err.data as { message: string }).message
-        : t("ai.error_generic");
+      const message = convexErrMsg(err) ?? t("ai.error_generic");
       toast.error(message);
       setMessages((prev) => [...prev, { role: "assistant", text: message, feedback: null }]);
     } finally {
@@ -1530,12 +1528,13 @@ export default function ChecklistPage() {
                                     });
                                     toast.success(t("action_cards.toast_saved"));
                                   } catch (err) {
-                                    if (err instanceof ConvexError) {
-                                      const { code } = err.data as { code: string; message: string };
+                                    const _m = convexErrMsg(err);
+                                    if (_m !== null) {
+                                      const code = (err as { data?: { code?: string } }).data?.code;
                                       if (code === "MONTHLY_LIMIT_REACHED") {
                                         setShowUpgradeModal(true);
                                       } else {
-                                        toast.error((err.data as { message: string }).message);
+                                        toast.error(_m);
                                       }
                                     } else {
                                       toast.error(t("action_cards.toast_save_failed"));

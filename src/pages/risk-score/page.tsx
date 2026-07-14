@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
-import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Globe, ArrowLeft, ArrowRight, TrendingUp, Loader2 } from "lucide-react";
@@ -15,7 +14,7 @@ import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { AVAILABLE_DESTINATIONS, VISA_TYPES } from "@/lib/visa-data.ts";
 import { RISK_SCORE_QUESTIONS, type RiskScoreAnswers } from "@/lib/risk-score.ts";
 import { trackEvent } from "@/hooks/use-analytics.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 
 const TOTAL_STEPS = RISK_SCORE_QUESTIONS.length + 1; // +1 for destination/visa-type step
 
@@ -61,10 +60,7 @@ export default function RiskScorePage() {
       trackEvent("risk_score_completed", { destination, visaType });
       navigate(`/risk-score/${resultId}`);
     } catch (err) {
-      const message =
-        err instanceof ConvexError
-          ? (err.data as { message: string }).message
-          : t("quiz.error");
+      const message = convexErrMsg(err) ?? t("quiz.error");
       toast.error(message);
     } finally {
       setSubmitting(false);
