@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery } from "convex/react";
+import type { Doc, Id as ConvexId } from "@/convex/_generated/dataModel.js";
 import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -19,14 +20,17 @@ import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { AVAILABLE_DESTINATIONS, getAvailableVisaTypes, getChecklist, VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
 import {
+  AlertTriangle,
   Archive,
   ArrowLeft,
   BadgeCheck,
   BarChart3,
   Bell,
+  Brain,
   Building2,
   CalendarClock,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
@@ -35,6 +39,7 @@ import {
   Copy,
   CreditCard,
   Eye,
+  FileSearch,
   FileText,
   Globe,
   Inbox,
@@ -46,8 +51,10 @@ import {
   Menu,
   MessageCircle,
   NotebookPen,
+  RefreshCw,
   Send,
   Shield,
+  ShieldAlert,
   Star,
   TrendingUp,
   UploadCloud,
@@ -277,11 +284,526 @@ function NewClientForm({
   );
 }
 
+// ─── Case Intelligence ────────────────────────────────────────────────────────
+
+type ReadinessSummaryEntry = {
+  intakeId: ConvexId<"client_intakes">;
+  score: number;
+  criticalCount: number;
+  mediumCount: number;
+  fraudSignalCount: number;
+  computedAt: string;
+};
+
+function ReadinessBadge({ entry }: { entry?: ReadinessSummaryEntry }) {
+  if (!entry) return null;
+  const { score, criticalCount, fraudSignalCount } = entry;
+  const colour =
+    score >= 80 ? "text-green-600 bg-green-50 border-green-200"
+    : score >= 60 ? "text-amber-600 bg-amber-50 border-amber-200"
+    : "text-red-600 bg-red-50 border-red-200";
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold leading-none", colour)}>
+      {score}%
+      {criticalCount > 0 && <AlertTriangle className="w-2.5 h-2.5" />}
+      {fraudSignalCount > 0 && <ShieldAlert className="w-2.5 h-2.5" />}
+    </span>
+  );
+}
+
+type CaseIntelligenceData = {
+  readiness: Doc<"case_readiness"> | null;
+  fixItems: Doc<"case_fix_items">[];
+  consistencyChecks: Doc<"document_consistency_checks">[];
+  fraudSignals: Doc<"fraud_signals">[];
+  coverLetter: Doc<"cover_letters"> | null;
+} | null | undefined;
+
+type CaseIntelligenceTab = "readiness" | "fixes" | "consistency" | "fraud" | "cover";
+
+function CaseIntelligencePanel({ intake }: { intake: Intake }) {
+  const [tab, setTab] = useState<CaseIntelligenceTab>("readiness");
+  const [running, setRunning] = useState(false);
+  const [runningAI, setRunningAI] = useState(false);
+  const [generatingLetter, setGeneratingLetter] = useState(false);
+  const [savingLetter, setSavingLetter] = useState(false);
+  const [letterEdit, setLetterEdit] = useState<string | null>(null);
+  const [visaRoute, setVisaRoute] = useState(`${intake.destination} ${intake.visaType}`);
+
+  const data: CaseIntelligenceData = useQuery(api.caseReadiness.getIntakeReadiness, { intakeId: intake._id });
+  const computeReadiness = useMutation(api.caseReadiness.computeReadiness);
+  const resolveFixItem = useMutation(api.caseReadiness.resolveFixItem);
+  const unresolveFixItem = useMutation(api.caseReadiness.unresolveFixItem);
+  const reviewFraudSignal = useMutation(api.caseReadiness.reviewFraudSignal);
+  const saveCoverLetter = useMutation(api.caseReadiness.saveCoverLetter);
+  const runAIAnalysis = useAction(api.caseIntelligenceActions.runConsistencyAndFraudAnalysis);
+  const generateCoverLetter = useAction(api.caseIntelligenceActions.generateCoverLetter);
+
+  // Keep letter editor in sync with generated content when a new letter arrives
+  useEffect(() => {
+    if (data?.coverLetter) {
+      setLetterEdit(data.coverLetter.editedContent ?? data.coverLetter.generatedContent);
+    }
+  }, [data?.coverLetter?.generatedContent]);
+
+  const checklist = getChecklist(intake.destination, intake.visaType as VisaType);
+  const requiredDocLabels = useMemo(
+    () => checklist?.items.filter((i) => i.required).map((i) => i.title) ?? [],
+    [checklist],
+  );
+
+  const handleCompute = useCallback(async () => {
+    setRunning(true);
+    try {
+      await computeReadiness({ intakeId: intake._id, requiredDocLabels });
+      toast.success("Readiness score updated.");
+    } catch {
+      toast.error("Failed to compute readiness. Try again.");
+    } finally {
+      setRunning(false);
+    }
+  }, [computeReadiness, intake._id, requiredDocLabels]);
+
+  const handleRunAI = useCallback(async () => {
+    setRunningAI(true);
+    try {
+      const result = await runAIAnalysis({ intakeId: intake._id });
+      toast.success(`AI analysis complete — ${result.consistencyCheckCount} checks, ${result.fraudSignalCount} signals.`);
+    } catch {
+      toast.error("AI analysis failed. Check your OpenAI key and try again.");
+    } finally {
+      setRunningAI(false);
+    }
+  }, [runAIAnalysis, intake._id]);
+
+  const handleGenerateLetter = useCallback(async () => {
+    setGeneratingLetter(true);
+    try {
+      await generateCoverLetter({ intakeId: intake._id, visaRoute });
+      toast.success("Cover letter generated.");
+    } catch {
+      toast.error("Cover letter generation failed.");
+    } finally {
+      setGeneratingLetter(false);
+    }
+  }, [generateCoverLetter, intake._id, visaRoute]);
+
+  const handleSaveLetter = useCallback(async () => {
+    if (letterEdit === null) return;
+    setSavingLetter(true);
+    try {
+      await saveCoverLetter({ intakeId: intake._id, editedContent: letterEdit });
+      toast.success("Cover letter saved.");
+    } catch {
+      toast.error("Failed to save cover letter.");
+    } finally {
+      setSavingLetter(false);
+    }
+  }, [saveCoverLetter, intake._id, letterEdit]);
+
+  const r = data?.readiness;
+  const fixItems = data?.fixItems ?? [];
+  const openFixes = fixItems.filter((f) => !f.resolvedAt);
+  const resolvedFixes = fixItems.filter((f) => f.resolvedAt);
+  const consistencyChecks = data?.consistencyChecks ?? [];
+  const fraudSignals = data?.fraudSignals ?? [];
+  const coverLetter = data?.coverLetter;
+
+  const TABS: { id: CaseIntelligenceTab; label: string; count?: number; warn?: boolean }[] = [
+    { id: "readiness", label: "Readiness" },
+    { id: "fixes", label: "Fix List", count: openFixes.length, warn: openFixes.some((f) => f.severity === "critical") },
+    { id: "consistency", label: "Cross-Doc", count: consistencyChecks.filter((c) => c.status === "mismatch").length, warn: consistencyChecks.some((c) => c.status === "mismatch") },
+    { id: "fraud", label: "Fraud Signals", count: fraudSignals.filter((s) => !s.reviewedAt).length, warn: fraudSignals.some((s) => s.severity === "high" && !s.reviewedAt) },
+    { id: "cover", label: "Cover Letter" },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-[#0f2040]/20 bg-background overflow-hidden shadow-sm">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#0f2040]/5 border-b border-[#0f2040]/10">
+        <div className="flex items-center gap-2">
+          <Brain className="w-4 h-4 text-[#0f2040]" />
+          <span className="text-xs font-bold text-[#0f2040] uppercase tracking-wide">Case Intelligence</span>
+          {r && (
+            <span className={cn(
+              "text-xs font-bold px-2 py-0.5 rounded-full",
+              r.score >= 80 ? "bg-green-100 text-green-700" : r.score >= 60 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700",
+            )}>{r.score}% Ready</span>
+          )}
+        </div>
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => { void handleCompute(); }}
+          className="flex items-center gap-1 text-[10px] font-semibold text-[#0f2040]/60 hover:text-[#0f2040] transition-colors cursor-pointer disabled:opacity-40"
+        >
+          <RefreshCw className={cn("w-3 h-3", running && "animate-spin")} />
+          {r ? "Re-run" : "Run check"}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-border overflow-x-auto">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer",
+              tab === t.id
+                ? "border-[#0f2040] text-[#0f2040]"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+            {(t.count ?? 0) > 0 && (
+              <span className={cn(
+                "inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
+                t.warn ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground",
+              )}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="p-4">
+
+        {/* ── Readiness ── */}
+        {tab === "readiness" && (
+          <div className="space-y-4">
+            {!r ? (
+              <div className="text-center py-8">
+                <FileSearch className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">No readiness check yet.</p>
+                <button
+                  type="button"
+                  disabled={running}
+                  onClick={() => { void handleCompute(); }}
+                  className="px-4 py-2 rounded-lg bg-[#0f2040] text-white text-sm font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  {running ? "Computing…" : "Run case check"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Score + stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Score", value: `${r.score}%`, colour: r.score >= 80 ? "text-green-600" : r.score >= 60 ? "text-amber-600" : "text-red-600" },
+                    { label: "Uploaded", value: `${r.uploadedCount}/${r.requiredCount}`, colour: "text-foreground" },
+                    { label: "Critical", value: r.criticalCount, colour: r.criticalCount > 0 ? "text-red-600" : "text-muted-foreground" },
+                    { label: "Fraud Signals", value: r.fraudSignalCount, colour: r.fraudSignalCount > 0 ? "text-purple-600" : "text-muted-foreground" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-xl bg-muted/40 px-3 py-2.5 text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</p>
+                      <p className={cn("text-lg font-bold font-serif", stat.colour)}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Required doc checklist */}
+                {requiredDocLabels.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Required documents</p>
+                    <div className="rounded-xl border border-border overflow-hidden">
+                      {requiredDocLabels.map((label, i) => {
+                        const uploadedNorm = intake.documents.map((d) => d.label.toLowerCase());
+                        const matched = uploadedNorm.some(
+                          (u) => u.includes(label.toLowerCase()) || label.toLowerCase().includes(u),
+                        );
+                        return (
+                          <div key={i} className={cn("flex items-center gap-2.5 px-3 py-2 text-sm", i > 0 && "border-t border-border")}>
+                            {matched ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border-2 border-red-300 shrink-0" />
+                            )}
+                            <span className={cn("flex-1", matched ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", matched ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                              {matched ? "Uploaded" : "Missing"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI analysis trigger */}
+                <div className="flex items-center justify-between rounded-xl border border-dashed border-[#0f2040]/20 px-3 py-2.5">
+                  <div>
+                    <p className="text-xs font-semibold text-[#0f2040]">AI deep analysis</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {r.aiAnalysisRunAt
+                        ? `Last run ${new Date(r.aiAnalysisRunAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                        : "Cross-doc check + fraud signals — not run yet"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={runningAI}
+                    onClick={() => { void handleRunAI(); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f2040] text-white text-xs font-semibold cursor-pointer disabled:opacity-40"
+                  >
+                    {runningAI ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
+                    {runningAI ? "Analysing…" : "Run AI"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Fix List ── */}
+        {tab === "fixes" && (
+          <div className="space-y-3">
+            {openFixes.length === 0 && resolvedFixes.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No fix items yet. Run a case check first.</p>
+            ) : (
+              <>
+                {openFixes.map((fix) => (
+                  <div key={fix._id} className="rounded-xl border border-border overflow-hidden">
+                    <div className="flex items-start gap-3 p-3">
+                      <div className={cn("w-1 self-stretch rounded-full shrink-0", fix.severity === "critical" ? "bg-red-500" : fix.severity === "medium" ? "bg-amber-500" : "bg-blue-500")} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md", fix.severity === "critical" ? "bg-red-50 text-red-700" : fix.severity === "medium" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700")}>
+                            {fix.severity}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">{fix.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{fix.description}</p>
+                        <p className="text-xs text-foreground/80 mt-2 bg-muted/40 rounded-lg px-2.5 py-1.5">{fix.action}</p>
+                      </div>
+                    </div>
+                    <div className="px-3 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => { void resolveFixItem({ fixItemId: fix._id }).then(() => toast.success("Marked as resolved.")); }}
+                        className="text-[11px] font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+                      >
+                        ✓ Mark resolved
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {resolvedFixes.length > 0 && (
+                  <div className="pt-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{resolvedFixes.length} resolved</p>
+                    {resolvedFixes.map((fix) => (
+                      <div key={fix._id} className="flex items-center gap-2 px-2 py-1.5 opacity-50">
+                        <CheckSquare className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        <span className="text-xs text-foreground line-through flex-1">{fix.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => { void unresolveFixItem({ fixItemId: fix._id }); }}
+                          className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        >Undo</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Cross-Doc Consistency ── */}
+        {tab === "consistency" && (
+          <div className="space-y-2">
+            {consistencyChecks.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">No consistency checks yet.</p>
+                <button
+                  type="button"
+                  disabled={runningAI}
+                  onClick={() => { void handleRunAI(); }}
+                  className="px-4 py-2 rounded-lg bg-[#0f2040] text-white text-sm font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  {runningAI ? "Analysing…" : "Run AI analysis"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {consistencyChecks.some((c) => c.status === "mismatch") && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 mb-3">
+                    <p className="text-xs font-semibold text-red-700">
+                      {consistencyChecks.filter((c) => c.status === "mismatch").length} mismatch{consistencyChecks.filter((c) => c.status === "mismatch").length !== 1 ? "es" : ""} detected — resolve before submission.
+                    </p>
+                  </div>
+                )}
+                {consistencyChecks.map((check, i) => (
+                  <div key={check._id} className={cn("rounded-xl border p-3 grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-center", check.status === "mismatch" ? "border-red-200 bg-red-50/50" : check.status === "similar" ? "border-amber-200 bg-amber-50/50" : "border-green-200 bg-green-50/50")}>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{check.sourceDoc}</p>
+                      <p className={cn("text-xs font-medium", check.status === "mismatch" ? "text-red-700" : "text-foreground")}>{check.sourceValue}</p>
+                    </div>
+                    <span className="text-muted-foreground text-sm">↔</span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{check.targetDoc}</p>
+                      <p className={cn("text-xs font-medium", check.status === "mismatch" ? "text-red-700" : "text-foreground")}>{check.targetValue}</p>
+                    </div>
+                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap",
+                      check.status === "match" ? "bg-green-100 text-green-700"
+                      : check.status === "mismatch" ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700")}>
+                      {check.status === "match" ? "✓ Match" : check.status === "mismatch" ? "⚠ Mismatch" : "~ Similar"}
+                    </span>
+                  </div>
+                ))}
+                <p className="text-[10px] text-muted-foreground text-center pt-1">Field: {consistencyChecks[0]?.fieldName && consistencyChecks.map((c) => c.fieldName).join(", ")}</p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Fraud Signals ── */}
+        {tab === "fraud" && (
+          <div className="space-y-3">
+            {fraudSignals.length === 0 ? (
+              <div className="text-center py-6">
+                <ShieldAlert className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">No fraud signals detected yet.</p>
+                <button
+                  type="button"
+                  disabled={runningAI}
+                  onClick={() => { void handleRunAI(); }}
+                  className="px-4 py-2 rounded-lg bg-[#0f2040] text-white text-sm font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  {runningAI ? "Analysing…" : "Run AI analysis"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {fraudSignals.some((s) => s.severity === "high" && !s.reviewedAt) && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+                    <p className="text-xs font-semibold text-red-700">⚠ High-confidence signal requires action. Do not submit until resolved.</p>
+                  </div>
+                )}
+                {fraudSignals.map((signal) => (
+                  <div key={signal._id} className={cn("rounded-xl border p-3 flex gap-3", signal.reviewedAt ? "opacity-50" : signal.severity === "high" ? "border-red-200 border-l-4 border-l-red-500" : signal.severity === "medium" ? "border-amber-200 border-l-4 border-l-amber-500" : "border-blue-200 border-l-4 border-l-blue-400")}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn("text-[10px] font-bold uppercase px-1.5 py-0.5 rounded", signal.severity === "high" ? "bg-red-100 text-red-700" : signal.severity === "medium" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700")}>
+                          {signal.severity}
+                        </span>
+                        <span className="text-xs font-semibold text-foreground">{signal.signalType}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{signal.detail}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Document: {signal.documentLabel}</p>
+                      {/* Confidence bar */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full", signal.severity === "high" ? "bg-red-500" : signal.severity === "medium" ? "bg-amber-500" : "bg-blue-400")} style={{ width: `${Math.round(signal.confidence * 100)}%` }} />
+                        </div>
+                        <span className="text-[10px] font-semibold text-muted-foreground">{Math.round(signal.confidence * 100)}%</span>
+                      </div>
+                    </div>
+                    {!signal.reviewedAt && (
+                      <button
+                        type="button"
+                        onClick={() => { void reviewFraudSignal({ signalId: signal._id }).then(() => toast.success("Marked as reviewed.")); }}
+                        className="shrink-0 text-[10px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer self-start"
+                      >Reviewed</button>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Cover Letter ── */}
+        {tab === "cover" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                value={visaRoute}
+                onChange={(e) => setVisaRoute(e.target.value)}
+                placeholder="e.g. UK Skilled Worker"
+                maxLength={100}
+                className="flex-1 min-w-[140px] text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40"
+              />
+              <button
+                type="button"
+                disabled={generatingLetter}
+                onClick={() => { void handleGenerateLetter(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f2040] text-white text-xs font-semibold cursor-pointer disabled:opacity-40"
+              >
+                {generatingLetter ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                {coverLetter ? "Regenerate" : "Generate"}
+              </button>
+            </div>
+
+            {!coverLetter ? (
+              <div className="text-center py-8">
+                <FileText className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No letter yet. Set the visa route and generate.</p>
+              </div>
+            ) : (
+              <>
+                {/* Issues addressed */}
+                {coverLetter.issuesAddressed.length > 0 && (
+                  <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-green-700 mb-1.5">Issues pre-empted in this letter</p>
+                    <div className="space-y-1">
+                      {coverLetter.issuesAddressed.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-1.5 text-xs text-green-800">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          {issue}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Editable letter */}
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cover letter — editable</span>
+                    <span className="text-[10px] text-muted-foreground">{coverLetter.visaRoute}</span>
+                  </div>
+                  <textarea
+                    value={letterEdit ?? ""}
+                    onChange={(e) => setLetterEdit(e.target.value)}
+                    rows={12}
+                    maxLength={20000}
+                    className="w-full text-xs font-mono leading-relaxed text-foreground bg-background px-4 py-3 resize-none focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setLetterEdit(coverLetter.generatedContent)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                  >Reset to original</button>
+                  <button
+                    type="button"
+                    disabled={savingLetter || letterEdit === (coverLetter.editedContent ?? coverLetter.generatedContent)}
+                    onClick={() => { void handleSaveLetter(); }}
+                    className="px-3 py-1.5 rounded-lg bg-[#0f2040] text-white text-xs font-semibold cursor-pointer disabled:opacity-40"
+                  >
+                    {savingLetter ? "Saving…" : "Save edits"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
 // ─── Client row (table row with expand) ──────────────────────────────────────
 
 // ─── Mobile client card ───────────────────────────────────────────────────────
 
-function ClientCard({ intake }: { intake: Intake }) {
+function ClientCard({ intake, readinessEntry }: { intake: Intake; readinessEntry?: ReadinessSummaryEntry }) {
   const { t } = useTranslation("agent-dashboard");
   const translateCountry = useCountryName();
   const [expanded, setExpanded] = useState(false);
@@ -346,6 +868,7 @@ function ClientCard({ intake }: { intake: Intake }) {
                   <NotebookPen className="w-2.5 h-2.5" /> Note
                 </span>
               )}
+              <ReadinessBadge entry={readinessEntry} />
             </div>
             {intake.clientEmail && <p className="text-xs text-muted-foreground mt-0.5 truncate">{intake.clientEmail}</p>}
           </div>
@@ -452,6 +975,9 @@ function ClientCard({ intake }: { intake: Intake }) {
 
           <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
 
+          {/* Case Intelligence */}
+          <CaseIntelligencePanel intake={intake} />
+
           {/* Archive */}
           {confirmArchive ? (
             <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
@@ -477,7 +1003,7 @@ function ClientCard({ intake }: { intake: Intake }) {
 
 // ─── Desktop client table row ─────────────────────────────────────────────────
 
-function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
+function ClientRow({ intake, isLast, readinessEntry }: { intake: Intake; isLast: boolean; readinessEntry?: ReadinessSummaryEntry }) {
   const { t } = useTranslation("agent-dashboard");
   const translateCountry = useCountryName();
   const [expanded, setExpanded] = useState(false);
@@ -546,6 +1072,7 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
                     <NotebookPen className="w-2.5 h-2.5" /> Note
                   </span>
                 )}
+                <ReadinessBadge entry={readinessEntry} />
               </div>
               {intake.clientEmail && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{intake.clientEmail}</p>}
             </div>
@@ -673,6 +1200,9 @@ function ClientRow({ intake, isLast }: { intake: Intake; isLast: boolean }) {
               {/* Wait time */}
               <WaitTimeStat destination={intake.destination} visaType={intake.visaType} variant="inline" />
 
+              {/* Case Intelligence */}
+              <CaseIntelligencePanel intake={intake} />
+
               {/* Archive */}
               {confirmArchive ? (
                 <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -705,10 +1235,12 @@ function ClientsSection({
   intakes,
   convertPayload,
   onConvertHandled,
+  readinessSummaries,
 }: {
   intakes: Intake[];
   convertPayload?: ConvertPayload;
   onConvertHandled?: () => void;
+  readinessSummaries?: ReadinessSummaryEntry[];
 }) {
   const { t } = useTranslation("agent-dashboard");
   const [showForm, setShowForm] = useState(!!convertPayload);
@@ -778,7 +1310,13 @@ function ClientsSection({
         <>
           {/* Mobile: card stack */}
           <div className="md:hidden space-y-3">
-            {intakes.map((intake) => <ClientCard key={intake._id} intake={intake} />)}
+            {intakes.map((intake) => (
+              <ClientCard
+                key={intake._id}
+                intake={intake}
+                readinessEntry={readinessSummaries?.find((r) => r.intakeId === intake._id)}
+              />
+            ))}
           </div>
           {/* Desktop: table */}
           <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
@@ -797,7 +1335,12 @@ function ClientsSection({
                 </thead>
                 <tbody>
                   {intakes.map((intake, i) => (
-                    <ClientRow key={intake._id} intake={intake} isLast={i === intakes.length - 1} />
+                    <ClientRow
+                      key={intake._id}
+                      intake={intake}
+                      isLast={i === intakes.length - 1}
+                      readinessEntry={readinessSummaries?.find((r) => r.intakeId === intake._id)}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -1908,6 +2451,7 @@ function DashboardInner() {
   const intakes = useMemo(() => intakesRaw ?? [], [intakesRaw]);
   const contactRequests = (useQuery(api.agents.getMyContactRequests, {}) ?? []) as ContactRequest[];
   const commissionStats = useQuery(api.agentReferralCommissions.getMyReferralCommissionStatus, {});
+  const readinessSummaries = (useQuery(api.caseReadiness.getAgentReadinessSummary, {}) ?? []) as ReadinessSummaryEntry[];
   const markDashboardViewed = useMutation(api.agents.markDashboardViewed);
 
   const lastViewedAt = myProfile?.lastDashboardViewAt;
@@ -2096,7 +2640,7 @@ function DashboardInner() {
               transition={{ duration: 0.15 }}
             >
               {section === "overview"  && <OverviewSection intakes={intakes} contactRequests={contactRequests} kpis={kpis} newUploads={newUploads} agentName={myProfile?.fullName} onConvertToClient={handleConvertToClient} onGoToClients={() => setSection("clients")} commissionStats={commissionStats ?? null} onGoToEarnings={() => setSection("referrals")} onGoToAI={() => setSection("ai")} />}
-              {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} />}
+              {section === "clients"   && <ClientsSection intakes={intakes} convertPayload={convertPayload} onConvertHandled={() => setConvertPayload(undefined)} readinessSummaries={readinessSummaries} />}
               {section === "pipeline"  && <PipelineSection intakes={intakes} />}
               {section === "analytics" && <AnalyticsSection intakes={intakes} unreadEnquiries={unreadEnquiries} viewStats={viewStats} />}
               {section === "referrals" && <ReferralsSection />}

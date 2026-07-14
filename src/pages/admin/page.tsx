@@ -18,7 +18,7 @@ import {
   AlertCircle, UserCheck, Settings, Send, Clock, Star,
   Building2, Copy, Plus, Eye, UserPlus, ListChecks, MessageCircle,
   RefreshCw, Award, LogOut, Menu, X, Coins, Lock, LockOpen, Info,
-  Sparkles, CalendarClock, Languages,
+  Sparkles, CalendarClock, Languages, Brain, ShieldAlert, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -505,6 +505,7 @@ function AdminInner() {
   const verifyAgent = useMutation(api.admin.verifyAgent);
   const systemHealth = useQuery(api.admin.getSystemHealth, {});
   const aiUsage = useQuery(api.admin.getAIUsage, {});
+  const caseIntelStats = useQuery(api.caseReadiness.getAdminCaseIntelligenceStats, {});
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const handlePlanChange = async (userId: Doc<"users">["_id"], plan: "free" | "pro" | "expert") => {
@@ -684,6 +685,47 @@ function AdminInner() {
                   />
                 </div>
               )}
+
+              {/* Case Intelligence stats */}
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <Brain className="w-4 h-4 text-[#0f2040]" />
+                  <h3 className="font-semibold text-sm text-[#0f2040] uppercase tracking-wide">Case Intelligence</h3>
+                </div>
+                {caseIntelStats === undefined ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl bg-muted/40 px-3 py-3 text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Cases Checked</p>
+                      <p className="text-2xl font-bold font-serif text-foreground">{caseIntelStats.totalChecks}</p>
+                    </div>
+                    <div className="rounded-xl bg-muted/40 px-3 py-3 text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Avg Readiness</p>
+                      <p className={cn("text-2xl font-bold font-serif", caseIntelStats.avgScore >= 80 ? "text-green-600" : caseIntelStats.avgScore >= 60 ? "text-amber-600" : "text-red-600")}>{caseIntelStats.avgScore}%</p>
+                    </div>
+                    <div className="rounded-xl px-3 py-3 text-center border border-red-100 bg-red-50/50">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600">Critical Cases</p>
+                      </div>
+                      <p className="text-2xl font-bold font-serif text-red-600">{caseIntelStats.criticalCases}</p>
+                    </div>
+                    <div className="rounded-xl px-3 py-3 text-center border border-purple-100 bg-purple-50/50">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <ShieldAlert className="w-3 h-3 text-purple-600" />
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-600">Fraud Signals</p>
+                      </div>
+                      <p className="text-2xl font-bold font-serif text-purple-600">{caseIntelStats.totalFraudSignals}</p>
+                      {caseIntelStats.highFraudSignals > 0 && (
+                        <p className="text-[10px] font-semibold text-red-600 mt-0.5">{caseIntelStats.highFraudSignals} high confidence</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 
