@@ -2,7 +2,7 @@
 
 import Stripe from "stripe";
 import { ConvexError, v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { PLAN_PRICES_CENTS, AGENT_PLAN_PRICES_CENTS } from "./users.ts";
 
@@ -13,6 +13,22 @@ const PLAN_LABELS: Record<string, string> = {
   agent_featured: "VisaClear Agent Featured Placement",
   agency_white_label: "VisaClear Agency White-Label",
 };
+
+// Saves a Stripe customer ID to the user record immediately after creation so
+// we never create duplicate customers on retry and the portal link always works.
+export const persistStripeCustomerId = internalMutation({
+  args: { userId: v.id("users"), stripeCustomerId: v.string() },
+  handler: async (ctx, { userId, stripeCustomerId }) => {
+    await ctx.db.patch(userId, { stripeCustomerId });
+  },
+});
+
+function stripeErrMsg(err: unknown): string {
+  const msg = (err as { message?: string }).message ?? "";
+  // Strip "[CONVEX ...]" prefixes that leak internal routing details to users.
+  if (msg.startsWith("[CONVEX") || msg.includes("Server Error")) return "";
+  return msg;
+}
 
 function getStripeClient(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -67,19 +83,9 @@ export const createCheckoutSession = action({
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const successPath = args.product === "agent" ? "/agents/onboarding" : "/dashboard";
 
-    let stripeCustomerId = user.stripeCustomerId;
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.name,
-        metadata: { userId: user._id },
-      });
-      stripeCustomerId = customer.id;
-    }
-
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = (customerId: string): Stripe.Checkout.SessionCreateParams => ({
       mode: "subscription",
-      customer: stripeCustomerId,
+      customer: customerId,
       // No payment_method_types here, deliberately — leaving it unset (not
       // hardcoding ["card"]) is what lets Stripe automatically offer SEPA
       // Direct Debit, iDEAL, and Bancontact to European customers once
@@ -111,6 +117,48 @@ export const createCheckoutSession = action({
         ...(normalizedCode ? { referralCode: normalizedCode } : {}),
       },
     });
+
+    const createCustomer = async () => {
+      const c = await stripe.customers.create({
+        email: user.email,
+        name: user.name,
+        metadata: { userId: user._id },
+      });
+      await ctx.runMutation(internal.stripe.persistStripeCustomerId, {
+        userId: user._id,
+        stripeCustomerId: c.id,
+      });
+      return c.id;
+    };
+
+    let stripeCustomerId = user.stripeCustomerId ?? (await createCustomer());
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams(stripeCustomerId));
+    } catch (err: unknown) {
+      // Stale customer ID (e.g. test-mode cus_xxx in a live-mode account) —
+      // create a fresh one and retry exactly once.
+      const isNoSuchCustomer =
+        (err as { code?: string }).code === "resource_missing" &&
+        String((err as { message?: string }).message ?? "").toLowerCase().includes("customer");
+      if (isNoSuchCustomer) {
+        stripeCustomerId = await createCustomer();
+        try {
+          session = await stripe.checkout.sessions.create(sessionParams(stripeCustomerId));
+        } catch (retryErr: unknown) {
+          throw new ConvexError({
+            code: "STRIPE_API_ERROR",
+            message: stripeErrMsg(retryErr) || "Could not start Stripe checkout. Please try again.",
+          });
+        }
+      } else {
+        throw new ConvexError({
+          code: "STRIPE_API_ERROR",
+          message: stripeErrMsg(err) || "Could not start Stripe checkout. Please try again.",
+        });
+      }
+    }
 
     if (!session.url) {
       throw new ConvexError({
@@ -192,32 +240,40 @@ export const createLocalMethodCheckoutSession = action({
     const amount = LOCAL_PLAN_PRICES[currency][args.plan][args.billingCycle];
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: user.email,
-      payment_method_types: [args.method],
-      line_items: [
-        {
-          price_data: {
-            currency,
-            unit_amount: amount,
-            product_data: { name: `${PLAN_LABELS[args.plan]} — 1 ${args.billingCycle === "yearly" ? "year" : "month"}` },
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: user.email,
+        payment_method_types: [args.method],
+        line_items: [
+          {
+            price_data: {
+              currency,
+              unit_amount: amount,
+              product_data: { name: `${PLAN_LABELS[args.plan]} — 1 ${args.billingCycle === "yearly" ? "year" : "month"}` },
+            },
+            quantity: 1,
           },
-          quantity: 1,
+        ],
+        success_url: `${siteUrl}/dashboard?checkout=success`,
+        cancel_url: `${siteUrl}/payment?product=applicant&plan=${args.plan}&billing=${args.billingCycle}&checkout=cancelled`,
+        metadata: {
+          userId: user._id,
+          product: "applicant",
+          plan: args.plan,
+          billingCycle: args.billingCycle,
+          amountCents: String(amount),
+          oneTime: "true",
+          localMethod: args.method,
         },
-      ],
-      success_url: `${siteUrl}/dashboard?checkout=success`,
-      cancel_url: `${siteUrl}/payment?product=applicant&plan=${args.plan}&billing=${args.billingCycle}&checkout=cancelled`,
-      metadata: {
-        userId: user._id,
-        product: "applicant",
-        plan: args.plan,
-        billingCycle: args.billingCycle,
-        amountCents: String(amount),
-        oneTime: "true",
-        localMethod: args.method,
-      },
-    });
+      });
+    } catch (err: unknown) {
+      throw new ConvexError({
+        code: "STRIPE_API_ERROR",
+        message: stripeErrMsg(err) || "Could not start checkout. Please try again.",
+      });
+    }
 
     if (!session.url) {
       throw new ConvexError({

@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { ConvexError } from "convex/values";
 import {
   ArrowLeft,
   BadgePercent,
@@ -249,11 +248,8 @@ export default function PaymentPage() {
             });
       window.location.href = url;
     } catch (error) {
-      const message =
-        error instanceof ConvexError
-          ? (error.data as { message: string }).message
-          : t("toast.checkout_error");
-      toast.error(message);
+      const msg = (error as { data?: { message?: string } }).data?.message;
+      toast.error(msg || t("toast.checkout_error"));
       setLocalMethodLoading(null);
     }
   };
