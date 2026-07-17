@@ -25,6 +25,7 @@ import type * as aiUsage from "../aiUsage.js";
 import type * as approvalStories from "../approvalStories.js";
 import type * as auth from "../auth.js";
 import type * as authHelpers from "../authHelpers.js";
+import type * as authRateLimit from "../authRateLimit.js";
 import type * as billing from "../billing.js";
 import type * as blog from "../blog.js";
 import type * as blogAI from "../blogAI.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   approvalStories: typeof approvalStories;
   auth: typeof auth;
   authHelpers: typeof authHelpers;
+  authRateLimit: typeof authRateLimit;
   billing: typeof billing;
   blog: typeof blog;
   blogAI: typeof blogAI;

@@ -394,6 +394,17 @@ export default defineSchema({
     count: v.number(),
   }).index("by_date", ["dateKey"]),
 
+  // Rate-limits login/signup/password-reset attempts per email to stop
+  // brute-force credential guessing — Convex Auth's Password provider has
+  // no built-in throttle. 5-minute fixed windows via windowBucket, same
+  // self-expiring pattern as the daily-usage tables above (old buckets are
+  // simply never queried again, nothing to clean up).
+  auth_attempt_counters: defineTable({
+    emailFlow: v.string(),     // `${normalizedEmail}|${flow}`, e.g. "user@x.com|signIn"
+    windowBucket: v.number(),  // Date.now() floored to a 5-minute window
+    count: v.number(),
+  }).index("by_email_flow_window", ["emailFlow", "windowBucket"]),
+
   // Same backstop pattern, for the public (no-sign-in) contact form.
   contact_daily_usage: defineTable({
     dateKey: v.string(),
