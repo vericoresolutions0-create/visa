@@ -275,6 +275,13 @@ export const unlockLead = mutation({
   handler: async (ctx, args) => {
     const { user, profile } = await getAgentProfileOrThrow(ctx);
 
+    if (profile.leadAccessRevoked) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Your access to the lead marketplace has been revoked. Contact support@visaclear.app if you believe this is a mistake.",
+      });
+    }
+
     const lead = await ctx.db.get(args.leadId);
     if (!lead)
       throw new ConvexError({ code: "NOT_FOUND", message: "Lead not found." });

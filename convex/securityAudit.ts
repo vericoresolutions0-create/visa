@@ -158,6 +158,7 @@ export const adminTakeAction = mutation({
       v.literal("user_suspended"),
       v.literal("user_unsuspended"),
       v.literal("leads_revoked"),
+      v.literal("leads_restored"),
     ),
     notes: v.optional(v.string()),
   },
@@ -173,6 +174,20 @@ export const adminTakeAction = mutation({
       });
     } else if (args.action === "user_unsuspended") {
       await ctx.db.patch(args.actorUserId, { isSuspended: false });
+    } else if (args.action === "leads_revoked" || args.action === "leads_restored") {
+      // Enforced in marketplace.ts's unlockLead. A no-op audit-log-only entry
+      // if the actor isn't an agent (no agent_profiles row) — logged, not
+      // thrown, since an admin reviewing a mixed threat feed may not always
+      // know an actor's account type before clicking this.
+      const profile = await ctx.db
+        .query("agent_profiles")
+        .withIndex("by_user", (q) => q.eq("userId", args.actorUserId))
+        .unique();
+      if (profile) {
+        await ctx.db.patch(profile._id, { leadAccessRevoked: args.action === "leads_revoked" });
+      } else {
+        console.error(`adminTakeAction: ${args.action} requested for ${args.actorUserId}, who has no agent_profiles row — logged only, nothing to enforce.`);
+      }
     }
 
     await ctx.db.insert("security_threat_actions", {

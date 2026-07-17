@@ -21,6 +21,7 @@ import type * as ai_assistant from "../ai/assistant.js";
 import type * as ai_photoChecker from "../ai/photoChecker.js";
 import type * as ai_rejectionAnalyser from "../ai/rejectionAnalyser.js";
 import type * as ai_successProbability from "../ai/successProbability.js";
+import type * as aiFeedback from "../aiFeedback.js";
 import type * as aiUsage from "../aiUsage.js";
 import type * as approvalStories from "../approvalStories.js";
 import type * as auth from "../auth.js";
@@ -119,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   "ai/photoChecker": typeof ai_photoChecker;
   "ai/rejectionAnalyser": typeof ai_rejectionAnalyser;
   "ai/successProbability": typeof ai_successProbability;
+  aiFeedback: typeof aiFeedback;
   aiUsage: typeof aiUsage;
   approvalStories: typeof approvalStories;
   auth: typeof auth;

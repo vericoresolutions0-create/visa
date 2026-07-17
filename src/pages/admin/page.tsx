@@ -3259,7 +3259,7 @@ function SecurityIntelligenceCentre() {
   async function act(
     eventId: (typeof entries)[number]["_id"] | undefined,
     actorUserId: (typeof entries)[number]["actorUserId"],
-    action: "reviewed" | "dismissed" | "note_added" | "user_suspended" | "user_unsuspended" | "leads_revoked",
+    action: "reviewed" | "dismissed" | "note_added" | "user_suspended" | "user_unsuspended" | "leads_revoked" | "leads_restored",
     notes?: string,
   ) {
     const key = `${String(eventId ?? "")}:${action}`;
@@ -3273,6 +3273,7 @@ function SecurityIntelligenceCentre() {
         user_suspended: "Actor suspended",
         user_unsuspended: "Actor reinstated",
         leads_revoked: "Lead access revoked",
+        leads_restored: "Lead access restored",
       };
       toast.success(labels[action] ?? "Done");
       if (action === "note_added" && eventId) {
@@ -3520,7 +3521,7 @@ function SecurityIntelligenceCentre() {
                       <button
                         disabled={actioning !== null}
                         onClick={() => {
-                          if (window.confirm(`Log lead-access revocation for actor …${String(entry.actorUserId).slice(-10)}?`)) {
+                          if (window.confirm(`Revoke lead marketplace access for actor …${String(entry.actorUserId).slice(-10)}? They will be blocked from unlocking any new leads until restored.`)) {
                             void act(entry._id, entry.actorUserId, "leads_revoked");
                           }
                         }}
@@ -3528,6 +3529,14 @@ function SecurityIntelligenceCentre() {
                       >
                         <Lock className="w-3 h-3" />
                         Revoke leads
+                      </button>
+                      <button
+                        disabled={actioning !== null}
+                        onClick={() => act(entry._id, entry.actorUserId, "leads_restored")}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50/50 border border-purple-100 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-40 cursor-pointer"
+                      >
+                        <LockOpen className="w-3 h-3" />
+                        Restore leads
                       </button>
                     </div>
                   </div>

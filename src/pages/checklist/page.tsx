@@ -313,6 +313,7 @@ function AIAssistant({
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const askQuestion = useAction(api.ai.assistant.askVisaQuestion);
+  const recordFeedback = useMutation(api.aiFeedback.recordChecklistFeedback);
   const usage = useQuery(api.aiUsage.getMyUsage, isDemoAuthenticated ? "skip" : {});
 
   const remaining = usage && usage.limit !== null ? Math.max(0, usage.limit - usage.used) : null;
@@ -358,6 +359,24 @@ function AIAssistant({
     } else {
       toast.info(t("ai.feedback_thanks_down"));
     }
+    // Demo answers are a canned local string, not a real AI call tied to a
+    // real signed-in user — nothing meaningful to record, and there's no
+    // authenticated Convex session to record it against anyway.
+    if (isDemoAuthenticated) return;
+    const answer = messages[index];
+    const question = messages[index - 1];
+    if (!answer || !question || question.role !== "user") return;
+    void recordFeedback({
+      question: question.text,
+      answer: answer.text,
+      feedback,
+      origin,
+      destination,
+      visaType,
+    }).catch(() => {
+      // Feedback is a nice-to-have, not a critical path — the user already
+      // got their "thanks" toast either way, so fail silently here.
+    });
   };
 
   const quickQuestions = [

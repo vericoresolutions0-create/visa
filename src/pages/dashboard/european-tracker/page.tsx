@@ -279,9 +279,29 @@ export default function EuropeanTrackerPage() {
   const schengenStatus: "safe" | "warning" | "critical" =
     schengen.used >= 90 ? "critical" : schengen.used >= 75 ? "warning" : "safe";
 
-  const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
+  // Persisted to localStorage — this was previously in-memory only, so a
+  // refresh silently wiped every box a user had checked with no warning.
+  const EU_DOC_STORAGE_KEY = "vc_eu_tracker_checked_docs";
+  const [checkedDocs, setCheckedDocs] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(EU_DOC_STORAGE_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const toggleDoc = (id: string) =>
-    setCheckedDocs((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    setCheckedDocs((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      try {
+        localStorage.setItem(EU_DOC_STORAGE_KEY, JSON.stringify([...s]));
+      } catch {
+        // Private browsing / storage disabled — checklist still works for
+        // this session, it just won't survive a refresh. Not worth erroring.
+      }
+      return s;
+    });
   const docProgress = Math.round((checkedDocs.size / EU_DOCUMENT_CHECKLIST.length) * 100);
 
   if (loading) {

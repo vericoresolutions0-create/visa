@@ -296,6 +296,12 @@ export default defineSchema({
     // marketplace_lead_unlocks. The immutable ledger tables are the source of
     // truth; this field is derived from them and may be recomputed by an admin.
     creditBalance: v.optional(v.number()),
+    // Set by the admin Security Intelligence Centre's "Revoke leads" action
+    // (convex/securityAudit.ts adminTakeAction) — enforced in
+    // marketplace.ts's unlockLead, which blocks any new lead purchase while
+    // true. Distinct from a full account suspension (isSuspended on users):
+    // this only cuts off marketplace access, not the whole account.
+    leadAccessRevoked: v.optional(v.boolean()),
     // EU/Global market split for lead marketplace routing and search filtering.
     region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
     // Self-reported professional credential. VisaClear does not verify this
@@ -807,6 +813,23 @@ export default defineSchema({
     count: v.number(),
   }).index("by_user_month", ["userId", "yearMonth"]),
 
+  // Real thumbs up/down on the checklist AI Assistant's answers — previously
+  // the buttons only updated local component state and showed a "thanks"
+  // toast with nothing ever recorded. Records the actual question/answer
+  // pair so a low rating is traceable back to what the AI actually said.
+  ai_checklist_feedback: defineTable({
+    userId: v.id("users"),
+    question: v.string(),
+    answer: v.string(),
+    feedback: v.union(v.literal("up"), v.literal("down")),
+    origin: v.string(),
+    destination: v.string(),
+    visaType: v.string(),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_feedback", ["feedback"]),
+
   // An influencer or content creator who promotes VisaClear in exchange for
   // a 20% commission on the first month's subscription of every user they
   // attribute within a 90-day window. Separate from the peer-to-peer agent
@@ -1245,6 +1268,7 @@ export default defineSchema({
       v.literal("user_suspended"),
       v.literal("user_unsuspended"),
       v.literal("leads_revoked"),
+      v.literal("leads_restored"),
     ),
     notes: v.optional(v.string()),
     createdAt: v.string(),
