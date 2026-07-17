@@ -372,6 +372,88 @@ export const applySubscriptionEnded = internalMutation({
   },
 });
 
+// Called from the Stripe webhook on charge.refunded / charge.dispute.created
+// — a paid-for plan shouldn't stay active once the money behind it has been
+// taken back. Identifies the user via the charge's metadata.userId when
+// present (always true for one-time payments and a subscription's first
+// charge, since both inherit the originating Checkout Session's metadata)
+// and falls back to a stripeCustomerId lookup for later renewal charges,
+// which Stripe does not carry checkout metadata onto. If the fallback can't
+// tell applicant and agent subscriptions apart (both present, ambiguous) it
+// deliberately does nothing but log, rather than guess and downgrade the
+// wrong product.
+export const applyPaymentReversed = internalMutation({
+  args: {
+    stripeEventId: v.string(),
+    stripeCustomerId: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    product: v.optional(v.union(v.literal("applicant"), v.literal("agent"))),
+    reason: v.union(v.literal("refunded"), v.literal("disputed")),
+  },
+  handler: async (ctx, args) => {
+    const alreadyProcessed = await ctx.db
+      .query("processed_webhook_events")
+      .withIndex("by_provider_reference", (q) =>
+        q.eq("provider", "stripe").eq("reference", args.stripeEventId),
+      )
+      .unique();
+    if (alreadyProcessed) return;
+    await ctx.db.insert("processed_webhook_events", {
+      provider: "stripe",
+      reference: args.stripeEventId,
+      processedAt: new Date().toISOString(),
+    });
+
+    let user = args.userId ? await ctx.db.get(args.userId) : null;
+    if (!user && args.stripeCustomerId) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId))
+        .unique();
+    }
+    if (!user) {
+      console.error(
+        `applyPaymentReversed: could not identify a user for stripeEventId=${args.stripeEventId} (${args.reason}) — no metadata.userId and no stripeCustomerId match. Needs manual review in Stripe dashboard.`,
+      );
+      return;
+    }
+
+    const hasApplicantSub = !!user.stripeSubscriptionId;
+    const hasAgentSub = !!user.agentStripeSubscriptionId;
+    const product =
+      args.product ??
+      (hasApplicantSub && !hasAgentSub ? "applicant" : !hasApplicantSub && hasAgentSub ? "agent" : undefined);
+
+    if (product === "applicant") {
+      await bumpPlanCounters(ctx, user.plan, "free");
+      await ctx.db.patch(user._id, { plan: "free", stripeSubscriptionId: undefined });
+      const expiration = await ctx.db
+        .query("one_time_plan_expirations")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .unique();
+      if (expiration) await ctx.db.delete(expiration._id);
+      return;
+    }
+
+    if (product === "agent") {
+      await ctx.db.patch(user._id, { agentPlan: undefined, agentStripeSubscriptionId: undefined });
+      const agentProfile = await ctx.db
+        .query("agent_profiles")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .unique();
+      if (agentProfile) await ctx.db.patch(agentProfile._id, { tier: undefined });
+      return;
+    }
+
+    // Ambiguous (both or neither subscription field set) and no metadata
+    // hint — downgrading the wrong product is worse than doing nothing and
+    // flagging it for a human to check.
+    console.error(
+      `applyPaymentReversed: user ${user._id} has ambiguous subscription state (applicantSub=${hasApplicantSub}, agentSub=${hasAgentSub}) for stripeEventId=${args.stripeEventId} (${args.reason}) — needs manual review.`,
+    );
+  },
+});
+
 const EXPIRY_PAGE_SIZE = 50;
 
 export const getExpiredOneTimePlansPage = internalQuery({

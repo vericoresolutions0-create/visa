@@ -152,6 +152,52 @@ http.route({
         });
         break;
       }
+      // A paid-for plan shouldn't stay active once the money is taken back.
+      // The charge's own metadata (inherited from the Checkout Session)
+      // reliably identifies the user for one-time payments and a
+      // subscription's first charge; applyPaymentReversed falls back to a
+      // stripeCustomerId lookup for later renewal charges, which don't
+      // carry that metadata.
+      case "charge.refunded": {
+        const charge = event.data.object;
+        await ctx.runMutation(internal.billing.applyPaymentReversed, {
+          stripeEventId: event.id,
+          stripeCustomerId: charge.customer ? String(charge.customer) : undefined,
+          userId: charge.metadata?.userId || undefined,
+          product: charge.metadata?.product === "agent" ? "agent" : charge.metadata?.product === "applicant" ? "applicant" : undefined,
+          reason: "refunded",
+        });
+        break;
+      }
+      case "charge.dispute.created": {
+        const dispute = event.data.object;
+        // Webhook payloads send the charge as a plain ID, not expanded —
+        // fetch it for .customer/.metadata, same info charge.refunded gets
+        // for free. Raw REST call (not the Stripe SDK) for the same reason
+        // as the signature verifier above: httpActions don't run in Node.
+        const chargeId = String(dispute.charge ?? "");
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+        if (chargeId && stripeSecretKey) {
+          const chargeRes = await fetch(`https://api.stripe.com/v1/charges/${chargeId}`, {
+            headers: { Authorization: `Bearer ${stripeSecretKey}` },
+          });
+          if (chargeRes.ok) {
+            const charge = await chargeRes.json();
+            await ctx.runMutation(internal.billing.applyPaymentReversed, {
+              stripeEventId: event.id,
+              stripeCustomerId: charge.customer ? String(charge.customer) : undefined,
+              userId: charge.metadata?.userId || undefined,
+              product: charge.metadata?.product === "agent" ? "agent" : charge.metadata?.product === "applicant" ? "applicant" : undefined,
+              reason: "disputed",
+            });
+          } else {
+            console.error(`charge.dispute.created: failed to fetch charge ${chargeId} for event ${event.id}`);
+          }
+        } else if (!stripeSecretKey) {
+          console.error(`charge.dispute.created: STRIPE_SECRET_KEY not set, cannot resolve charge ${chargeId} for event ${event.id}`);
+        }
+        break;
+      }
       default:
         break;
     }

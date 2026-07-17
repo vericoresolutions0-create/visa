@@ -112,6 +112,7 @@ export default defineSchema({
     .index("by_plan", ["plan"])
     .index("by_stripe_subscription", ["stripeSubscriptionId"])
     .index("by_agent_stripe_subscription", ["agentStripeSubscriptionId"])
+    .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_agent_trial_plan", ["agentTrialPlan"])
     .index("by_influencer_code", ["influencerCode"])
     .index("by_creator_code", ["creatorCode"]),
