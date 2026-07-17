@@ -36,7 +36,8 @@ export const getAuditLog = query({
     await requireAdmin(ctx);
     try {
       return await ctx.db.query("admin_audit_log").order("desc").take(100);
-    } catch {
+    } catch (err) {
+      console.error("Failed to read admin_audit_log", err);
       return [];
     }
   },
