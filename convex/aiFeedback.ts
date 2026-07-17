@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
+import { requireAdmin } from "./admin.ts";
 
 // Real thumbs up/down on an AI Assistant answer — the checklist page's
 // feedback buttons used to only flip local component state and show a
@@ -27,5 +28,23 @@ export const recordChecklistFeedback = mutation({
       visaType: args.visaType,
       createdAt: new Date().toISOString(),
     });
+  },
+});
+
+// Admin: browse real feedback on the AI Assistant's answers, so a wave of
+// thumbs-down on a given corridor/visa type is actually visible somewhere
+// instead of silently accumulating in the database with nobody looking.
+export const listFeedback = query({
+  args: { filter: v.optional(v.union(v.literal("up"), v.literal("down"))) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    if (args.filter) {
+      return await ctx.db
+        .query("ai_checklist_feedback")
+        .withIndex("by_feedback", (q) => q.eq("feedback", args.filter!))
+        .order("desc")
+        .take(200);
+    }
+    return await ctx.db.query("ai_checklist_feedback").order("desc").take(200);
   },
 });
