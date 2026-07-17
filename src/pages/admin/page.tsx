@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { COUNTRY_REGION } from "@/lib/country-region.ts";
 import { EMBASSY_MONITOR_URLS, type EmbassyRegion } from "@/lib/embassy-monitor-urls.ts";
+import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 
 type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage";
 
@@ -424,6 +425,30 @@ function EmbassyMonitorPanel() {
     }
   };
 
+  // Formats the real stored summary + real diff sentences into ready-to-paste
+  // text — nothing here is generated at copy time, it's exactly what's
+  // already stored on the row (which itself came from a real page diff).
+  const copyForBlog = async (row: Doc<"embassy_page_snapshots">) => {
+    const dateStr = row.changedAt
+      ? new Date(row.changedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+      : "";
+    const lines: string[] = [`${row.destination} — Visa/Immigration Update (${dateStr})`, ""];
+    if (row.aiSummary) lines.push(row.aiSummary, "");
+    if (row.aiChangeAdded?.length || row.aiChangeRemoved?.length) {
+      lines.push("What changed on the official page:");
+      for (const s of row.aiChangeAdded ?? []) lines.push(`+ ${s}`);
+      for (const s of row.aiChangeRemoved ?? []) lines.push(`− ${s}`);
+      lines.push("");
+    }
+    lines.push(`Source: ${row.url}`);
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      toast.success("Copied — ready to paste into your blog post.");
+    } catch {
+      toast.error("Could not copy to clipboard.");
+    }
+  };
+
   // The monitor only ever covers the destinations wired into
   // EMBASSY_MONITOR_URLS — merge that fixed list with whatever snapshot
   // data exists for each one. A destination is only ever added here once a
@@ -516,26 +541,98 @@ function EmbassyMonitorPanel() {
         ) : alerts.length === 0 ? (
           <p className="text-sm text-gray-400">No active alerts.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {alerts.map((row) => (
-              <div key={row._id} className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="text-sm font-semibold text-[#0f2040]">{row.destination}</p>
-                  <a href={/^https?:\/\//.test(row.url) ? row.url : "#"} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline break-all">{row.url}</a>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Changed: {row.changedAt ? new Date(row.changedAt).toLocaleString() : "—"}
-                    {" · "}Last checked: {new Date(row.lastCheckedAt).toLocaleString()}
-                  </p>
+              <div key={row._id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-50 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl leading-none">{DESTINATION_FLAGS[row.destination] ?? "🌍"}</span>
+                    <div>
+                      <p className="text-sm font-bold text-[#0f2040]">{row.destination}</p>
+                      <p className="text-[11px] text-gray-400 font-medium">
+                        {row.url.replace(/^https?:\/\//, "")} · detected {row.changedAt ? new Date(row.changedAt).toLocaleString() : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  {row.aiSeverity && (
+                    <span className={cn(
+                      "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide",
+                      row.aiSeverity === "critical" ? "bg-red-50 text-red-700" : "bg-amber-100 text-amber-700",
+                    )}>
+                      {row.aiSeverity === "critical" ? "Critical change" : "Notable change"}
+                    </span>
+                  )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={dismissing === row.destination}
-                  onClick={() => void handleDismiss(row.destination)}
-                  className="cursor-pointer text-xs shrink-0"
-                >
-                  Dismiss
-                </Button>
+
+                {row.aiSummary ? (
+                  <div className="mx-5 mt-4 px-4 py-3 bg-[#faf5e9] border border-[#e3cd97] rounded-xl">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#a4761f] mb-1.5">
+                      <Sparkles className="w-3 h-3" /> AI summary of the real diff
+                    </p>
+                    <p className="text-[13px] font-medium text-[#0f2040] leading-relaxed">{row.aiSummary}</p>
+                  </div>
+                ) : (
+                  <div className="mx-5 mt-4 px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl">
+                    <p className="text-[12.5px] font-medium text-gray-500">
+                      No AI summary available for this change — review the page directly using the link below.
+                    </p>
+                  </div>
+                )}
+
+                {(row.aiChangeAdded?.length || row.aiChangeRemoved?.length) ? (
+                  <div className="mx-5 mt-3 border border-gray-100 rounded-xl overflow-hidden grid grid-cols-1 sm:grid-cols-2">
+                    <div className="p-3 bg-red-50/60 border-b sm:border-b-0 sm:border-r border-gray-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-red-700 mb-2">Removed from the page</p>
+                      {row.aiChangeRemoved?.length ? (
+                        <ul className="space-y-1.5">
+                          {row.aiChangeRemoved.map((s, i) => (
+                            <li key={i} className="text-[11.5px] font-medium text-gray-700 leading-snug">{s}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11.5px] text-gray-400 font-medium">Nothing removed.</p>
+                      )}
+                    </div>
+                    <div className="p-3 bg-green-50/60">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-green-700 mb-2">Added to the page</p>
+                      {row.aiChangeAdded?.length ? (
+                        <ul className="space-y-1.5">
+                          {row.aiChangeAdded.map((s, i) => (
+                            <li key={i} className="text-[11.5px] font-medium text-gray-700 leading-snug">{s}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11.5px] text-gray-400 font-medium">Nothing added.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-3 px-5 py-3.5 flex-wrap">
+                  <a href={/^https?:\/\//.test(row.url) ? row.url : "#"} target="_blank" rel="noopener noreferrer" className="text-[11.5px] text-blue-600 hover:underline font-semibold">
+                    ↗ View the real page
+                  </a>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!row.aiSummary}
+                      onClick={() => void copyForBlog(row)}
+                      className="cursor-pointer text-xs gap-1.5"
+                    >
+                      <Copy className="w-3 h-3" /> Copy for Blog
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={dismissing === row.destination}
+                      onClick={() => void handleDismiss(row.destination)}
+                      className="cursor-pointer text-xs"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

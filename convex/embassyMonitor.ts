@@ -3,6 +3,7 @@
 import { internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import * as crypto from "crypto";
+import OpenAI from "openai";
 import { EMBASSY_MONITOR_URLS } from "../src/lib/embassy-monitor-urls.ts";
 
 // Strip HTML tags and normalise whitespace so the hash is stable across
@@ -21,13 +22,80 @@ function sha256(text: string): string {
   return crypto.createHash("sha256").update(text, "utf8").digest("hex");
 }
 
+// Real, exact-match sentence diffing — no invented content. Short fragments
+// (nav labels, single words) are dropped since they're rarely meaningful and
+// would otherwise dominate the diff with cosmetic noise.
+function splitIntoSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 15);
+}
+
+function diffSentences(oldText: string, newText: string): { added: string[]; removed: string[] } {
+  const oldSentences = splitIntoSentences(oldText);
+  const newSentences = splitIntoSentences(newText);
+  const oldSet = new Set(oldSentences);
+  const newSet = new Set(newSentences);
+  return {
+    added: newSentences.filter((s) => !oldSet.has(s)).slice(0, 20),
+    removed: oldSentences.filter((s) => !newSet.has(s)).slice(0, 20),
+  };
+}
+
+// Summarizes a REAL detected diff — grounded strictly in the added/removed
+// sentences actually found on the page, nothing else. Told explicitly to
+// call out cosmetic/irrelevant noise rather than manufacture significance.
+// Returns null (never throws) on any failure so a flaky AI call never blocks
+// the underlying hash-diff monitoring, which is the real source of truth.
+async function summarizeChange(
+  destination: string,
+  added: string[],
+  removed: string[],
+): Promise<{ summary: string; severity: "critical" | "notable" } | null> {
+  if (added.length === 0 && removed.length === 0) return null;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 400,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            `You are analyzing a REAL detected change on ${destination}'s official government visa/immigration webpage. ` +
+            `You are given the exact sentences added and removed between the previous and current version of the page — ` +
+            `nothing else. Write a short, factual, plain-English summary (2-4 sentences) of what actually changed and why ` +
+            `an immigration applicant or admin might care. Do not invent or assume anything beyond the given text. If the ` +
+            `change looks like navigation, cosmetic wording, or unrelated noise rather than a substantive policy/fee/` +
+            `document change, say so plainly instead of overstating it. Classify severity: "critical" if it involves fees, ` +
+            `eligibility requirements, required documents, or processing rules; "notable" for everything else meaningful. ` +
+            `Return a JSON object with exactly these keys: {"summary": string, "severity": "critical" | "notable"}.`,
+        },
+        { role: "user", content: JSON.stringify({ added, removed }) },
+      ],
+    });
+    const parsed = JSON.parse(response.choices[0]?.message?.content ?? "{}");
+    if (!parsed.summary || typeof parsed.summary !== "string") return null;
+    return { summary: parsed.summary, severity: parsed.severity === "critical" ? "critical" : "notable" };
+  } catch (err) {
+    console.error(`summarizeChange failed for ${destination}`, err);
+    return null;
+  }
+}
+
 async function checkOneDestination(
   ctx: ActionCtx,
   destination: string,
   url: string,
   checkedAt: string,
-  stored: Record<string, { contentHash: string }>,
+  stored: Record<string, { contentHash: string; textSnapshot?: string }>,
 ) {
+  let newText = "";
   let newHash = "";
   try {
     const controller = new AbortController();
@@ -41,13 +109,22 @@ async function checkOneDestination(
     clearTimeout(timeoutId);
     if (!res.ok) return;
     const html = await res.text();
-    newHash = sha256(extractTextFingerprint(html));
+    newText = extractTextFingerprint(html);
+    newHash = sha256(newText);
   } catch {
     return; // timeout or network error — skip this destination
   }
 
   const prev = stored[destination];
   const changed = !!prev && prev.contentHash !== newHash;
+
+  let aiResult: { summary: string; severity: "critical" | "notable" } | null = null;
+  let added: string[] = [];
+  let removed: string[] = [];
+  if (changed && prev.textSnapshot) {
+    ({ added, removed } = diffSentences(prev.textSnapshot, newText));
+    aiResult = await summarizeChange(destination, added, removed);
+  }
 
   await ctx.runMutation(internal.embassyData.saveSnapshot, {
     destination,
@@ -56,6 +133,11 @@ async function checkOneDestination(
     lastCheckedAt: checkedAt,
     changed,
     previousHash: changed ? prev.contentHash : undefined,
+    textSnapshot: newText,
+    aiSummary: aiResult?.summary,
+    aiSeverity: aiResult?.severity,
+    aiChangeAdded: aiResult ? added : undefined,
+    aiChangeRemoved: aiResult ? removed : undefined,
   });
 }
 
@@ -76,7 +158,7 @@ export const checkEmbassyPages = internalAction({
     const checkedAt = new Date().toISOString();
 
     // Read all stored snapshots in one query before any fetches start.
-    const stored: Record<string, { contentHash: string }> = await ctx.runQuery(
+    const stored: Record<string, { contentHash: string; textSnapshot?: string }> = await ctx.runQuery(
       internal.embassyData.getAllSnapshots,
       {},
     );

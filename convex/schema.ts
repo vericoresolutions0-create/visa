@@ -1368,6 +1368,16 @@ export default defineSchema({
   // A weekly cron compares the live page against the stored hash; if it
   // changes, changedAt is set and the admin sees an alert. Admin dismisses
   // alerts after reviewing and updating the checklist if needed.
+  //
+  // textSnapshot/aiSummary/aiSeverity/aiChangeAdded/aiChangeRemoved power the
+  // "Operation Room" view: textSnapshot is the current page's real stripped
+  // text (overwritten each check, so next time it changes we have real "old"
+  // text to diff against). aiChangeAdded/Removed are the actual sentences
+  // that differed — computed by exact comparison, never invented — and
+  // aiSummary/aiSeverity are an OpenAI-generated read of THAT REAL diff
+  // (grounded in aiChangeAdded/Removed only, not the full page). All four are
+  // set only when a real change is detected; a fetch/AI failure never blocks
+  // the underlying hash-diff monitoring itself.
   embassy_page_snapshots: defineTable({
     destination: v.string(),              // "United Kingdom", etc.
     url: v.string(),                      // official embassy URL we monitor
@@ -1376,6 +1386,11 @@ export default defineSchema({
     changedAt: v.optional(v.string()),    // when hash last changed (alert trigger)
     previousHash: v.optional(v.string()), // hash before the change
     alertDismissedAt: v.optional(v.string()), // admin reviewed this change
+    textSnapshot: v.optional(v.string()),
+    aiSummary: v.optional(v.string()),
+    aiSeverity: v.optional(v.union(v.literal("critical"), v.literal("notable"))),
+    aiChangeAdded: v.optional(v.array(v.string())),
+    aiChangeRemoved: v.optional(v.array(v.string())),
   })
     .index("by_destination", ["destination"])
     .index("by_changed", ["changedAt"]),

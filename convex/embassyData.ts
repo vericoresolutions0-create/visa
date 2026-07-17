@@ -2,17 +2,18 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireAdmin } from "./admin.ts";
 
-// Used by embassyMonitor action to read all stored hashes before fetching pages.
-// Returns a map keyed by destination so the action can do O(1) hash comparisons.
+// Used by embassyMonitor action to read all stored hashes (and, for real
+// diffing when something changes, the previous real page text) before
+// fetching pages. Returns a map keyed by destination for O(1) lookups.
 export const getAllSnapshots = internalQuery({
   args: {},
   handler: async (ctx) => {
     // Capped well above the ~190 real-world destination count in
     // embassy-monitor-urls.ts so growth there doesn't silently truncate this.
     const rows = await ctx.db.query("embassy_page_snapshots").take(400);
-    const map: Record<string, { contentHash: string }> = {};
+    const map: Record<string, { contentHash: string; textSnapshot?: string }> = {};
     for (const row of rows) {
-      map[row.destination] = { contentHash: row.contentHash };
+      map[row.destination] = { contentHash: row.contentHash, textSnapshot: row.textSnapshot };
     }
     return map;
   },
@@ -28,6 +29,11 @@ export const saveSnapshot = internalMutation({
     lastCheckedAt: v.string(),
     changed: v.boolean(),         // true when hash differs from stored hash
     previousHash: v.optional(v.string()),
+    textSnapshot: v.optional(v.string()),
+    aiSummary: v.optional(v.string()),
+    aiSeverity: v.optional(v.union(v.literal("critical"), v.literal("notable"))),
+    aiChangeAdded: v.optional(v.array(v.string())),
+    aiChangeRemoved: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -39,11 +45,21 @@ export const saveSnapshot = internalMutation({
       const patch: Record<string, unknown> = {
         contentHash: args.contentHash,
         lastCheckedAt: args.lastCheckedAt,
+        textSnapshot: args.textSnapshot,
       };
       if (args.changed) {
         patch.previousHash = args.previousHash;
         patch.changedAt = args.lastCheckedAt;
         patch.alertDismissedAt = undefined; // re-open the alert on a new change
+        // Only overwrite the AI fields when this change actually produced a
+        // real summary — a failed/skipped AI call shouldn't erase the last
+        // genuine one while the admin still hasn't reviewed it.
+        if (args.aiSummary) {
+          patch.aiSummary = args.aiSummary;
+          patch.aiSeverity = args.aiSeverity;
+          patch.aiChangeAdded = args.aiChangeAdded;
+          patch.aiChangeRemoved = args.aiChangeRemoved;
+        }
       }
       await ctx.db.patch(existing._id, patch);
     } else {
@@ -52,6 +68,7 @@ export const saveSnapshot = internalMutation({
         url: args.url,
         contentHash: args.contentHash,
         lastCheckedAt: args.lastCheckedAt,
+        textSnapshot: args.textSnapshot,
       });
     }
   },
