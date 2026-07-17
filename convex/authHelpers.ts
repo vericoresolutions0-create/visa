@@ -25,3 +25,21 @@ export async function getCurrentUserOrThrow(
   }
   return user;
 }
+
+// Throws if a user has been suspended by an admin (Security Intelligence
+// Centre → "Suspend actor"). Deliberately NOT folded into
+// getCurrentUser/getCurrentUserOrThrow above, which are called from ~120
+// sites across the app including plain read queries (e.g. a suspended user
+// loading their own dashboard to see why they're suspended) — throwing
+// there indiscriminately risked breaking pages that should still be
+// viewable. Call this explicitly at the specific write actions where
+// suspension should actually have teeth: checkout/billing and marketplace
+// lead access today.
+export function assertNotSuspended(user: Doc<"users">): void {
+  if (user.isSuspended) {
+    throw new ConvexError({
+      code: "ACCOUNT_SUSPENDED",
+      message: "Your account has been suspended. Contact support@visaclear.app if you believe this is a mistake.",
+    });
+  }
+}

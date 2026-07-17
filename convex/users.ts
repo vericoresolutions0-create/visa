@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { bumpStat, bumpPlanCounters } from "./platformStats.ts";
-import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
 
 // Exported so the real Stripe checkout action (convex/stripe.ts) prices
@@ -335,6 +335,7 @@ export const completeCheckout = mutation({
     }
 
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     // Prevent downgrade via checkout (e.g. Expert → Pro). Cancellation +
     // re-subscribe is the correct path for a real downgrade.
@@ -485,6 +486,7 @@ export const completeAgentCheckout = mutation({
     }
 
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     const baseAmountCents =
       AGENT_PLAN_PRICES_CENTS[args.plan][args.billingCycle];
     const { discountPercent, normalizedCode } = await getReferralDiscount(
@@ -729,6 +731,7 @@ export const startTrial = mutation({
   args: { plan: v.union(v.literal("pro"), v.literal("expert")) },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     if (user.plan !== "free") {
       throw new ConvexError({ code: "FORBIDDEN", message: "Trials are only available on the free plan." });
     }

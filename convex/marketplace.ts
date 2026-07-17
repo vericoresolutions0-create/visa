@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { logSecurityEvent } from "./securityAudit.ts";
 
 // Credit cost per lead urgency tier — server-only, never accepted from client.
@@ -13,6 +13,7 @@ const UNLOCK_COSTS: Record<string, number> = {
 
 async function getAgentProfileOrThrow(ctx: QueryCtx | MutationCtx) {
   const user = await getCurrentUserOrThrow(ctx);
+  assertNotSuspended(user);
   const profile = await ctx.db
     .query("agent_profiles")
     .withIndex("by_user", (q) => q.eq("userId", user._id))

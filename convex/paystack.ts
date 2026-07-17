@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { action, query } from "./_generated/server";
 import { api } from "./_generated/api";
+import { assertNotSuspended } from "./authHelpers.ts";
 
 // Lets the frontend know whether to offer the Mobile Money / Bank Transfer /
 // USSD option — same "not configured yet" pattern used for Stripe, Google,
@@ -46,6 +47,7 @@ export const initializeTransaction = action({
     if (!user || !user.email) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     }
+    assertNotSuspended(user);
 
     const amountKobo = NGN_PLAN_PRICES_KOBO[args.plan][args.billingCycle];
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";

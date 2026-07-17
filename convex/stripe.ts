@@ -5,6 +5,7 @@ import { ConvexError, v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { PLAN_PRICES_CENTS, AGENT_PLAN_PRICES_CENTS } from "./users.ts";
+import { assertNotSuspended } from "./authHelpers.ts";
 
 const PLAN_LABELS: Record<string, string> = {
   pro: "VisaClear Pro",
@@ -56,6 +57,7 @@ export const createCheckoutSession = action({
     if (!user) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     }
+    assertNotSuspended(user);
 
     const baseAmountCents =
       args.product === "applicant"
@@ -183,6 +185,7 @@ export const createAgentBillingPortalSession = action({
     if (!user) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in." });
     }
+    assertNotSuspended(user);
     if (!user.stripeCustomerId) {
       throw new ConvexError({
         code: "NOT_FOUND",
@@ -237,6 +240,7 @@ export const createLocalMethodCheckoutSession = action({
     if (!user) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     }
+    assertNotSuspended(user);
 
     const currency = LOCAL_METHOD_CURRENCY[args.method as LocalMethod];
     const amount = LOCAL_PLAN_PRICES[currency][args.plan][args.billingCycle];
@@ -312,6 +316,7 @@ export const purchaseCredits = action({
     if (!user) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     }
+    assertNotSuspended(user);
 
     const amountCents = CREDIT_PACKAGE_PRICES_CENTS[args.credits];
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
