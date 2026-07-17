@@ -1795,9 +1795,103 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       ]
     }
   },
+  // Sources verified 2026-07-17 against official Dept. of Home Affairs (dha.gov.za)
+  // TRV checklists (Critical Skills 8 Oct 2024, General Work 9 Oct 2024) and the
+  // South African Embassy Washington DC's published Study/Relative's Visa requirement
+  // sheets. Government visa fee is deliberately left unquantified per-category — it
+  // varies by mission and category and could not be confirmed to a single figure;
+  // only the VFS Global service fee (confirmed R1,750 as of 8 June 2026) is stated.
+  "South Africa": {
+    tourist: {
+      visaType: "tourist", destination: "South Africa", origin: "Africa/Asia/LatAm",
+      processingTime: "5–10 working days once submitted at VFS; some missions take several weeks longer during peak periods — build in buffer time.",
+      fee: "VFS Global service fee ~R1,750 (~$95, confirmed Jun 2026) plus a separate government visa fee — amount varies by country/mission, confirm the total with your local VFS centre.",
+      successTip: "The yellow fever certificate is the document most applicants forget. It's only required if you're arriving from — or clearing immigration in — a yellow fever endemic area; it is NOT required if you stay airside in direct transit through such an area. Sort it out early alongside your bank statements.",
+      items: [
+        { id: "za-t-1", title: "Valid, Machine-Readable Passport", description: "Valid for at least 30 days beyond your intended departure date, with a minimum of 2 unused visa pages.", where: "Your passport issuing authority.", required: true },
+        { id: "za-t-2", title: "Completed BI-84 Application Form", description: "South Africa's official visa/transit visa application form, completed in black ink or online.", where: "VFS Global South Africa visa application centre in your country.", tip: "Incomplete or handwritten-where-not-allowed forms are a common reason for delay.", required: true },
+        { id: "za-t-3", title: "VFS Global Appointment", description: "Book and attend a biometric enrollment appointment.", where: "VFS Global Visa Application Centre in your country.", required: true },
+        { id: "za-t-4", title: "Passport Photos (2)", description: "Recent colour photos on a white background.", where: "Professional photo studio.", required: true },
+        { id: "za-t-5", title: "Bank Statements (3 months)", description: "Stamped by the bank itself (notary stamps not accepted) — or written confirmation from the institution for online-only banks. Confirmed minimum benchmark is around R3,000 available.", where: "Your bank.", required: true },
+        { id: "za-t-6", title: "Proof of Accommodation", description: "Confirmed hotel booking, or — if hosted — an invitation letter plus a certified copy of your host's ID/passport and a utility bill proving their address.", where: "Book a refundable hotel or get documents from your host.", required: true },
+        { id: "za-t-7", title: "Return/Onward Flight Itinerary", description: "Confirmed or tentative booking showing entry into and exit from South Africa.", where: "Any airline or travel agent.", tip: "Don't purchase non-refundable tickets before your visa is approved.", required: true },
+        { id: "za-t-8", title: "Proof of Employment or Business", description: "Employer leave letter with salary and approved dates, or business registration if self-employed.", where: "Your employer's HR department or business registration documents.", required: true },
+        { id: "za-t-9", title: "Yellow Fever Vaccination Certificate", description: "Required if you've travelled from, or transited (other than direct airside transit) through, a yellow fever endemic area.", where: "An approved yellow fever vaccination centre in your country.", tip: "Nigeria, Ghana, Kenya, Cameroon and most of West/Central Africa are endemic — check the current WHO list before you fly.", required: true },
+        { id: "za-t-10", title: "Travel Insurance", description: "Medical coverage for the duration of your trip.", where: "Any reputable insurance provider in your country.", required: false },
+        { id: "za-t-11", title: "Invitation Letter (if visiting someone)", description: "Signed letter from your South African host with a copy of their ID/permit and proof of address.", where: "Written and signed by your South African host.", required: false },
+      ]
+    },
+    student: {
+      visaType: "student", destination: "South Africa", origin: "Africa/Asia/LatAm",
+      processingTime: "3–8 weeks via VFS; official guidance cites 3–4 weeks for straightforward cases, but allow up to 12 weeks during the November–January peak intake season.",
+      fee: "VFS Global service fee ~R1,750 (~$95, confirmed Jun 2026) plus a separate government visa fee — confirm the total with your local VFS centre.",
+      successTip: "Your institution must be registered with the Department of Higher Education and Training (DHET), and its acceptance letter must carry an official seal or stamp — confirm registration before applying, as unregistered institutions lead to rejection.",
+      items: [
+        { id: "za-s-1", title: "Valid, Machine-Readable Passport", description: "Valid for at least 30 days beyond your intended departure, with 2 unused visa pages.", where: "Your passport issuing authority.", required: true },
+        { id: "za-s-2", title: "Completed DHA-1738 Application Form (Form 8)", description: "South Africa's official temporary residence visa application form, used for study, work and relative's visas. Applications are submitted only through VFS Global — no paper applications are accepted.", where: "VFS Global South Africa visa application centre.", required: true },
+        { id: "za-s-3", title: "Official Letter of Acceptance", description: "From a DHET-registered South African institution, confirming acceptance and course duration, bearing the school/varsity's official seal or stamp.", where: "Your South African institution's admissions office.", required: true },
+        { id: "za-s-4", title: "Proof of Financial Means", description: "Three months of stamped bank statements covering tuition and living costs (minimum benchmark ~R3,000/month), or a notarised affidavit from a parent/sponsor accepting financial responsibility along with their own 3-month bank statements.", where: "Your bank, or your sponsor's bank and a commissioner of oaths.", required: true },
+        { id: "za-s-5", title: "Medical Report (Form DHA-811)", description: "Physical medical report on the prescribed DHA form, not older than 6 months at submission.", where: "An approved medical practitioner in your country.", required: true },
+        { id: "za-s-6", title: "Police Clearance Certificate(s)", description: "From every country you've resided in for 12+ months since turning 18, covering the last 5 years; not older than 6 months.", where: "Your national police service or Ministry of Interior.", tip: "This can take weeks to arrive — request it as soon as you start your application.", required: true },
+        { id: "za-s-7", title: "Medical/Health Insurance", description: "Cover with a scheme registered under South Africa's Medical Schemes Act, renewed annually for the full study period. International travel insurance is not accepted as a substitute.", where: "A registered South African medical scheme.", required: true },
+        { id: "za-s-8", title: "Yellow Fever Vaccination Certificate", description: "Required if travelling from, or transiting (other than direct airside transit) through, a yellow fever endemic area.", where: "An approved yellow fever vaccination centre.", required: false },
+        { id: "za-s-9", title: "Notarised Copy of Birth Certificate", description: "Certified/notarised copy of your birth certificate.", where: "A notary or commissioner of oaths.", required: true },
+        { id: "za-s-10", title: "Parental Consent & Guardian Details (if under 18)", description: "Unabridged birth certificate, notarised parental consent, and your South African guardian's address, contact details and a confirmatory letter from them.", where: "Written and notarised by a lawyer or commissioner of oaths.", required: false },
+      ]
+    },
+    work: {
+      visaType: "work", destination: "South Africa", origin: "Africa/Asia/LatAm",
+      processingTime: "Critical Skills decisions commonly take 4–8 weeks; General Work Visas can take considerably longer once SAQA evaluation is factored in — start that step as early as possible.",
+      fee: "VFS Global service fee ~R1,750 (~$95, confirmed Jun 2026) plus a government visa fee that is higher than short-stay categories — confirm the exact amount with your local VFS centre.",
+      successTip: "Check whether your occupation is on the Critical Skills List first. Since the 2024 regulation changes, the General Work Visa route no longer requires a separate Department of Employment and Labour certificate — it now uses a points-based assessment instead, but your employer must still be verifiably in good standing with that department.",
+      items: [
+        { id: "za-w-1", title: "Valid Passport", description: "Valid for no less than 30 calendar days after the expiry of your intended visit.", where: "Your passport issuing authority.", required: true },
+        { id: "za-w-2", title: "Duly Completed Online Application Form", description: "Handwritten forms are not accepted by the Department of Home Affairs — the form must be completed online.", where: "VFS Global South Africa visa application centre.", required: true },
+        { id: "za-w-3", title: "Job Offer / Employment Contract", description: "Signed offer or contract from a South African employer who is verifiable and in good standing with the Department of Employment and Labour.", where: "Your South African employer.", required: true },
+        { id: "za-w-4", title: "Proof Your Occupation Is on the Critical Skills List", description: "You must specifically indicate the occupation/critical skill your application is based on, matched against the current Critical Skills List.", where: "Cross-check your occupation against the DHA Critical Skills List (dha.gov.za).", required: true },
+        { id: "za-w-5", title: "SAQA Certificate of Evaluation", description: "Evaluation of your foreign qualifications by the South African Qualifications Authority, translated by a sworn translator into an official SA language.", where: "South African Qualifications Authority (saqa.org.za).", tip: "Apply for this as early as possible — SAQA evaluations regularly take 2–3 months.", required: true },
+        { id: "za-w-6", title: "Registration with Relevant Professional Body", description: "Proof of registration (or application for registration) with the relevant SA council or board — e.g. ECSA, HPCSA, SAICA — where your occupation requires it by law.", where: "The relevant South African professional council.", required: false },
+        { id: "za-w-7", title: "Medical Report", description: "Signed by a medical practitioner, reflecting their practice number and contact details, not older than 6 months.", where: "An approved medical practitioner in your country.", required: true },
+        { id: "za-w-8", title: "Police Clearance Certificate(s)", description: "From every country you've resided in for 12+ months since turning 18 (or in the last 5 years for General Work Visa), not older than 6 months.", where: "Each relevant country's police service.", required: true },
+        { id: "za-w-9", title: "Yellow Fever Vaccination Certificate", description: "Required if travelling from, or transiting (other than direct airside transit) through, a yellow fever endemic area.", where: "An approved yellow fever vaccination centre.", required: false },
+        { id: "za-w-10", title: "Employer's Written Undertakings", description: "Signed undertaking from your employer accepting responsibility for deportation costs and keeping your passport valid throughout your employment.", where: "Provided directly by your South African employer.", required: true },
+      ]
+    },
+    family: {
+      visaType: "family", destination: "South Africa", origin: "Africa/Asia/LatAm",
+      processingTime: "Official guidance cites 3–4 weeks for straightforward cases, but relative's and spousal visas commonly take considerably longer in practice — build in buffer time.",
+      fee: "Free for a spouse or dependent child of a South African citizen/permanent resident; a fee applies for other immediate family members. Plus the VFS Global service fee ~R1,750 (~$95, confirmed Jun 2026).",
+      successTip: "Life partner (unmarried) applications need more evidence than marriages do — a notarised cohabitation affidavit, joint accounts and shared financial responsibility spanning at least 2 years make or break the case.",
+      items: [
+        { id: "za-f-1", title: "Valid, Machine-Readable Passport", description: "Valid for at least 30 days beyond your intended departure, with 2 unused visa pages.", where: "Your passport issuing authority.", required: true },
+        { id: "za-f-2", title: "Completed DHA-1738 Application Form (Form 8)", description: "South Africa's official temporary residence visa application form.", where: "VFS Global South Africa visa application centre.", required: true },
+        { id: "za-f-3", title: "Marriage Certificate or Proof of Life Partnership", description: "Official marriage certificate, or — for unmarried life partners — a notarised affidavit plus documentation proving cohabitation and shared financial responsibility.", where: "Your local registry office, or a notary/commissioner of oaths for the affidavit.", required: true },
+        { id: "za-f-4", title: "Sponsor's South African Status", description: "Certified copy of your South African sponsor's ID and passport (citizen), or ID/passport and permanent residence permit.", where: "Your South African sponsor provides these.", required: true },
+        { id: "za-f-5", title: "Financial Assurance", description: "Currently R8,500 per person per month, proven via your sponsor's current salary advice or a certified bank statement no older than 3 months. Waived if the South African sponsor is your dependent child.", where: "Your South African sponsor's bank or employer.", required: true },
+        { id: "za-f-6", title: "Police Clearance Certificate(s)", description: "From every country you've resided in for 12+ months since turning 18 (last 5 years), not older than 6 months. A South African clearance is also needed if you've lived in SA for 12+ months.", where: "Your national police service or Ministry of Interior.", required: true },
+        { id: "za-f-7", title: "Medical Report (Form DHA-811)", description: "On the prescribed DHA form, not older than 6 months.", where: "An approved medical practitioner in your country.", required: true },
+        { id: "za-f-8", title: "Yellow Fever Vaccination Certificate", description: "Required if travelling from, or transiting (other than direct airside transit) through, a yellow fever endemic area.", where: "An approved yellow fever vaccination centre.", required: false },
+        { id: "za-f-9", title: "Proof of Kinship (non-spousal relatives)", description: "Unabridged birth certificate, and paternity test results if required, establishing your relationship to the South African citizen/resident.", where: "Your local registry office.", required: false },
+      ]
+    },
+    transit: {
+      visaType: "transit", destination: "South Africa", origin: "Africa/Asia/LatAm",
+      processingTime: "Typically the same turnaround as the visitor visa via VFS, as it uses the same BI-84 form.",
+      fee: "VFS Global service fee ~R1,750 (~$95, confirmed Jun 2026) plus a government visa fee — confirm with your local VFS centre.",
+      successTip: "The BI-84 form covers both visitor and transit visas — check first whether your nationality is exempt for short airside connections before applying for a full transit visa.",
+      items: [
+        { id: "za-tr-1", title: "Valid Passport", description: "Valid for at least 30 days beyond your intended departure.", where: "Your passport issuing authority.", required: true },
+        { id: "za-tr-2", title: "Completed BI-84 Application Form", description: "The same form used for South Africa's visitor and transit visas.", where: "VFS Global South Africa visa application centre.", required: true },
+        { id: "za-tr-3", title: "Onward Flight Ticket", description: "Confirmed booking showing you are travelling through South Africa to another country.", where: "Your airline or travel agent.", required: true },
+        { id: "za-tr-4", title: "Visa for Final Destination", description: "Valid visa for the country you are ultimately travelling to, if required.", where: "That country's embassy.", required: true },
+        { id: "za-tr-5", title: "Yellow Fever Vaccination Certificate", description: "Required if you clear immigration coming from a yellow fever endemic area — not required if you remain airside in direct transit.", where: "An approved yellow fever vaccination centre.", required: false },
+        { id: "za-tr-6", title: "Proof of Funds", description: "Show you have enough money for your transit and onward journey.", where: "Your bank statements.", required: false },
+      ]
+    }
+  },
 };
 
-const BASE_DESTINATIONS = ["United Kingdom", "Canada", "United States", "Germany", "Poland", "France", "Australia", "Netherlands", "Ireland", "Italy", "Spain", "Sweden", "Norway", "Finland", "Denmark", "Portugal", "Austria", "Belgium", "Switzerland", "Japan", "South Korea", "UAE", "New Zealand", "Singapore"];
+const BASE_DESTINATIONS = ["United Kingdom", "Canada", "United States", "Germany", "Poland", "France", "Australia", "Netherlands", "Ireland", "Italy", "Spain", "Sweden", "Norway", "Finland", "Denmark", "Portugal", "Austria", "Belgium", "Switzerland", "Japan", "South Korea", "UAE", "New Zealand", "Singapore", "South Africa"];
 
 // Official embassy / immigration portal links per destination
 export const EMBASSY_URLS: Record<string, string> = {
@@ -1825,6 +1919,7 @@ export const EMBASSY_URLS: Record<string, string> = {
   "UAE": "https://gdrfad.gov.ae/en/visa-services",
   "New Zealand": "https://www.immigration.govt.nz/",
   "Singapore": "https://www.ica.gov.sg/enter-depart/entry_requirements/visa_requirements",
+  "South Africa": "https://www.dha.gov.za/index.php/immigration-services/temporary-residency",
 };
 
 // Last-verified dates — updated quarterly. Format: YYYY-MM-DD
@@ -1853,6 +1948,7 @@ const LAST_VERIFIED_DATES: Record<string, string> = {
   "UAE": "2026-04-01",
   "New Zealand": "2026-03-01",
   "Singapore": "2026-04-01",
+  "South Africa": "2026-07-17",
 };
 
 export function getChecklist(destination: string, visaType: VisaType): VisaChecklist | null {
