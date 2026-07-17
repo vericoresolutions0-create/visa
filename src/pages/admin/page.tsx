@@ -24,7 +24,6 @@ import {
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
-import { WORLD_DESTINATIONS } from "@/lib/countries.ts";
 import { COUNTRY_REGION } from "@/lib/country-region.ts";
 import { EMBASSY_MONITOR_URLS, type EmbassyRegion } from "@/lib/embassy-monitor-urls.ts";
 
@@ -391,12 +390,12 @@ function AgentReportsPanel() {
 }
 
 // ─── Embassy Monitor panel ────────────────────────────────────────────────────
-type MonitorRowStatus = "changed" | "ok" | "unchecked" | "pending";
+type MonitorRowStatus = "changed" | "ok" | "unchecked";
 
 type MonitorRow = {
   destination: string;
   region: EmbassyRegion;
-  url: string | null;
+  url: string;
   status: MonitorRowStatus;
   lastCheckedAt: string | null;
   changedAt: string | null;
@@ -425,14 +424,17 @@ function EmbassyMonitorPanel() {
     }
   };
 
-  // Merge every real-world destination with whatever snapshot data exists for
-  // it, so countries without a verified URL yet show as "Pending research"
-  // instead of silently disappearing from the list.
+  // The monitor only ever covers the destinations wired into
+  // EMBASSY_MONITOR_URLS — merge that fixed list with whatever snapshot
+  // data exists for each one. A destination is only ever added here once a
+  // real, verified official URL exists for it — never a placeholder.
+  const monitoredDestinations = Object.keys(EMBASSY_MONITOR_URLS);
+
   const rows: MonitorRow[] | undefined = allSnapshots === undefined ? undefined : (() => {
     const byDestination = new Map(allSnapshots.map((r) => [r.destination, r]));
-    return WORLD_DESTINATIONS.map((destination): MonitorRow => {
+    return monitoredDestinations.map((destination): MonitorRow => {
       const snap = byDestination.get(destination);
-      const url = EMBASSY_MONITOR_URLS[destination] ?? null;
+      const url = EMBASSY_MONITOR_URLS[destination];
       if (snap) {
         return {
           destination,
@@ -448,7 +450,7 @@ function EmbassyMonitorPanel() {
         destination,
         region: COUNTRY_REGION[destination],
         url,
-        status: url ? "unchecked" : "pending",
+        status: "unchecked",
         lastCheckedAt: null,
         changedAt: null,
         snapshotId: null,
@@ -458,7 +460,6 @@ function EmbassyMonitorPanel() {
 
   const counts = rows === undefined ? null : {
     total: rows.length,
-    live: rows.filter((r) => r.status !== "pending").length,
     alerts: rows.filter((r) => r.status === "changed").length,
     checkedThisWeek: rows.filter((r) => r.lastCheckedAt).length,
   };
@@ -480,8 +481,8 @@ function EmbassyMonitorPanel() {
         <h2 className="font-serif text-xl font-semibold text-[#0f2040] mb-1">Embassy Monitor</h2>
         <p className="text-sm text-gray-500">
           Weekly automated checks compare a text fingerprint of each official government visa page against its
-          stored baseline. A change alert fires when the content differs. Coverage is rolling out across every
-          world destination — countries without a verified official URL yet show as "Pending research," never a guess.
+          stored baseline. A change alert fires when the content differs — review the linked page and update the
+          checklist if needed.
         </p>
       </div>
 
@@ -490,7 +491,7 @@ function EmbassyMonitorPanel() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="border border-gray-100 rounded-xl px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Monitored</p>
-            <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.live}<span className="text-sm font-medium text-gray-400"> / {counts.total}</span></p>
+            <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.total}</p>
           </div>
           <div className="border border-gray-100 rounded-xl px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Active alerts</p>
@@ -603,21 +604,16 @@ function EmbassyMonitorPanel() {
                     </thead>
                     <tbody>
                       {regionRows.map((row) => (
-                        <tr key={row.destination} className={cn("border-b border-gray-50 last:border-b-0", row.status === "pending" && "opacity-50")}>
+                        <tr key={row.destination} className="border-b border-gray-50 last:border-b-0">
                           <td className="py-2 pr-4">
                             <span className="font-medium text-[#0f2040]">{row.destination}</span>
-                            {row.url ? (
-                              <a href={row.url} target="_blank" rel="noopener noreferrer" className="block text-[11px] text-blue-600 hover:underline truncate max-w-[280px]">{row.url.replace(/^https?:\/\//, "")}</a>
-                            ) : (
-                              <span className="block text-[11px] text-gray-400">Official URL pending verification</span>
-                            )}
+                            <a href={row.url} target="_blank" rel="noopener noreferrer" className="block text-[11px] text-blue-600 hover:underline truncate max-w-[280px]">{row.url.replace(/^https?:\/\//, "")}</a>
                           </td>
                           <td className="py-2 pr-4 text-gray-500">{row.lastCheckedAt ? new Date(row.lastCheckedAt).toLocaleDateString() : "—"}</td>
                           <td className="py-2">
                             {row.status === "changed" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Changed</span>}
                             {row.status === "ok" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">OK</span>}
                             {row.status === "unchecked" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Awaiting first check</span>}
-                            {row.status === "pending" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">Pending research</span>}
                           </td>
                         </tr>
                       ))}
