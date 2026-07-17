@@ -7,7 +7,9 @@ import { requireAdmin } from "./admin.ts";
 export const getAllSnapshots = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const rows = await ctx.db.query("embassy_page_snapshots").take(200);
+    // Capped well above the ~190 real-world destination count in
+    // embassy-monitor-urls.ts so growth there doesn't silently truncate this.
+    const rows = await ctx.db.query("embassy_page_snapshots").take(400);
     const map: Record<string, { contentHash: string }> = {};
     for (const row of rows) {
       map[row.destination] = { contentHash: row.contentHash };
@@ -79,7 +81,9 @@ export const listAllSnapshots = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await ctx.db.query("embassy_page_snapshots").take(100);
+    // Capped well above the ~190 real-world destination count in
+    // embassy-monitor-urls.ts so growth there doesn't silently truncate this.
+    return await ctx.db.query("embassy_page_snapshots").take(400);
   },
 });
 

@@ -24,6 +24,9 @@ import {
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
+import { WORLD_DESTINATIONS } from "@/lib/countries.ts";
+import { COUNTRY_REGION } from "@/lib/country-region.ts";
+import { EMBASSY_MONITOR_URLS, type EmbassyRegion } from "@/lib/embassy-monitor-urls.ts";
 
 type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage";
 
@@ -388,11 +391,27 @@ function AgentReportsPanel() {
 }
 
 // ─── Embassy Monitor panel ────────────────────────────────────────────────────
+type MonitorRowStatus = "changed" | "ok" | "unchecked" | "pending";
+
+type MonitorRow = {
+  destination: string;
+  region: EmbassyRegion;
+  url: string | null;
+  status: MonitorRowStatus;
+  lastCheckedAt: string | null;
+  changedAt: string | null;
+  snapshotId: Id<"embassy_page_snapshots"> | null;
+};
+
+const MONITOR_REGIONS: EmbassyRegion[] = ["Africa", "Americas", "Asia", "Europe", "Middle East", "Oceania"];
+
 function EmbassyMonitorPanel() {
   const alerts = useQuery(api.embassyData.listActiveAlerts, {});
   const allSnapshots = useQuery(api.embassyData.listAllSnapshots, {});
   const dismiss = useMutation(api.embassyData.dismissAlert);
   const [dismissing, setDismissing] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [regionFilter, setRegionFilter] = useState<EmbassyRegion | "all" | "alerts">("all");
 
   const handleDismiss = async (destination: string) => {
     setDismissing(destination);
@@ -406,15 +425,87 @@ function EmbassyMonitorPanel() {
     }
   };
 
+  // Merge every real-world destination with whatever snapshot data exists for
+  // it, so countries without a verified URL yet show as "Pending research"
+  // instead of silently disappearing from the list.
+  const rows: MonitorRow[] | undefined = allSnapshots === undefined ? undefined : (() => {
+    const byDestination = new Map(allSnapshots.map((r) => [r.destination, r]));
+    return WORLD_DESTINATIONS.map((destination): MonitorRow => {
+      const snap = byDestination.get(destination);
+      const url = EMBASSY_MONITOR_URLS[destination] ?? null;
+      if (snap) {
+        return {
+          destination,
+          region: COUNTRY_REGION[destination],
+          url: snap.url,
+          status: snap.changedAt && !snap.alertDismissedAt ? "changed" : "ok",
+          lastCheckedAt: snap.lastCheckedAt,
+          changedAt: snap.changedAt ?? null,
+          snapshotId: snap._id,
+        };
+      }
+      return {
+        destination,
+        region: COUNTRY_REGION[destination],
+        url,
+        status: url ? "unchecked" : "pending",
+        lastCheckedAt: null,
+        changedAt: null,
+        snapshotId: null,
+      };
+    });
+  })();
+
+  const counts = rows === undefined ? null : {
+    total: rows.length,
+    live: rows.filter((r) => r.status !== "pending").length,
+    alerts: rows.filter((r) => r.status === "changed").length,
+    checkedThisWeek: rows.filter((r) => r.lastCheckedAt).length,
+  };
+
+  const filteredRows = rows?.filter((r) => {
+    if (search && !r.destination.toLowerCase().includes(search.toLowerCase())) return false;
+    if (regionFilter === "alerts") return r.status === "changed";
+    if (regionFilter !== "all") return r.region === regionFilter;
+    return true;
+  });
+
+  const grouped = filteredRows === undefined ? undefined : MONITOR_REGIONS
+    .map((region) => ({ region, rows: filteredRows.filter((r) => r.region === region) }))
+    .filter((g) => g.rows.length > 0);
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
       <div>
         <h2 className="font-serif text-xl font-semibold text-[#0f2040] mb-1">Embassy Monitor</h2>
         <p className="text-sm text-gray-500">
-          Weekly automated checks compare a text fingerprint of each embassy page against the stored baseline.
-          A change alert fires when the content differs — review the linked page and update the checklist if needed.
+          Weekly automated checks compare a text fingerprint of each official government visa page against its
+          stored baseline. A change alert fires when the content differs. Coverage is rolling out across every
+          world destination — countries without a verified official URL yet show as "Pending research," never a guess.
         </p>
       </div>
+
+      {/* Coverage stats */}
+      {counts && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="border border-gray-100 rounded-xl px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Monitored</p>
+            <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.live}<span className="text-sm font-medium text-gray-400"> / {counts.total}</span></p>
+          </div>
+          <div className="border border-gray-100 rounded-xl px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Active alerts</p>
+            <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.alerts}</p>
+          </div>
+          <div className="border border-gray-100 rounded-xl px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Checked so far</p>
+            <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.checkedThisWeek}</p>
+          </div>
+          <div className="border border-gray-100 rounded-xl px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Cadence</p>
+            <p className="text-xl font-semibold text-[#0f2040] mt-1">Weekly</p>
+          </div>
+        </div>
+      )}
 
       {/* Active alerts */}
       <div>
@@ -450,39 +541,91 @@ function EmbassyMonitorPanel() {
         )}
       </div>
 
-      {/* All snapshots */}
+      {/* All destinations */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">All monitored destinations</h3>
-        {allSnapshots === undefined ? (
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">All destinations</h3>
+
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search a country…"
+              className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#0f2040]"
+            />
+          </div>
+          <button
+            onClick={() => setRegionFilter("all")}
+            className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer", regionFilter === "all" ? "bg-[#0f2040] text-white border-[#0f2040]" : "border-gray-200 text-gray-500 hover:border-gray-300")}
+          >
+            All <span className="opacity-70 font-medium">{rows?.length ?? 0}</span>
+          </button>
+          {MONITOR_REGIONS.map((region) => (
+            <button
+              key={region}
+              onClick={() => setRegionFilter(region)}
+              className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer", regionFilter === region ? "bg-[#0f2040] text-white border-[#0f2040]" : "border-gray-200 text-gray-500 hover:border-gray-300")}
+            >
+              {region} <span className="opacity-70 font-medium">{rows?.filter((r) => r.region === region).length ?? 0}</span>
+            </button>
+          ))}
+          {counts && counts.alerts > 0 && (
+            <button
+              onClick={() => setRegionFilter("alerts")}
+              className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer", regionFilter === "alerts" ? "bg-amber-500 text-white border-amber-500" : "border-amber-200 text-amber-700 hover:border-amber-300")}
+            >
+              ⚠ Alerts <span className="opacity-70 font-medium">{counts.alerts}</span>
+            </button>
+          )}
+        </div>
+
+        {grouped === undefined ? (
           <p className="text-sm text-gray-400">Loading…</p>
-        ) : allSnapshots.length === 0 ? (
-          <p className="text-sm text-gray-400">No snapshots recorded yet. The weekly cron will populate this on its first run.</p>
+        ) : grouped.length === 0 ? (
+          <p className="text-sm text-gray-400">No destinations match this search.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100 text-gray-400 text-left">
-                  <th className="pb-2 pr-4 font-semibold">Destination</th>
-                  <th className="pb-2 pr-4 font-semibold">Last checked</th>
-                  <th className="pb-2 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allSnapshots.map((row) => (
-                  <tr key={row._id} className="border-b border-gray-50 last:border-b-0">
-                    <td className="py-2 pr-4 font-medium text-[#0f2040]">{row.destination}</td>
-                    <td className="py-2 pr-4 text-gray-500">{new Date(row.lastCheckedAt).toLocaleDateString()}</td>
-                    <td className="py-2">
-                      {row.changedAt && !row.alertDismissedAt ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Changed</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">OK</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-6">
+            {grouped.map(({ region, rows: regionRows }) => (
+              <div key={region}>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 border-t border-gray-100 pt-3 pb-2">
+                  {region} <span className="font-medium normal-case text-gray-400">— {regionRows.length}</span>
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 text-left">
+                        <th className="pb-2 pr-4 font-semibold">Destination</th>
+                        <th className="pb-2 pr-4 font-semibold">Last checked</th>
+                        <th className="pb-2 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {regionRows.map((row) => (
+                        <tr key={row.destination} className={cn("border-b border-gray-50 last:border-b-0", row.status === "pending" && "opacity-50")}>
+                          <td className="py-2 pr-4">
+                            <span className="font-medium text-[#0f2040]">{row.destination}</span>
+                            {row.url ? (
+                              <a href={row.url} target="_blank" rel="noopener noreferrer" className="block text-[11px] text-blue-600 hover:underline truncate max-w-[280px]">{row.url.replace(/^https?:\/\//, "")}</a>
+                            ) : (
+                              <span className="block text-[11px] text-gray-400">Official URL pending verification</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-500">{row.lastCheckedAt ? new Date(row.lastCheckedAt).toLocaleDateString() : "—"}</td>
+                          <td className="py-2">
+                            {row.status === "changed" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Changed</span>}
+                            {row.status === "ok" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">OK</span>}
+                            {row.status === "unchecked" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Awaiting first check</span>}
+                            {row.status === "pending" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">Pending research</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
