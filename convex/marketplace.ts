@@ -509,6 +509,57 @@ export const adminGrantCredits = mutation({
   },
 });
 
+// ─── Called from the Stripe/Paystack webhook on a real credit purchase ──────
+// Same idempotency pattern as every other webhook-triggered mutation in this
+// app (processed_webhook_events, keyed by provider + the payment's own event
+// reference) — a retried webhook delivery can never grant credits twice.
+export const applyCreditPurchase = internalMutation({
+  args: {
+    agentUserId: v.id("users"),
+    credits: v.number(),
+    amountPaidCents: v.number(),
+    source: v.union(v.literal("stripe"), v.literal("paystack")),
+    providerReference: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const alreadyProcessed = await ctx.db
+      .query("processed_webhook_events")
+      .withIndex("by_provider_reference", (q) =>
+        q.eq("provider", args.source).eq("reference", args.providerReference),
+      )
+      .unique();
+    if (alreadyProcessed) return;
+    await ctx.db.insert("processed_webhook_events", {
+      provider: args.source,
+      reference: args.providerReference,
+      processedAt: new Date().toISOString(),
+    });
+
+    const profile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.agentUserId))
+      .unique();
+    if (!profile) {
+      console.error(`applyCreditPurchase: no agent_profiles row for user ${args.agentUserId} (${args.source} ref ${args.providerReference})`);
+      return;
+    }
+
+    const newBalance = (profile.creditBalance ?? 0) + args.credits;
+    await Promise.all([
+      ctx.db.patch(profile._id, { creditBalance: newBalance }),
+      ctx.db.insert("agent_credit_purchases", {
+        agentUserId: args.agentUserId,
+        creditsAdded: args.credits,
+        amountPaidCents: args.amountPaidCents,
+        currency: "USD",
+        source: args.source,
+        providerReference: args.providerReference,
+        createdAt: new Date().toISOString(),
+      }),
+    ]);
+  },
+});
+
 // ─── Count open leads (for agent dashboard badge) ─────────────────────────────
 export const getOpenLeadCount = query({
   args: {},

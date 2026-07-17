@@ -99,6 +99,18 @@ http.route({
       case "checkout.session.completed": {
         const session = event.data.object;
         const metadata = session.metadata ?? {};
+
+        if (metadata.product === "credits" && metadata.userId && metadata.credits) {
+          await ctx.runMutation(internal.marketplace.applyCreditPurchase, {
+            agentUserId: metadata.userId,
+            credits: Number(metadata.credits) || 0,
+            amountPaidCents: Number(metadata.amountCents) || 0,
+            source: "stripe",
+            providerReference: event.id,
+          });
+          break;
+        }
+
         if (!metadata.userId || !metadata.product || !metadata.plan || !metadata.billingCycle) break;
 
         if (metadata.oneTime === "true") {

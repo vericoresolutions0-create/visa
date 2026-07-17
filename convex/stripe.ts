@@ -287,3 +287,73 @@ export const createLocalMethodCheckoutSession = action({
     return { url: session.url };
   },
 });
+
+// Lead-marketplace credit top-ups for agents — a real, hosted Stripe
+// Checkout, one-time payment (no subscription — credits don't expire or
+// renew). Only these three package sizes are accepted and priced here,
+// server-side, exactly like every other checkout action in this file — the
+// client can request a package, never a price. Kept in sync by hand with
+// CREDIT_PACKAGES in src/pages/agents/marketplace-leads.tsx (that file owns
+// the display copy — label/description/"Most Popular" flag — this one owns
+// the money).
+const CREDIT_PACKAGE_PRICES_CENTS: Record<number, number> = {
+  10: 1500,  // Starter
+  25: 3000,  // Professional
+  60: 6000,  // Agency
+};
+
+export const purchaseCredits = action({
+  args: {
+    credits: v.union(v.literal(10), v.literal(25), v.literal(60)),
+  },
+  handler: async (ctx, args): Promise<{ url: string }> => {
+    const stripe = getStripeClient();
+    const user = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!user) {
+      throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
+    }
+
+    const amountCents = CREDIT_PACKAGE_PRICES_CENTS[args.credits];
+    const siteUrl = process.env.SITE_URL || "https://visaclear.app";
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amountCents,
+              product_data: { name: `VisaClear Agent Credits — ${args.credits} credits` },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${siteUrl}/agents/marketplace-leads?checkout=success`,
+        cancel_url: `${siteUrl}/agents/marketplace-leads?checkout=cancelled`,
+        metadata: {
+          userId: user._id,
+          product: "credits",
+          credits: String(args.credits),
+          amountCents: String(amountCents),
+        },
+      });
+    } catch (err: unknown) {
+      throw new ConvexError({
+        code: "STRIPE_API_ERROR",
+        message: stripeErrMsg(err) || "Could not start checkout. Please try again.",
+      });
+    }
+
+    if (!session.url) {
+      throw new ConvexError({
+        code: "STRIPE_SESSION_ERROR",
+        message: "Could not start checkout. Please try again.",
+      });
+    }
+
+    return { url: session.url };
+  },
+});

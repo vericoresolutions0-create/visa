@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated, AuthLoading, useMutation, useQuery } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery } from "convex/react";
 
 import { toast } from "sonner";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
@@ -323,6 +323,21 @@ function CreditBalanceBar({
 // ─── Top-Up Modal ─────────────────────────────────────────────────────────────
 
 function TopUpModal({ onClose, balance }: { onClose: () => void; balance: number }) {
+  const isStripeConfigured = useQuery(api.billing.isStripeConfigured);
+  const purchaseCredits = useAction(api.stripe.purchaseCredits);
+  const [purchasing, setPurchasing] = useState<number | null>(null);
+
+  const handlePurchase = async (credits: 10 | 25 | 60) => {
+    setPurchasing(credits);
+    try {
+      const { url } = await purchaseCredits({ credits });
+      window.location.href = url;
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not start checkout. Please try again.");
+      setPurchasing(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
@@ -343,13 +358,19 @@ function TopUpModal({ onClose, balance }: { onClose: () => void; balance: number
 
         <div className="space-y-3 mb-5">
           {CREDIT_PACKAGES.map((pkg) => (
-            <div
+            <button
               key={pkg.credits}
+              type="button"
+              disabled={!isStripeConfigured || purchasing !== null}
+              onClick={() => void handlePurchase(pkg.credits as 10 | 25 | 60)}
               className={cn(
-                "relative rounded-xl border p-4 flex items-center justify-between gap-4",
+                "relative w-full text-left rounded-xl border p-4 flex items-center justify-between gap-4 transition-colors",
                 pkg.highlight
                   ? "border-accent bg-accent/5 ring-1 ring-accent/30"
                   : "border-border",
+                isStripeConfigured && purchasing === null
+                  ? "cursor-pointer hover:border-accent hover:bg-accent/5"
+                  : "cursor-not-allowed opacity-70",
               )}
             >
               {pkg.highlight && (
@@ -366,31 +387,37 @@ function TopUpModal({ onClose, balance }: { onClose: () => void; balance: number
               </div>
               <div className="text-right shrink-0">
                 <p className="text-base font-bold text-primary">
-                  ${(pkg.priceCents / 100).toFixed(0)}
+                  {purchasing === pkg.credits ? "…" : `$${(pkg.priceCents / 100).toFixed(0)}`}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                   ${((pkg.priceCents / pkg.credits) / 100).toFixed(2)}/credit
                 </p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
-        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex gap-3 items-start">
-          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-              Credit purchases launching soon
-            </p>
-            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-              To receive starter credits during beta, contact{" "}
-              <a href="mailto:support@visaclear.app" className="underline font-medium">
-                support@visaclear.app
-              </a>{" "}
-              and we'll top up your account manually.
-            </p>
+        {isStripeConfigured === false ? (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex gap-3 items-start">
+            <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                Credit purchases temporarily unavailable
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                Billing isn't connected right now. Contact{" "}
+                <a href="mailto:support@visaclear.app" className="underline font-medium">
+                  support@visaclear.app
+                </a>{" "}
+                and we'll top up your account manually in the meantime.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground text-center">
+            Secure checkout via Stripe. Your card details never touch VisaClear's servers.
+          </p>
+        )}
       </div>
     </div>
   );
