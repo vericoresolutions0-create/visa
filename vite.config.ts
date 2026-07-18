@@ -82,6 +82,19 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Vite's own dynamic-import runtime helper (injected into every
+          // module that does `await import(...)` — every lazy route in
+          // src/App.tsx, plus src/lib/pdf-export.ts's lazy jsPDF load).
+          // It's not a node_modules id, so it fell through the check below
+          // to Rollup's default chunk-placement heuristic, which happened
+          // to land it inside vendor-pdf — meaning every other lazy chunk
+          // (including the homepage's own entry) had a hard, non-lazy
+          // dependency on the 408KB PDF chunk just to reach this ~1KB
+          // helper, forcing Vite to <link rel="modulepreload"> the whole
+          // thing on first visit regardless of whether the visitor ever
+          // exports a PDF. Giving it an explicit home of its own breaks
+          // that accidental coupling.
+          if (id === "\0vite/preload-helper.js") return "vite-helpers";
           if (!id.includes("node_modules")) return undefined;
           if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
             return "vendor-react";
