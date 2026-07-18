@@ -43,7 +43,7 @@ export const markAllRead = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);
-    if (!isPaid(user.plan)) return;
+    if (!isPaid(user.plan) && !user.agentPlan) return;
     const unread = await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user_read", (q) =>

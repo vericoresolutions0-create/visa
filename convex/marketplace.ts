@@ -277,6 +277,13 @@ export const unlockLead = mutation({
   handler: async (ctx, args) => {
     const { user, profile } = await getAgentProfileOrThrow(ctx);
 
+    if (!profile.verified) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Your agent profile needs to be verified before you can unlock leads.",
+      });
+    }
+
     if (profile.leadAccessRevoked) {
       throw new ConvexError({
         code: "FORBIDDEN",

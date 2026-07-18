@@ -2,6 +2,18 @@ import { ConvexError, v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 import { getCurrentUser } from "./authHelpers.ts";
+import type { Doc } from "./_generated/dataModel";
+
+// Whether this user currently has an unexpired agent trial. Used by billing.ts
+// and licenseCodes.ts to avoid clobbering a trial-granted agent_profiles.tier
+// with an unrelated event — a checkout for a different plan, a cancellation,
+// a refund, or a code redemption has nothing to do with an active trial, and
+// shouldn't silently end it early. A trial is only meant to end via its own
+// expiry (cleanupExpiredTrials below) or an explicit admin revokeTrial.
+export function hasActiveAgentTrial(user: Doc<"users">): boolean {
+  if (!user.agentTrialPlan || !user.agentTrialExpiresAt) return false;
+  return new Date(user.agentTrialExpiresAt).getTime() > Date.now();
+}
 
 const PLAN_LABELS: Record<string, string> = {
   agent_listing: "Listing",

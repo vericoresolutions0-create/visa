@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
+import { hasActiveAgentTrial } from "./agentTrials.ts";
 
 // 33-symbol alphabet, 0/O/1/I removed to avoid transcription errors when an
 // admin reads this aloud or an agency retypes it from an email. 12 symbols
@@ -110,9 +111,15 @@ export const redeemLicenseCode = mutation({
       agentPlan: license.plan,
       agentSubscriptionStartedAt: user.agentSubscriptionStartedAt ?? now,
     });
-    const agentProfile = await ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
-    if (agentProfile) {
-      await ctx.db.patch(agentProfile._id, { tier: license.plan });
+    // If an active trial is in effect, leave agent_profiles.tier as the
+    // trial set it — redeeming a code for a different plan shouldn't
+    // silently end the trial early. users.agentPlan is still updated above,
+    // so the redeemed plan takes over correctly once the trial ends.
+    if (!hasActiveAgentTrial(user)) {
+      const agentProfile = await ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
+      if (agentProfile) {
+        await ctx.db.patch(agentProfile._id, { tier: license.plan });
+      }
     }
 
     await ctx.db.patch(license._id, { redeemedAt: now, redeemedByUserId: user._id });

@@ -4,6 +4,7 @@ import { internalAction, internalMutation, internalQuery, query } from "./_gener
 import { internal } from "./_generated/api";
 import { bumpPlanCounters } from "./platformStats.ts";
 import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
+import { hasActiveAgentTrial } from "./agentTrials.ts";
 
 function currentBillingMonth(): string {
   const now = new Date();
@@ -147,17 +148,23 @@ export const applyCheckoutCompleted = internalMutation({
         agentStripeSubscriptionId: args.stripeSubscriptionId,
       });
 
-      const agentProfile = await ctx.db
-        .query("agent_profiles")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .unique();
-      if (agentProfile) {
-        await ctx.db.patch(agentProfile._id, {
-          tier: args.plan as
-            | "agent_listing"
-            | "agent_featured"
-            | "agency_white_label",
-        });
+      // If an active trial is in effect, leave agent_profiles.tier as the
+      // trial set it — a purchase for a different plan shouldn't silently
+      // end the trial early. users.agentPlan is still updated above, so the
+      // real purchased plan takes over correctly once the trial ends.
+      if (!hasActiveAgentTrial(user)) {
+        const agentProfile = await ctx.db
+          .query("agent_profiles")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .unique();
+        if (agentProfile) {
+          await ctx.db.patch(agentProfile._id, {
+            tier: args.plan as
+              | "agent_listing"
+              | "agent_featured"
+              | "agency_white_label",
+          });
+        }
       }
     }
   },
@@ -308,7 +315,24 @@ export const applySubscriptionRenewal = internalMutation({
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
       )
       .unique();
-    if (!user) return;
+
+    if (!user) {
+      // Not an applicant subscription renewing — check whether it's an
+      // agent's. Agent plans carry no referral-commission logic (that's
+      // exclusively the "agent refers a paying consumer" reward below), so
+      // there's nothing else to do here beyond keeping the payment
+      // timestamp accurate for whenever it's surfaced.
+      const agentUser = await ctx.db
+        .query("users")
+        .withIndex("by_agent_stripe_subscription", (q) =>
+          q.eq("agentStripeSubscriptionId", args.stripeSubscriptionId),
+        )
+        .unique();
+      if (agentUser) {
+        await ctx.db.patch(agentUser._id, { lastAgentPaymentAt: new Date().toISOString() });
+      }
+      return;
+    }
 
     await ctx.db.patch(user._id, { lastPaymentAt: new Date().toISOString() });
 
@@ -370,12 +394,17 @@ export const applySubscriptionEnded = internalMutation({
         agentPlan: undefined,
         agentStripeSubscriptionId: undefined,
       });
-      const agentProfile = await ctx.db
-        .query("agent_profiles")
-        .withIndex("by_user", (q) => q.eq("userId", byAgent._id))
-        .unique();
-      if (agentProfile) {
-        await ctx.db.patch(agentProfile._id, { tier: undefined });
+      // If an active trial is in effect, leave agent_profiles.tier as the
+      // trial set it — cancelling an unrelated real subscription shouldn't
+      // silently end the trial early.
+      if (!hasActiveAgentTrial(byAgent)) {
+        const agentProfile = await ctx.db
+          .query("agent_profiles")
+          .withIndex("by_user", (q) => q.eq("userId", byAgent._id))
+          .unique();
+        if (agentProfile) {
+          await ctx.db.patch(agentProfile._id, { tier: undefined });
+        }
       }
     }
   },
@@ -446,11 +475,16 @@ export const applyPaymentReversed = internalMutation({
 
     if (product === "agent") {
       await ctx.db.patch(user._id, { agentPlan: undefined, agentStripeSubscriptionId: undefined });
-      const agentProfile = await ctx.db
-        .query("agent_profiles")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .unique();
-      if (agentProfile) await ctx.db.patch(agentProfile._id, { tier: undefined });
+      // If an active trial is in effect, leave agent_profiles.tier as the
+      // trial set it — a refund/dispute on an unrelated real subscription
+      // shouldn't silently end the trial early.
+      if (!hasActiveAgentTrial(user)) {
+        const agentProfile = await ctx.db
+          .query("agent_profiles")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .unique();
+        if (agentProfile) await ctx.db.patch(agentProfile._id, { tier: undefined });
+      }
       return;
     }
 

@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { api } from "@/convex/_generated/api.js";
-import type { Id } from "@/convex/_generated/dataModel.js";
+import type { Id, Doc } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
 import { CountrySelect } from "@/components/CountrySelect.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -210,16 +210,27 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
 
 // ─── Register Agent form ──────────────────────────────────────────────────────
 
-function RegisterAgentForm({ onClose }: { onClose: () => void }) {
+function RegisterAgentForm({ onClose, existingProfile }: { onClose: () => void; existingProfile: Doc<"agent_profiles"> | null | undefined }) {
   const { t } = useTranslation("agents");
   const upsert = useMutation(api.agents.upsertProfile);
-  const [form, setForm] = useState({
-    fullName: "", email: "", phone: "", country: "", bio: "",
-    yearsExperience: 1,
-    specialisations: [] as string[],
-    languages: [] as string[],
-    destinations: [] as string[],
-  });
+  // Lazy initializer runs once, at mount — this modal is only ever mounted
+  // fresh (conditionally rendered by the parent), so whatever existingProfile
+  // holds at that instant is the real, current profile to edit from. Without
+  // this, editing an existing agent silently blanked every field on save —
+  // this form has no fields at all for region/credentialType/credentialNumber/
+  // credentialVerifyUrl, so those four were wiped with no way for the agent
+  // to even notice, since upsertProfile patches with whatever args it's given.
+  const [form, setForm] = useState(() => ({
+    fullName: existingProfile?.fullName ?? "",
+    email: existingProfile?.email ?? "",
+    phone: existingProfile?.phone ?? "",
+    country: existingProfile?.country ?? "",
+    bio: existingProfile?.bio ?? "",
+    yearsExperience: existingProfile?.yearsExperience ?? 1,
+    specialisations: existingProfile?.specialisations ?? [],
+    languages: existingProfile?.languages ?? [],
+    destinations: existingProfile?.destinations ?? [],
+  }));
   const [saving, setSaving] = useState(false);
 
   const toggleItem = (arr: string[], item: string) =>
@@ -242,6 +253,12 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
         specialisations: form.specialisations,
         languages: form.languages,
         destinations: form.destinations.length > 0 ? form.destinations : undefined,
+        // This form has no UI for these — pass through the agent's existing
+        // values untouched rather than omitting them (omitting unsets them).
+        region: existingProfile?.region,
+        credentialType: existingProfile?.credentialType,
+        credentialNumber: existingProfile?.credentialNumber,
+        credentialVerifyUrl: existingProfile?.credentialVerifyUrl,
       });
       toast.success(t("form.toast_success"));
       onClose();
@@ -260,8 +277,8 @@ function RegisterAgentForm({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, scale: 1 }}
         className="relative z-10 w-full max-w-lg bg-card border border-border rounded-2xl p-6 shadow-2xl my-4"
       >
-        <h3 className="font-serif text-xl font-semibold text-primary mb-1">{t("form.title")}</h3>
-        <p className="text-xs text-muted-foreground mb-5">{t("form.subtitle")}</p>
+        <h3 className="font-serif text-xl font-semibold text-primary mb-1">{existingProfile ? "Edit your profile" : t("form.title")}</h3>
+        <p className="text-xs text-muted-foreground mb-5">{existingProfile ? "Update your public listing below." : t("form.subtitle")}</p>
         <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
           {[
             { label: t("form.name"), key: "fullName", type: "text", placeholder: "Your professional name" },
@@ -559,9 +576,13 @@ function AgentsMarketplace({ myProfile, onShowRegister }: {
                 <div className="border border-dashed border-border rounded-xl p-10 text-center">
                   <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
                   <p className="font-semibold text-foreground mb-1">No agents on this route yet</p>
-                  <p className="text-sm text-muted-foreground mb-5">We're adding verified agents every week. Register your profile to be the first for this route.</p>
+                  <p className="text-sm text-muted-foreground mb-5">
+                    {myProfile
+                      ? "Add this route to your profile's destinations to be the first agent to show up here."
+                      : "We're adding verified agents every week. Register your profile to be the first for this route."}
+                  </p>
                   <Button size="sm" className="cursor-pointer" onClick={onShowRegister}>
-                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Register as agent
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> {myProfile ? "Edit your profile" : "Register as agent"}
                   </Button>
                 </div>
               )}
@@ -889,7 +910,7 @@ export default function AgentsPage() {
       </div>
 
 
-      {showRegister && <RegisterAgentForm onClose={() => setShowRegister(false)} />}
+      {showRegister && <RegisterAgentForm onClose={() => setShowRegister(false)} existingProfile={myProfile} />}
     </div>
   );
 }

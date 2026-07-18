@@ -14,7 +14,7 @@ const modules = import.meta.glob("./**/*.ts");
 
 async function seedAgent(
   t: ReturnType<typeof convexTest>,
-  overrides: { creditBalance?: number; leadAccessRevoked?: boolean; isSuspended?: boolean } = {},
+  overrides: { creditBalance?: number; leadAccessRevoked?: boolean; isSuspended?: boolean; verified?: boolean } = {},
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
@@ -30,7 +30,7 @@ async function seedAgent(
       bio: "Test bio",
       yearsExperience: 5,
       languages: ["en"],
-      verified: true,
+      verified: overrides.verified ?? true,
       createdAt: new Date().toISOString(),
       creditBalance: overrides.creditBalance ?? 100,
       leadAccessRevoked: overrides.leadAccessRevoked ?? false,
@@ -78,6 +78,28 @@ describe("marketplace.unlockLead — guard chain", () => {
     await expect(
       t.withIdentity({ subject: agentUserId }).mutation(api.marketplace.unlockLead, { leadId }),
     ).rejects.toThrow();
+  });
+
+  test("an unverified agent cannot unlock a lead, even with a real profile and credits", async () => {
+    // Regression test — the read path (getMarketplaceLeads) always gated
+    // unverified agents behind a "locked preview," but unlockLead itself
+    // never checked profile.verified, so calling the mutation directly
+    // (bypassing the UI, which only hides the Unlock button) let an
+    // unverified agent spend credits and receive an applicant's real
+    // contact details before ever being approved.
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t, { verified: false });
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com" }));
+    const leadId = await seedLead(t, ownerId);
+
+    await expect(
+      t.withIdentity({ subject: agentUserId }).mutation(api.marketplace.unlockLead, { leadId }),
+    ).rejects.toThrow();
+
+    const profile = await t.run(async (ctx) =>
+      ctx.db.query("agent_profiles").withIndex("by_user", (q) => q.eq("userId", agentUserId)).unique(),
+    );
+    expect(profile?.creditBalance).toBe(100); // untouched — credits were never spent
   });
 
   test("an agent cannot unlock their own submitted lead", async () => {

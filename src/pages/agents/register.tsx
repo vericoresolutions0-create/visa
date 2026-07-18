@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -59,6 +59,7 @@ export default function AgentRegisterPage() {
   const checkoutPath = `/payment?product=agent&plan=${selectedPlan.id}&billing=${billing}`;
 
   const upsertAgentProfile = useMutation(api.agents.upsertProfile);
+  const myProfile = useQuery(api.agents.getMyProfile, {});
   const [profile, setProfile] = useState({
     fullName: "",
     email: "",
@@ -74,6 +75,33 @@ export default function AgentRegisterPage() {
     credentialVerifyUrl: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  // This page is reachable by an agent who already has a live profile (e.g.
+  // the onboarding screen's "back to signup" button). Without pre-filling
+  // from their real data, re-submitting this form silently overwrites their
+  // existing profile with a blank one — any field left untouched here gets
+  // wiped, since upsertProfile patches with exactly what it's given. Hydrate
+  // once when the real profile arrives; the `hydrated` guard stops this from
+  // clobbering the agent's own in-progress edits if the query re-fires later.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    if (hydrated || myProfile === undefined) return;
+    setHydrated(true);
+    if (!myProfile) return;
+    setProfile({
+      fullName: myProfile.fullName,
+      email: myProfile.email,
+      phone: myProfile.phone ?? "",
+      country: myProfile.country,
+      bio: myProfile.bio,
+      yearsExperience: myProfile.yearsExperience,
+      specialisations: myProfile.specialisations,
+      languages: myProfile.languages,
+      region: myProfile.region ?? "",
+      credentialType: myProfile.credentialType ?? "",
+      credentialNumber: myProfile.credentialNumber ?? "",
+      credentialVerifyUrl: myProfile.credentialVerifyUrl ?? "",
+    });
+  }, [myProfile, hydrated]);
 
   const toggleProfileItem = (key: "specialisations" | "languages", item: string) => {
     setProfile((prev) => ({

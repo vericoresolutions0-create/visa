@@ -581,7 +581,7 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
                     <div className="px-3 pb-3">
                       <button
                         type="button"
-                        onClick={() => { void resolveFixItem({ fixItemId: fix._id }).then(() => toast.success("Marked as resolved.")); }}
+                        onClick={() => { void resolveFixItem({ fixItemId: fix._id }).then(() => toast.success("Marked as resolved.")).catch(() => toast.error("Couldn't mark this as resolved.")); }}
                         className="text-[11px] font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
                       >
                         ✓ Mark resolved
@@ -598,7 +598,7 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
                         <span className="text-xs text-foreground line-through flex-1">{fix.title}</span>
                         <button
                           type="button"
-                          onClick={() => { void unresolveFixItem({ fixItemId: fix._id }); }}
+                          onClick={() => { void unresolveFixItem({ fixItemId: fix._id }).catch(() => toast.error("Couldn't undo this.")); }}
                           className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
                         >Undo</button>
                       </div>
@@ -704,7 +704,7 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
                     {!signal.reviewedAt && (
                       <button
                         type="button"
-                        onClick={() => { void reviewFraudSignal({ signalId: signal._id }).then(() => toast.success("Marked as reviewed.")); }}
+                        onClick={() => { void reviewFraudSignal({ signalId: signal._id }).then(() => toast.success("Marked as reviewed.")).catch(() => toast.error("Couldn't mark this as reviewed.")); }}
                         className="shrink-0 text-[10px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer self-start"
                       >Reviewed</button>
                     )}
@@ -2238,7 +2238,7 @@ function OverviewSection({
                             clientName: req.fromName,
                             clientEmail: req.fromEmail,
                           });
-                          void markRead({ id: req._id });
+                          void markRead({ id: req._id }).catch(() => {});
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#0f2040] text-white hover:bg-[#1a3060] transition-colors cursor-pointer"
                       >
@@ -2246,7 +2246,7 @@ function OverviewSection({
                       </button>
                       <button
                         type="button"
-                        onClick={() => void markRead({ id: req._id })}
+                        onClick={() => void markRead({ id: req._id }).catch(() => toast.error("Couldn't mark this as read."))}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground border border-border hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
                       >
                         Mark read
