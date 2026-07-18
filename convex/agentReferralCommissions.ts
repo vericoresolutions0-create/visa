@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 
 // 15% of a Pro payment, 20% of an Expert payment — the founder's referral
 // promise to agents: refer a real client who upgrades, earn a cut of what
@@ -107,6 +107,7 @@ export const requestPayout = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     const profile = await ctx.db
       .query("agent_profiles")

@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { bumpStat } from "./platformStats.ts";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
 import { logSecurityEvent } from "./securityAudit.ts";
 
@@ -73,6 +73,7 @@ export const upsertProfile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if (!args.fullName.trim() || args.fullName.length > 200)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Full name must be under 200 characters." });
@@ -186,6 +187,7 @@ export const contactAgent = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     const agent = await ctx.db.get(args.agentProfileId);
     if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found" });
     if (!agent.verified) throw new ConvexError({ code: "FORBIDDEN", message: "You can only contact verified agents." });

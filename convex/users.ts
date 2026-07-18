@@ -161,6 +161,7 @@ export const updatePayoutSetup = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     if (!args.accountName.trim() || args.accountName.length > 200)
       throw new ConvexError({ code: "INVALID_PAYOUT", message: "Account name is required and must be under 200 characters." });
     if (!args.country.trim() || args.country.length > 100)

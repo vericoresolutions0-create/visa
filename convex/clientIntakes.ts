@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { validateUploadedFile } from "./fileValidation";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -20,6 +20,7 @@ export const createIntake = mutation({
   },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(agent);
     if (!agent.agentPlan) {
       throw new ConvexError({ code: "FORBIDDEN", message: "An active agent plan is required to create client intakes." });
     }
@@ -119,6 +120,7 @@ export const updateIntakeStatus = mutation({
   },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(agent);
 
     const intake = await ctx.db
       .query("client_intakes")
@@ -286,6 +288,7 @@ export const updateIntakeNotes = mutation({
   },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(agent);
     if (args.notes.length > 5000)
       throw new ConvexError({ code: "BAD_REQUEST", message: "Notes must be under 5000 characters." });
 
@@ -306,6 +309,7 @@ export const archiveIntake = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     const agent = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(agent);
 
     const intake = await ctx.db
       .query("client_intakes")
