@@ -1,6 +1,6 @@
-import { useState, Fragment, Component, type ReactNode, type ErrorInfo } from "react";
+import { useState, useEffect, Fragment, Component, type ReactNode, type ErrorInfo } from "react";
 import { motion } from "motion/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useAuth } from "@/hooks/use-auth.ts";
@@ -731,7 +731,32 @@ function AdminInner() {
   const { t } = useTranslation("admin");
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTabState] = useState<Tab>(() => {
+    const fromUrl = searchParams.get("tab");
+    return NAV_ITEMS.some((n) => n.id === fromUrl) ? (fromUrl as Tab) : "overview";
+  });
+  // Keep the tab in the URL so a refresh (or a link straight to a tab, like
+  // the System Health panel's shortcuts) lands back on the same screen
+  // instead of resetting to Overview. `replace` avoids piling up a history
+  // entry per tab click.
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set("tab", next);
+      return params;
+    }, { replace: true });
+  };
+  // Some panels (e.g. System Health's shortcut buttons) navigate straight to
+  // "/admin?tab=..." via useNavigate rather than calling setTab directly.
+  // Since that doesn't remount this component, pick up the change here too.
+  useEffect(() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && fromUrl !== tab && NAV_ITEMS.some((n) => n.id === fromUrl)) {
+      setTabState(fromUrl as Tab);
+    }
+  }, [searchParams]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const stats = useQuery(api.admin.getStats, {});
   const users = useQuery(api.admin.getUsers, { limit: 100 });

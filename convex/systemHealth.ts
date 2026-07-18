@@ -1,7 +1,19 @@
-import { query } from "./_generated/server";
+import { query, internalQuery } from "./_generated/server";
 import { requireAdmin } from "./admin.ts";
 import { readStats } from "./platformStats.ts";
 import { EMBASSY_MONITOR_URLS } from "../src/lib/embassy-monitor-urls.ts";
+
+// Cheapest possible real read — proves the database is actually reachable
+// and serving queries, not just that the HTTP router responded. Called only
+// from the public /health httpAction in convex/http.ts (internal, no auth
+// needed: nothing sensitive is read or returned).
+export const pingDb = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.db.query("users").take(1);
+    return true;
+  },
+});
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // Cron runs weekly — flag as stale past 9 days to give one day's slack for

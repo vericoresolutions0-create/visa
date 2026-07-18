@@ -10,14 +10,28 @@ const http = httpRouter();
 auth.addHttpRoutes(http);
 
 // Public health check — no auth required. Used by uptime monitors (UptimeRobot,
-// BetterUptime, etc.) to confirm the backend is reachable. Returns 200 + JSON.
+// BetterUptime, etc.) to confirm the backend is reachable. Does a real, cheap
+// database read (not just a static response) so a genuinely broken database
+// connection surfaces as a failing check instead of a false "ok".
 http.route({
   path: "/health",
   method: "GET",
-  handler: httpAction(async () => {
+  handler: httpAction(async (ctx) => {
+    let dbOk = true;
+    try {
+      await ctx.runQuery(internal.systemHealth.pingDb, {});
+    } catch {
+      dbOk = false;
+    }
+
     return new Response(
-      JSON.stringify({ status: "ok", service: "visaclear-api" }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({
+        status: dbOk ? "ok" : "degraded",
+        service: "visaclear-api",
+        dbOk,
+        checkedAt: new Date().toISOString(),
+      }),
+      { status: dbOk ? 200 : 503, headers: { "Content-Type": "application/json" } },
     );
   }),
 });
