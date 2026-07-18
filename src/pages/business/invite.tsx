@@ -7,7 +7,6 @@ import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { convexErrMsg } from "@/lib/utils.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -111,6 +110,7 @@ function AcceptFlow({ token, organizationName, isHousehold }: { token: string; o
 
 function InviteInner({ token }: { token: string }) {
   const { t } = useTranslation("business");
+  const navigate = useNavigate();
   const invite = useQuery(api.employerInvites.getInviteByToken, { token });
 
   if (invite === undefined) return <Skeleton className="h-48 w-full rounded-2xl" />;
@@ -150,7 +150,13 @@ function InviteInner({ token }: { token: string }) {
           <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
             {t("invite.signin_body", { email: invite.maskedEmail, org: invite.organizationName })}
           </p>
-          <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("invite.signin_cta")} />
+          <Button
+            size="lg"
+            className="cursor-pointer font-semibold"
+            onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/business/invite/${token}`)}`)}
+          >
+            {t("invite.signin_cta")}
+          </Button>
         </div>
       </Unauthenticated>
       <Authenticated>

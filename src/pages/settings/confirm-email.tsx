@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@/convex/_generated/api.js";
 import { convexErrMsg } from "@/lib/utils.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { Globe, LogIn, ShieldCheck, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
@@ -68,6 +67,7 @@ function ConfirmFlow({ token }: { token: string }) {
 
 export default function ConfirmEmailPage() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation("confirm-email");
   useSeo({ title: "Confirm Email", description: "Confirm a pending email change for your VisaClear account." });
   const goBack = useSmartBack("/settings/profile");
@@ -98,7 +98,13 @@ export default function ConfirmEmailPage() {
                 <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
                   {t("signin.body")}
                 </p>
-                <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("signin.cta")} />
+                <Button
+                  size="lg"
+                  className="cursor-pointer font-semibold"
+                  onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/settings/confirm-email/${token}`)}`)}
+                >
+                  {t("signin.cta")}
+                </Button>
               </div>
             </Unauthenticated>
             <Authenticated>

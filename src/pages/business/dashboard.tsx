@@ -8,7 +8,6 @@ import type { Id } from "@/convex/_generated/dataModel.js";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -213,8 +212,8 @@ function EmployeeDetailPanel({ row, onClose, orgCtx }: { row: CohortRow; onClose
     try {
       await updateDetails({ linkId: row.linkId, department: department || undefined, roleTitle: roleTitle || undefined, targetRelocationDate: targetDate || undefined });
       toast.success(t("dashboard.details_saved"));
-    } catch {
-      toast.error(t("dashboard.details_save_failed"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("dashboard.details_save_failed"));
     } finally {
       setSaving(false);
     }
@@ -225,8 +224,8 @@ function EmployeeDetailPanel({ row, onClose, orgCtx }: { row: CohortRow; onClose
     try {
       await addNote({ linkId: row.linkId, note: noteText });
       setNoteText("");
-    } catch {
-      toast.error(t("dashboard.note_add_failed"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("dashboard.note_add_failed"));
     }
   };
 
@@ -463,8 +462,8 @@ function DashboardInner() {
   const handleAdvance = async (row: CohortRow, stage: PipelineStage) => {
     try {
       await setPipelineStage({ linkId: row.linkId, pipelineStage: stage });
-    } catch {
-      toast.error(t("dashboard.pipeline_update_failed"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("dashboard.pipeline_update_failed"));
     }
   };
 
@@ -472,8 +471,8 @@ function DashboardInner() {
     try {
       await resendInvite({ linkId });
       toast.success(t("dashboard.invite_resent"));
-    } catch {
-      toast.error(t("dashboard.resend_failed"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("dashboard.resend_failed"));
     }
   };
 
@@ -481,8 +480,8 @@ function DashboardInner() {
     try {
       await revokeInvite({ linkId });
       toast.success(t("dashboard.access_revoked"));
-    } catch {
-      toast.error(t("dashboard.revoke_failed"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("dashboard.revoke_failed"));
     }
   };
 
@@ -501,10 +500,21 @@ function DashboardInner() {
     }
   };
 
-  const accepted = (cohort as CohortRow[]).filter((r) => r.status === "accepted").length;
   const pending = (cohort as CohortRow[]).filter((r) => r.status === "pending").length;
-  const active = (cohort as CohortRow[]).filter((r) => r.pipelineStage === "in_progress" || r.pipelineStage === "ready").length;
   const relocated = (cohort as CohortRow[]).filter((r) => r.pipelineStage === "relocated").length;
+  // Accepted-and-not-yet-relocated — was previously computed as two
+  // overlapping counts added together (status === "accepted" PLUS
+  // pipelineStage in {in_progress, ready}), so anyone accepted AND advanced
+  // past the initial "accepted" stage was counted twice, letting "Active"
+  // exceed "Total" on the stats bar.
+  const active = (cohort as CohortRow[]).filter((r) => r.status === "accepted" && r.pipelineStage !== "relocated").length;
+  // "Total"/header count should mean people currently in the cohort — not
+  // every row ever created. Re-inviting someone after they declined or were
+  // revoked creates a new row rather than reusing the old one (by design,
+  // so the old row stays visible as history under the status filter below),
+  // but that meant declined/revoked rows were still counted toward the
+  // headcount forever, inflating it for any org with normal invite churn.
+  const cohortTotal = (cohort as CohortRow[]).filter((r) => r.status !== "declined" && r.status !== "revoked").length;
 
   return (
     <div className="space-y-6">
@@ -512,7 +522,7 @@ function DashboardInner() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-primary">{myOrg.name}</h1>
-          <p className="text-sm text-muted-foreground">{t(cohort.length === 1 ? "dashboard.cohort_person_one" : "dashboard.cohort_person_other", { count: cohort.length })}</p>
+          <p className="text-sm text-muted-foreground">{t(cohortTotal === 1 ? "dashboard.cohort_person_one" : "dashboard.cohort_person_other", { count: cohortTotal })}</p>
         </div>
         <div className="flex gap-2 shrink-0">
           <Button
@@ -530,9 +540,9 @@ function DashboardInner() {
       {cohort.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total", value: cohort.length, color: "text-primary" },
+            { label: "Total", value: cohortTotal, color: "text-primary" },
             { label: "Invited", value: pending, color: "text-amber-600" },
-            { label: "Active", value: accepted + active, color: "text-blue-600" },
+            { label: "Active", value: active, color: "text-blue-600" },
             { label: "Completed", value: relocated, color: "text-emerald-600" },
           ].map(({ label, value, color }) => (
             <div key={label} className="rounded-xl border border-border bg-card px-4 py-3.5">
@@ -768,7 +778,13 @@ export default function BusinessDashboardPage() {
               <LogIn className="w-6 h-6 text-primary" />
             </div>
             <h2 className="font-serif text-2xl font-semibold text-primary mb-3">{t("dashboard.signin_title")}</h2>
-            <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("dashboard.signin_cta")} />
+            <Button
+              size="lg"
+              className="cursor-pointer font-semibold"
+              onClick={() => navigate(`/login?returnTo=${encodeURIComponent("/business/dashboard")}`)}
+            >
+              {t("dashboard.signin_cta")}
+            </Button>
           </div>
         </Unauthenticated>
         <Authenticated>

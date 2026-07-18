@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
@@ -127,6 +126,7 @@ function CreateOrgForm() {
 
 export default function BusinessOnboardingPage() {
   const { t } = useTranslation("business");
+  const navigate = useNavigate();
   useSeo({ title: "Create Your Organisation", description: "Set up your company, university, or agency account on VisaClear to track your cohort's visa readiness." });
   const goBack = useSmartBack("/business");
 
@@ -156,7 +156,13 @@ export default function BusinessOnboardingPage() {
             <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
               {t("onboarding.signin_body")}
             </p>
-            <SignInButton size="lg" className="cursor-pointer font-semibold" signInText={t("onboarding.signin_cta")} />
+            <Button
+              size="lg"
+              className="cursor-pointer font-semibold"
+              onClick={() => navigate(`/login?returnTo=${encodeURIComponent("/business/onboarding")}`)}
+            >
+              {t("onboarding.signin_cta")}
+            </Button>
           </div>
         </Unauthenticated>
         <Authenticated>

@@ -24,12 +24,17 @@ export const getInviteByToken = query({
     const isCorrectAccount = caller?.email
       ? caller.email.toLowerCase() === link.invitedEmail
       : null;
+    // acceptInvite/declineInvite already reject an expired link — this
+    // surfaces that up front instead of only after sign-in + checklist
+    // selection, matching how invalid/revoked/declined links are already
+    // shown immediately rather than discovered deep in the flow.
+    const isExpired = link.status === "pending" && !!link.expiresAt && link.expiresAt <= new Date().toISOString();
     return {
       organizationName: org?.name ?? "an employer",
       organizationType: org?.type ?? "employer",
       maskedEmail: maskEmail(link.invitedEmail),
       isCorrectAccount,
-      status: link.status,
+      status: isExpired ? ("expired" as const) : link.status,
     };
   },
 });

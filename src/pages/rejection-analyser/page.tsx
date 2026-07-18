@@ -8,7 +8,6 @@ import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.js";
-import { SignInButton } from "@/components/ui/signin.tsx";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { useCountryName } from "@/hooks/use-country-name.ts";
 import { useTranslation } from "react-i18next";
@@ -990,7 +989,13 @@ export default function RejectionAnalyserPage() {
             <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
               Sign in to use the AI Rejection Analyser and save your recovery plan.
             </p>
-            <SignInButton size="lg" className="cursor-pointer font-semibold" signInText="Sign In to Analyse" />
+            <Button
+              size="lg"
+              className="cursor-pointer font-semibold"
+              onClick={() => navigate(`/login?returnTo=${encodeURIComponent("/rejection-analyser")}`)}
+            >
+              Sign In to Analyse
+            </Button>
           </div>
         </Unauthenticated>
 

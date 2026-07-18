@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
-import { DemoSignInButton, SignInButton } from "@/components/ui/signin.tsx";
+import { DemoSignInButton } from "@/components/ui/signin.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
@@ -820,10 +820,13 @@ export default function ProfileSettingsPage() {
                 {t("signin.body")}
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3">
-                <SignInButton
+                <Button
                   size="lg"
                   className="cursor-pointer font-semibold px-8"
-                />
+                  onClick={() => navigate(`/login?returnTo=${encodeURIComponent("/settings/profile")}`)}
+                >
+                  Sign In
+                </Button>
                 <DemoSignInButton
                   size="lg"
                   className="cursor-pointer font-semibold px-8"

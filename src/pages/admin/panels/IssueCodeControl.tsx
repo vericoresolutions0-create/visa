@@ -10,10 +10,14 @@ import { IssuedCodesList } from "./IssuedCodesList.tsx";
 
 type LicensePlan = "agent_listing" | "agent_featured" | "agency_white_label";
 
+// Mirrors the PLANS array on src/pages/white-label/page.tsx — the only
+// place that ever submits a whitelabel_applications.plan value ("starter",
+// "agency", or "enterprise"). "enterprise" previously fell through to the
+// default (agent_listing, the cheapest tier) since nothing matched it,
+// silently suggesting the wrong plan for the highest-tier applicants.
 function suggestLicensePlan(requestedPlan: string): LicensePlan {
   if (requestedPlan === "starter") return "agent_listing";
-  if (requestedPlan === "agency") return "agency_white_label";
-  if (requestedPlan === "professional" || requestedPlan === "featured") return "agent_featured";
+  if (requestedPlan === "agency" || requestedPlan === "enterprise") return "agency_white_label";
   return "agent_listing";
 }
 
