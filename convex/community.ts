@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
 import { getEffectivePlan } from "./checklists.ts";
@@ -69,6 +69,7 @@ export const submitPost = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if (!PAID_PLANS.includes(getEffectivePlan(user) as (typeof PAID_PLANS)[number])) {
       throw new ConvexError({

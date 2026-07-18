@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin } from "./admin.ts";
 
 // Authenticated users may submit one review per agent after an engagement.
@@ -14,6 +14,7 @@ export const submitReview = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if (!Number.isInteger(args.starRating) || args.starRating < 1 || args.starRating > 5) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Rating must be a whole number between 1 and 5." });
