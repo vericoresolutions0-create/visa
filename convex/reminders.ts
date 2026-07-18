@@ -20,6 +20,13 @@ export const createReminder = mutation({
       throw new ConvexError({ code: "BAD_REQUEST", message: "Your account needs a verified email address to create reminders." });
     }
 
+    if (args.checklistId) {
+      const checklist = await ctx.db.get(args.checklistId);
+      if (!checklist || checklist.userId !== user._id) {
+        throw new ConvexError({ code: "FORBIDDEN", message: "You don't have access to this checklist." });
+      }
+    }
+
     return await ctx.db.insert("reminders", {
       userId: user._id,
       title: args.title,
