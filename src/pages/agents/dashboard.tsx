@@ -2478,8 +2478,16 @@ function DashboardInner() {
     return count;
   }, [intakes, lastViewedAt]);
 
+  // Marks the dashboard "viewed" when the agent actually leaves, not the
+  // instant it loads — firing on mount meant the "N new uploads since last
+  // visit" badge cleared itself within one network round trip of arriving,
+  // defeating the point of a since-you-were-last-here summary. Firing on
+  // unmount instead keeps the count stable for the whole visit.
   useEffect(() => {
-    if (myProfile) void markDashboardViewed({}).catch(() => {});
+    if (!myProfile) return;
+    return () => {
+      void markDashboardViewed({}).catch(() => {});
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myProfile?._id]);
 

@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query, internalMutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
@@ -136,6 +137,7 @@ export const submitLeadFromRejectionAnalysis = internalMutation({
 // lockReason that drives the right CTA in the UI.
 export const getMarketplaceLeads = query({
   args: {
+    paginationOpts: paginationOptsValidator,
     destinationFilter: v.optional(v.string()),
     urgencyFilter: v.optional(
       v.union(
@@ -147,7 +149,7 @@ export const getMarketplaceLeads = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return [];
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
 
     const profile = await ctx.db
       .query("agent_profiles")
@@ -162,13 +164,18 @@ export const getMarketplaceLeads = query({
         ? "unverified"
         : null;
 
-    const rawLeads = await ctx.db
+    // Was previously .take(50) with no pagination — once open leads exceed
+    // 50, anything older silently fell off Browse with no way to reach it.
+    // Filtering (self-exclusion, destination, urgency) after .paginate()
+    // means a returned page can have fewer items than requested — the same
+    // accepted tradeoff community.ts's listApprovedPosts already makes.
+    const result = await ctx.db
       .query("marketplace_leads")
       .withIndex("by_status", (q) => q.eq("status", "open"))
       .order("desc")
-      .take(50);
+      .paginate(args.paginationOpts);
 
-    const filtered = rawLeads.filter((lead) => {
+    const filtered = result.page.filter((lead) => {
       if (lead.userId === user._id) return false;
       if (args.destinationFilter && lead.destinationCountry !== args.destinationFilter)
         return false;
@@ -180,24 +187,27 @@ export const getMarketplaceLeads = query({
     // Agents who can't unlock anything yet — return a locked preview so the
     // UI can show them the leads exist and drive them toward completing setup.
     if (gateReason !== null) {
-      return filtered.map((lead) => ({
-        _id: lead._id,
-        _creationTime: lead._creationTime,
-        visaType: lead.visaType,
-        destinationCountry: lead.destinationCountry,
-        urgencyLevel: lead.urgencyLevel,
-        additionalNotes: null,
-        status: lead.status,
-        unlockCost: lead.unlockCost,
-        createdAt: lead.createdAt,
-        isUnlocked: false as const,
-        lockReason: gateReason as "no_profile" | "unverified",
-        unlockedAt: null,
-        creditsSpent: null,
-        applicantName: "Verified Applicant",
-        applicantEmail: null,
-        applicantPhone: null,
-      }));
+      return {
+        ...result,
+        page: filtered.map((lead) => ({
+          _id: lead._id,
+          _creationTime: lead._creationTime,
+          visaType: lead.visaType,
+          destinationCountry: lead.destinationCountry,
+          urgencyLevel: lead.urgencyLevel,
+          additionalNotes: null,
+          status: lead.status,
+          unlockCost: lead.unlockCost,
+          createdAt: lead.createdAt,
+          isUnlocked: false as const,
+          lockReason: gateReason as "no_profile" | "unverified",
+          unlockedAt: null,
+          creditsSpent: null,
+          applicantName: "Verified Applicant",
+          applicantEmail: null,
+          applicantPhone: null,
+        })),
+      };
     }
 
     // Verified agent — batch resolve unlock status and submitter data
@@ -217,54 +227,57 @@ export const getMarketplaceLeads = query({
       Promise.all(filtered.map((lead) => ctx.db.get(lead.userId))),
     ]);
 
-    return filtered.map((lead, i) => {
-      const unlock = unlockStatuses[i];
-      const submitter = submitters[i];
+    return {
+      ...result,
+      page: filtered.map((lead, i) => {
+        const unlock = unlockStatuses[i];
+        const submitter = submitters[i];
 
-      if (unlock !== null) {
+        if (unlock !== null) {
+          return {
+            _id: lead._id,
+            _creationTime: lead._creationTime,
+            visaType: lead.visaType,
+            destinationCountry: lead.destinationCountry,
+            urgencyLevel: lead.urgencyLevel,
+            additionalNotes: lead.additionalNotes ?? null,
+            status: lead.status,
+            unlockCost: lead.unlockCost,
+            createdAt: lead.createdAt,
+            isUnlocked: true as const,
+            lockReason: null,
+            unlockedAt: unlock.unlockedAt,
+            creditsSpent: unlock.creditsSpent,
+            applicantName: submitter?.name ?? "Applicant",
+            applicantEmail: submitter?.email ?? null,
+            applicantPhone: submitter?.phone ?? null,
+          };
+        }
+
+        // Per-lead lock reason: agent verified but can't afford this one
+        const lockReason: "insufficient_credits" | null =
+          balance < lead.unlockCost ? "insufficient_credits" : null;
+
         return {
           _id: lead._id,
           _creationTime: lead._creationTime,
           visaType: lead.visaType,
           destinationCountry: lead.destinationCountry,
           urgencyLevel: lead.urgencyLevel,
-          additionalNotes: lead.additionalNotes ?? null,
+          additionalNotes: null,
           status: lead.status,
           unlockCost: lead.unlockCost,
           createdAt: lead.createdAt,
-          isUnlocked: true as const,
-          lockReason: null,
-          unlockedAt: unlock.unlockedAt,
-          creditsSpent: unlock.creditsSpent,
-          applicantName: submitter?.name ?? "Applicant",
-          applicantEmail: submitter?.email ?? null,
-          applicantPhone: submitter?.phone ?? null,
+          isUnlocked: false as const,
+          lockReason,
+          unlockedAt: null,
+          creditsSpent: null,
+          applicantName: "Verified Applicant",
+          applicantEmail: null,
+          applicantPhone: null,
         };
-      }
-
-      // Per-lead lock reason: agent verified but can't afford this one
-      const lockReason: "insufficient_credits" | null =
-        balance < lead.unlockCost ? "insufficient_credits" : null;
-
-      return {
-        _id: lead._id,
-        _creationTime: lead._creationTime,
-        visaType: lead.visaType,
-        destinationCountry: lead.destinationCountry,
-        urgencyLevel: lead.urgencyLevel,
-        additionalNotes: null,
-        status: lead.status,
-        unlockCost: lead.unlockCost,
-        createdAt: lead.createdAt,
-        isUnlocked: false as const,
-        lockReason,
-        unlockedAt: null,
-        creditsSpent: null,
-        applicantName: "Verified Applicant",
-        applicantEmail: null,
-        applicantPhone: null,
-      };
-    });
+      }),
+    };
   },
 });
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery } from "convex/react";
+import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, useQuery, usePaginatedQuery } from "convex/react";
 
 import { toast } from "sonner";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
@@ -488,10 +488,14 @@ function MarketplaceLeadsContent() {
   const [showTopUp, setShowTopUp] = useState(false);
 
   const creditBalance = useQuery(api.marketplace.getMyCreditBalance) ?? 0;
-  const leads = useQuery(api.marketplace.getMarketplaceLeads, {
-    destinationFilter: destFilter || undefined,
-    urgencyFilter: (urgencyFilter as UrgencyLevel) || undefined,
-  }) ?? [];
+  const { results: leads, status: leadsStatus, loadMore: loadMoreLeads } = usePaginatedQuery(
+    api.marketplace.getMarketplaceLeads,
+    {
+      destinationFilter: destFilter || undefined,
+      urgencyFilter: (urgencyFilter as UrgencyLevel) || undefined,
+    },
+    { initialNumItems: 20 },
+  );
   const unlockedLeads = useQuery(api.marketplace.getMyUnlockedLeads) ?? [];
   const creditHistory = useQuery(api.marketplace.getMyCreditHistory) ?? [];
   const unlockLead = useMutation(api.marketplace.unlockLead);
@@ -718,19 +722,34 @@ function MarketplaceLeadsContent() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {leads.map((lead) => (
-                  <LeadCard
-                    key={lead._id}
-                    lead={lead}
-                    onUnlock={handleUnlock}
-                    onTopUp={() => setShowTopUp(true)}
-                    unlocking={unlocking}
-                    creditBalance={creditBalance}
-                    navigate={navigate}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {leads.map((lead) => (
+                    <LeadCard
+                      key={lead._id}
+                      lead={lead}
+                      onUnlock={handleUnlock}
+                      onTopUp={() => setShowTopUp(true)}
+                      unlocking={unlocking}
+                      creditBalance={creditBalance}
+                      navigate={navigate}
+                    />
+                  ))}
+                </div>
+                {leadsStatus === "CanLoadMore" && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      onClick={() => loadMoreLeads(20)}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+                    >
+                      Load more leads
+                    </button>
+                  </div>
+                )}
+                {leadsStatus === "LoadingMore" && (
+                  <p className="text-center text-xs text-muted-foreground mt-6">Loading more…</p>
+                )}
+              </>
             )}
           </div>
         )}

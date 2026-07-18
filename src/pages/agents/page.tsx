@@ -262,8 +262,8 @@ function RegisterAgentForm({ onClose, existingProfile }: { onClose: () => void; 
       });
       toast.success(t("form.toast_success"));
       onClose();
-    } catch {
-      toast.error(t("form.toast_error"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("form.toast_error"));
     } finally {
       setSaving(false);
     }
@@ -307,18 +307,22 @@ function RegisterAgentForm({ onClose, existingProfile }: { onClose: () => void; 
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.years_exp")}</label>
             <input
-              type="number" min={1} max={40}
+              type="number" min={1} max={60}
               value={form.yearsExperience}
-              onChange={(e) => setForm((prev) => ({ ...prev, yearsExperience: parseInt(e.target.value) || 1 }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, yearsExperience: Math.min(60, parseInt(e.target.value) || 1) }))}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">{t("form.bio")}</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-foreground">{t("form.bio")}</label>
+              <span className="text-[11px] text-muted-foreground">{form.bio.length}/1000</span>
+            </div>
             <textarea
               value={form.bio}
               onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))}
               rows={3}
+              maxLength={1000}
               placeholder={t("form.bio_placeholder")}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />

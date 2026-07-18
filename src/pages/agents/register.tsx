@@ -19,7 +19,7 @@ import {
   type AgentPlanId,
   type BillingCycle,
 } from "@/lib/agent-plans.ts";
-import { cn } from "@/lib/utils.ts";
+import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -134,8 +134,8 @@ export default function AgentRegisterPage() {
         credentialVerifyUrl: profile.credentialVerifyUrl.trim() || undefined,
       });
       setStep(3);
-    } catch {
-      toast.error(t("register.toast_error"));
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? t("register.toast_error"));
     } finally {
       setSavingProfile(false);
     }
@@ -334,10 +334,15 @@ export default function AgentRegisterPage() {
                     />
                   </label>
                 </div>
-                <label className="text-sm block">{t("register.bio")}
+                <label className="text-sm block">
+                  <div className="flex items-center justify-between">
+                    <span>{t("register.bio")}</span>
+                    <span className="text-[11px] text-muted-foreground">{profile.bio.length}/1000</span>
+                  </div>
                   <textarea
                     value={profile.bio}
                     onChange={(e) => setProfile((prev) => ({ ...prev, bio: e.target.value }))}
+                    maxLength={1000}
                     className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 min-h-[90px]"
                     placeholder={t("register.bio_placeholder")}
                   />
@@ -346,9 +351,9 @@ export default function AgentRegisterPage() {
                   <input
                     type="number"
                     min={1}
-                    max={40}
+                    max={60}
                     value={profile.yearsExperience}
-                    onChange={(e) => setProfile((prev) => ({ ...prev, yearsExperience: parseInt(e.target.value) || 1 }))}
+                    onChange={(e) => setProfile((prev) => ({ ...prev, yearsExperience: Math.min(60, parseInt(e.target.value) || 1) }))}
                     className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5"
                   />
                 </label>

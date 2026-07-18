@@ -66,12 +66,16 @@ crons.cron(
   {},
 );
 
-// 6:00 AM UTC daily — finds agent trials whose expiry timestamp has passed,
+// Every 4 hours — finds agent trials whose expiry timestamp has passed,
 // clears the trial fields on users, and resets agent_profiles.tier back to
-// the real paid plan so the marketplace reflects the correct tier.
-crons.cron(
+// the real paid plan so the marketplace reflects the correct tier. Was
+// previously once daily, which left up to ~24h where an agent's own
+// dashboard correctly showed "no active trial" (getMyTrialStatus checks the
+// expiry timestamp directly, live) while their public marketplace listing
+// still showed the expired trial's tier — this shrinks that window to ~4h.
+crons.interval(
   "cleanup expired agent trials",
-  "0 6 * * *",
+  { hours: 4 },
   internal.agentTrials.cleanupExpiredTrials,
   {},
 );

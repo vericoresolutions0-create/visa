@@ -197,3 +197,53 @@ describe("marketplace.unlockLead — guard chain", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("marketplace.getMarketplaceLeads — pagination", () => {
+  test("leads beyond the old 50-item cap are reachable by continuing with the cursor", async () => {
+    // Regression test — getMarketplaceLeads used to hard .take(50), so any
+    // open lead older than the 50 most recent silently fell off Browse with
+    // no way for any agent to ever reach it, forever.
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t);
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com" }));
+
+    const TOTAL_LEADS = 55;
+    for (let i = 0; i < TOTAL_LEADS; i++) {
+      await seedLead(t, ownerId, { unlockCost: 1 });
+    }
+
+    const seen = new Set<string>();
+    let cursor: string | null = null;
+    let isDone = false;
+    let guard = 0;
+    while (!isDone && guard < 20) {
+      guard += 1;
+      const result: { page: { _id: string }[]; isDone: boolean; continueCursor: string } = await t
+        .withIdentity({ subject: agentUserId })
+        .query(api.marketplace.getMarketplaceLeads, {
+          paginationOpts: { numItems: 20, cursor },
+        });
+      for (const lead of result.page) seen.add(lead._id);
+      isDone = result.isDone;
+      cursor = result.continueCursor;
+    }
+
+    expect(seen.size).toBe(TOTAL_LEADS); // every single lead was eventually reachable
+  });
+
+  test("a single page still respects the requested page size", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t);
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com" }));
+
+    for (let i = 0; i < 5; i++) {
+      await seedLead(t, ownerId, { unlockCost: 1 });
+    }
+
+    const result = await t.withIdentity({ subject: agentUserId }).query(api.marketplace.getMarketplaceLeads, {
+      paginationOpts: { numItems: 3, cursor: null },
+    });
+    expect(result.page.length).toBeLessThanOrEqual(3);
+    expect(result.isDone).toBe(false);
+  });
+});
