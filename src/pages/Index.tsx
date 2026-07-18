@@ -106,6 +106,7 @@ export default function Index() {
     { label: t("footer.links.contact"), path: "/contact", color: "bg-slate-800/60 text-slate-300 hover:bg-slate-700/70 border-slate-600/40" },
     { label: t("footer.links.privacy_policy"), path: "/privacy", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
     { label: t("footer.links.terms"), path: "/terms", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
+    { label: t("footer.links.security"), path: "/security", color: "bg-muted/50 text-muted-foreground hover:bg-muted border-border/40" },
   ];
 
   return (

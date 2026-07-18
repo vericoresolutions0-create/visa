@@ -1,0 +1,9 @@
+# This is a copy of our canonical security.txt, kept here for tools that
+# still look in the old location instead of /.well-known/.
+# Canonical version: https://visaclear.app/.well-known/security.txt
+
+Contact: mailto:hello@visaclear.app
+Expires: 2027-07-18T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://visaclear.app/.well-known/security.txt
+Policy: https://visaclear.app/security

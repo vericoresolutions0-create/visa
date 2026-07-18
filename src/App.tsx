@@ -66,6 +66,7 @@ const ClientPortalPage = lazy(() => import("./pages/agents/client-portal.tsx"));
 const OnboardingPage = lazy(() => import("./pages/onboarding/page.tsx"));
 const TermsPage = lazy(() => import("./pages/terms/page.tsx"));
 const PrivacyPage = lazy(() => import("./pages/privacy/page.tsx"));
+const SecurityPage = lazy(() => import("./pages/security/page.tsx"));
 const AdminPage = lazy(() => import("./pages/admin/page.tsx"));
 const WhiteLabelPage = lazy(() => import("./pages/white-label/page.tsx"));
 const BusinessLandingPage = lazy(() => import("./pages/business/page.tsx"));
@@ -255,6 +256,7 @@ function AppRoutes() {
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/security" element={<SecurityPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/white-label" element={<WhiteLabelPage />} />
           <Route path="/business" element={<BusinessLandingPage />} />
