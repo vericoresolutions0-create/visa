@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
+import { mintFileToken } from "./fileTokens.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -73,17 +74,18 @@ export const listMyIntakes = query({
           .query("client_documents")
           .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
           .take(30);
-        const documentsWithUrls = await Promise.all(
-          documents.map(async (doc) => ({
-            _id: doc._id,
-            label: doc.label,
-            fileName: doc.fileName,
-            fileSize: doc.fileSize,
-            mimeType: doc.mimeType,
-            uploadedAt: doc.uploadedAt,
-            url: await ctx.storage.getUrl(doc.storageId),
-          })),
-        );
+        // No download URL here anymore — permanent, unauthenticated storage
+        // links are replaced by getClientDocumentDownloadUrl below, minted
+        // fresh (and re-checked) at the moment the agent actually opens one.
+        const documentsWithUrls = documents.map((doc) => ({
+          _id: doc._id,
+          label: doc.label,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          uploadedAt: doc.uploadedAt,
+          url: null as string | null,
+        }));
         const claimedBy = intake.claimedByUserId
           ? await ctx.db.get(intake.claimedByUserId)
           : null;
@@ -104,6 +106,39 @@ export const listMyIntakes = query({
         };
       }),
     );
+  },
+});
+
+// ─── Agent: mint a short-lived link to actually view/download a client's
+// uploaded document. Re-checks the agent owns this intake (and still has an
+// active plan) fresh every time, unlike a permanent link handed out once.
+export const getClientDocumentDownloadUrl = mutation({
+  args: { documentId: v.id("client_documents") },
+  handler: async (ctx, args) => {
+    const agent = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(agent);
+    if (!agent.agentPlan) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "An active agent plan is required to view client documents." });
+    }
+
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Document not found." });
+    const intake = await ctx.db.get(doc.intakeId);
+    if (!intake || intake.agentId !== agent._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your client's document." });
+    }
+
+    const siteUrl = process.env.CONVEX_SITE_URL;
+    if (!siteUrl) {
+      throw new ConvexError({ code: "NOT_CONFIGURED", message: "File serving isn't available right now." });
+    }
+
+    const token = await mintFileToken(ctx, {
+      storageId: doc.storageId,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+    });
+    return `${siteUrl}/files/download?token=${token}`;
   },
 });
 

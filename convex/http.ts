@@ -36,6 +36,64 @@ http.route({
   }),
 });
 
+// Serves real client files (Vault documents, agent client-intake documents)
+// behind a short-lived bearer token instead of Convex's own permanent,
+// unauthenticated storage.getUrl links. The token itself is the credential —
+// it was only ever minted after a fresh ownership check in vault.ts /
+// clientIntakes.ts, and expires in 5 minutes (see convex/fileTokens.ts).
+// The frontend's own download button does `fetch(url)` (to force a save-as
+// instead of a navigation) from the app's origin — a different origin than
+// this httpAction's *.convex.site domain, so the response needs a matching
+// CORS header or the browser silently rejects the fetch. Reflect the
+// request's Origin only when it's the real frontend (or, in local dev, the
+// loopback address), rather than allowing any site to pull these links.
+function allowedOrigin(request: Request): string | null {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  const siteUrl = process.env.SITE_URL || "https://visaclear.app";
+  if (origin === siteUrl) return origin;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
+  return null;
+}
+
+http.route({
+  path: "/files/download",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const cors = allowedOrigin(request);
+    const corsHeaders: Record<string, string> = cors
+      ? { "Access-Control-Allow-Origin": cors, Vary: "Origin" }
+      : {};
+
+    const token = new URL(request.url).searchParams.get("token");
+    if (!token) return new Response("Missing token.", { status: 400, headers: corsHeaders });
+
+    const record = await ctx.runQuery(internal.fileTokens.validateFileToken, { token });
+    if (!record) {
+      return new Response("This link has expired. Go back and open the document again.", { status: 410, headers: corsHeaders });
+    }
+
+    const blob = await ctx.storage.get(record.storageId);
+    if (!blob) return new Response("File not found.", { status: 404, headers: corsHeaders });
+
+    // Strip anything that isn't a plain printable ASCII char (and drop
+    // quotes specifically) before it goes into a response header — a
+    // label/filename is user-supplied text and must not break out of the
+    // quoted Content-Disposition attribute.
+    const safeFileName = record.fileName.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+
+    return new Response(blob, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": record.mimeType || "application/octet-stream",
+        "Content-Disposition": `inline; filename="${safeFileName}"`,
+        "Cache-Control": "private, max-age=0, no-store",
+      },
+    });
+  }),
+});
+
 // Stripe signs every webhook body with HMAC-SHA256 over "{timestamp}.{body}"
 // — verified here with the Web Crypto API (no Node runtime available in an
 // httpAction) instead of the Stripe SDK's own verifier, which assumes Node.

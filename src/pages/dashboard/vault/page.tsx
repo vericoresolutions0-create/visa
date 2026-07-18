@@ -115,6 +115,7 @@ export default function DocumentVaultPage() {
   const addDocument = useMutation(api.vault.addDocument);
   const deleteDocument = useMutation(api.vault.deleteDocument);
   const createExpiryReminder = useMutation(api.vault.createExpiryReminder);
+  const getDocumentDownloadUrl = useMutation(api.vault.getDocumentDownloadUrl);
 
   const { gate, GateModal } = useDemoGate();
 
@@ -246,19 +247,40 @@ export default function DocumentVaultPage() {
   const isRealUrl = (url: string | null): url is string =>
     Boolean(url) && url !== "#";
 
-  const handlePreview = (url: string | null) => {
-    if (!isRealUrl(url)) {
+  // Real documents no longer carry a ready-made URL — listMyDocuments
+  // returns `url: null` for them (only the demo/seeded rows use "#" or a
+  // blob: URL). For a real doc we mint a fresh, short-lived link right at
+  // the moment of the click, so a leaked link can't be reused later.
+  const resolveRealDocumentUrl = async (documentId: Id<"vault_documents">): Promise<string | null> => {
+    try {
+      return await getDocumentDownloadUrl({ documentId });
+    } catch {
+      toast.error("Couldn't open that document. Please try again.");
+      return null;
+    }
+  };
+
+  const handlePreview = async (doc: { _id: Id<"vault_documents">; url: string | null }) => {
+    if (doc.url === "#") {
       toast.info("This is a sample demo document — upload your own files to preview them.");
       return;
     }
-    window.open(url, "_blank", "noopener,noreferrer");
+    // Demo-mode, user-uploaded-this-session files already have a real blob: URL.
+    if (doc.url && doc.url.startsWith("blob:")) {
+      window.open(doc.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const freshUrl = await resolveRealDocumentUrl(doc._id);
+    if (freshUrl) window.open(freshUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleDownload = async (url: string | null, fileName: string) => {
-    if (!isRealUrl(url)) {
+  const handleDownload = async (doc: { _id: Id<"vault_documents">; url: string | null }, fileName: string) => {
+    if (doc.url === "#") {
       toast.info("This is a sample demo document — upload your own files to download them.");
       return;
     }
+    const url = doc.url && doc.url.startsWith("blob:") ? doc.url : await resolveRealDocumentUrl(doc._id);
+    if (!isRealUrl(url)) return;
     // Blob URLs (user-uploaded files in demo mode) can be downloaded directly
     // without fetching — they're already in memory.
     if (url.startsWith("blob:")) {
@@ -444,7 +466,7 @@ export default function DocumentVaultPage() {
                             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                             <div className="flex-1 min-w-0">
                               <button
-                                onClick={() => handlePreview(doc.url)}
+                                onClick={() => void handlePreview(doc)}
                                 className="text-sm font-medium text-foreground truncate hover:text-primary hover:underline cursor-pointer text-left block w-full"
                               >
                                 {doc.label}
@@ -502,14 +524,14 @@ export default function DocumentVaultPage() {
                               )
                             )}
                             <button
-                              onClick={() => handlePreview(doc.url)}
+                              onClick={() => void handlePreview(doc)}
                               className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors cursor-pointer shrink-0"
                               title="Preview"
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => void handleDownload(doc.url, doc.fileName)}
+                              onClick={() => void handleDownload(doc, doc.fileName)}
                               className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors cursor-pointer shrink-0"
                               title="Download"
                             >

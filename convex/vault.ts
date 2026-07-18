@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authHelpers.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
+import { mintFileToken } from "./fileTokens.ts";
 
 const VAULT_CATEGORIES = [
   "identity",
@@ -187,7 +188,11 @@ export const createExpiryReminder = mutation({
   },
 });
 
-// ─── List my vault documents (with download URLs), newest first ─────────────
+// ─── List my vault documents, newest first ───────────────────────────────────
+// No download URL here anymore — those are minted on demand (see
+// getDocumentDownloadUrl below) so a link can't outlive this list forever.
+// `url: null` keeps the returned shape identical to the demo-mode documents
+// the vault page merges this with, so the frontend doesn't need two types.
 export const listMyDocuments = query({
   args: {},
   handler: async (ctx) => {
@@ -198,12 +203,33 @@ export const listMyDocuments = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(200);
-    return await Promise.all(
-      docs.map(async (doc) => ({
-        ...doc,
-        url: await ctx.storage.getUrl(doc.storageId),
-      })),
-    );
+    return docs.map((doc) => ({ ...doc, url: null as string | null }));
+  },
+});
+
+// ─── Mint a short-lived, single-purpose link to actually view/download a
+// document. Re-checks ownership fresh every time it's called, unlike a
+// permanent storage.getUrl link generated once and handed out forever.
+export const getDocumentDownloadUrl = mutation({
+  args: { documentId: v.id("vault_documents") },
+  handler: async (ctx, args) => {
+    const user = await getUserOrThrow(ctx);
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.userId !== user._id) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "Document not found." });
+    }
+
+    const siteUrl = process.env.CONVEX_SITE_URL;
+    if (!siteUrl) {
+      throw new ConvexError({ code: "NOT_CONFIGURED", message: "File serving isn't available right now." });
+    }
+
+    const token = await mintFileToken(ctx, {
+      storageId: doc.storageId,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+    });
+    return `${siteUrl}/files/download?token=${token}`;
   },
 });
 

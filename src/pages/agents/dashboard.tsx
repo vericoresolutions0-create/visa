@@ -73,7 +73,7 @@ type IntakeStatus = "awaiting_documents" | "documents_received" | "in_review" | 
 type Section = "overview" | "clients" | "pipeline" | "analytics" | "referrals" | "license" | "ai";
 
 type IntakeDocument = {
-  _id: string;
+  _id: Id<"client_documents">;
   label: string;
   fileName: string;
   fileSize: number;
@@ -815,6 +815,15 @@ function ClientCard({ intake, readinessEntry }: { intake: Intake; readinessEntry
   const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
   const updateNotes = useMutation(api.clientIntakes.updateIntakeNotes);
   const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
+  const getDocumentUrl = useMutation(api.clientIntakes.getClientDocumentDownloadUrl);
+  const handleOpenDocument = async (documentId: Id<"client_documents">) => {
+    try {
+      const url = await getDocumentUrl({ documentId });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      toast.error("Couldn't open that document. Please try again.");
+    }
+  };
   const required = requiredDocCount(intake.destination, intake.visaType);
   const days = daysSince(intake.createdAt);
   const s = STATUS_STYLES[intake.status];
@@ -959,8 +968,8 @@ function ClientCard({ intake, readinessEntry }: { intake: Intake; readinessEntry
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Documents</p>
               {intake.documents.map((doc) => (
-                <a key={doc._id} href={doc.url ?? undefined} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                <button key={doc._id} type="button" onClick={() => void handleOpenDocument(doc._id)}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3 w-full text-left cursor-pointer hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-accent shrink-0" />
                     <span className="text-sm font-medium text-foreground truncate">{doc.label}</span>
@@ -968,7 +977,7 @@ function ClientCard({ intake, readinessEntry }: { intake: Intake; readinessEntry
                   <span className="text-xs text-muted-foreground shrink-0">
                     {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                   </span>
-                </a>
+                </button>
               ))}
             </div>
           )}
@@ -1015,6 +1024,15 @@ function ClientRow({ intake, isLast, readinessEntry }: { intake: Intake; isLast:
   const updateStatus = useMutation(api.clientIntakes.updateIntakeStatus);
   const updateNotes = useMutation(api.clientIntakes.updateIntakeNotes);
   const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
+  const getDocumentUrl = useMutation(api.clientIntakes.getClientDocumentDownloadUrl);
+  const handleOpenDocument = async (documentId: Id<"client_documents">) => {
+    try {
+      const url = await getDocumentUrl({ documentId });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      toast.error("Couldn't open that document. Please try again.");
+    }
+  };
   const required = requiredDocCount(intake.destination, intake.visaType);
   const days = daysSince(intake.createdAt);
   const s = STATUS_STYLES[intake.status];
@@ -1182,8 +1200,8 @@ function ClientRow({ intake, isLast, readinessEntry }: { intake: Intake; isLast:
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Documents received</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {intake.documents.map((doc) => (
-                      <a key={doc._id} href={doc.url ?? undefined} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:border-primary/30 transition-colors">
+                      <button key={doc._id} type="button" onClick={() => void handleOpenDocument(doc._id)}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 hover:border-primary/30 transition-colors w-full text-left cursor-pointer">
                         <div className="min-w-0 flex items-center gap-2">
                           <FileText className="w-4 h-4 text-accent shrink-0" />
                           <span className="text-sm font-medium text-foreground truncate">{doc.label}</span>
@@ -1191,7 +1209,7 @@ function ClientRow({ intake, isLast, readinessEntry }: { intake: Intake; isLast:
                         <span className="text-xs text-muted-foreground shrink-0">
                           {new Date(doc.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </span>
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>

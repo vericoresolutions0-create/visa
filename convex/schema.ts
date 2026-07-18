@@ -417,6 +417,19 @@ export default defineSchema({
     count: v.number(),
   }).index("by_date", ["dateKey"]),
 
+  // Short-lived bearer tokens for serving real client files (Vault documents,
+  // agent client-intake documents) through the /files/download httpAction
+  // instead of Convex's own permanent, unauthenticated storage.getUrl links.
+  // Minted only after a fresh ownership check, valid a few minutes, cleaned
+  // up by a daily cron — see convex/fileTokens.ts.
+  file_download_tokens: defineTable({
+    token: v.string(),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mimeType: v.optional(v.string()),
+    expiresAt: v.number(),
+  }).index("by_token", ["token"]).index("by_expiresAt", ["expiresAt"]),
+
   // Same backstop pattern, for the public (no-sign-in) Risk Score quiz.
   risk_score_daily_usage: defineTable({
     dateKey: v.string(),

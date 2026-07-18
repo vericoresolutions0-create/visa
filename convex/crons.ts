@@ -3,6 +3,16 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
+// 3:00 AM UTC daily — deletes expired /files/download link tokens (5-minute
+// TTL each) so the table doesn't grow forever. Expired tokens are already
+// rejected on read; this is just housekeeping.
+crons.cron(
+  "cleanup expired file download tokens",
+  "0 3 * * *",
+  internal.fileTokens.cleanupExpiredTokens,
+  {},
+);
+
 // 8:00 AM UTC daily — sends email alerts for all due reminders
 crons.cron(
   "send due reminder emails",
