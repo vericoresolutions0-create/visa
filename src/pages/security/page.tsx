@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Globe, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Globe, ArrowLeft, ShieldCheck, ExternalLink } from "lucide-react";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 
@@ -107,7 +107,11 @@ export default function SecurityPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">Contact</h2>
             <p className="text-muted-foreground leading-relaxed">
-              <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a> — also published at <a href="/.well-known/security.txt" className="text-primary underline">/.well-known/security.txt</a> per RFC 9116, so security tools and researchers can find it automatically.
+              <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a> — also published at{" "}
+              <a href="/.well-known/security.txt" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">
+                /.well-known/security.txt <ExternalLink className="w-3 h-3" />
+              </a>{" "}
+              per RFC 9116, so security tools and researchers can find it automatically.
             </p>
           </section>
 
