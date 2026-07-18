@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
-import { getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 
 // 33-symbol alphabet, 0/O/1/I removed to avoid transcription errors when an
@@ -81,6 +81,7 @@ export const redeemLicenseCode = mutation({
   args: { code: v.string() },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     const normalizedCode = args.code.trim().toUpperCase();
     const license = await ctx.db.query("license_codes").withIndex("by_code", (q) => q.eq("code", normalizedCode)).unique();
     if (!license) {

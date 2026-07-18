@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel.js";
 import { internal } from "./_generated/api";
 import { getMyOrgAdminMembershipOrThrow } from "./organizations.ts";
+import { assertNotSuspended } from "./authHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -26,6 +27,7 @@ export const inviteEmployee = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    assertNotSuspended(user);
     const email = args.email.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
@@ -71,7 +73,8 @@ export const inviteEmployee = mutation({
 export const resendInvite = mutation({
   args: { linkId: v.id("org_employee_links") },
   handler: async (ctx, args) => {
-    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    assertNotSuspended(user);
     const link = await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
     if (link.status !== "pending") {
       throw new ConvexError({ code: "BAD_REQUEST", message: "This invite is no longer pending." });

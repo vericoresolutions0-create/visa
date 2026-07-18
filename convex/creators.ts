@@ -193,6 +193,13 @@ export const logMonthlyCommission = internalMutation({
       .first();
     if (!creator || !creator.active) return;
 
+    // Block self-referral: a creator paying under their own code (e.g. a
+    // second personal account) should never earn commission on their own money.
+    const referredUser = await ctx.db.get(args.referredUserId);
+    if (referredUser?.email && referredUser.email.toLowerCase() === creator.email.toLowerCase()) {
+      return;
+    }
+
     // Enforce the cap
     if (creator.commissionMonths > 0 && args.monthsFromSignup > creator.commissionMonths) return;
 

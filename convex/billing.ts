@@ -187,6 +187,15 @@ export const applyOneTimePlanPayment = internalMutation({
     const user = await ctx.db.get(args.userId);
     if (!user || !user.email) return;
 
+    // A malformed or replayed webhook event (amount: 0, or missing/garbled
+    // amount field) should never activate a paid plan for free.
+    if (!args.amountCents || args.amountCents <= 0) {
+      console.error(
+        `applyOneTimePlanPayment: rejecting non-positive amountCents=${args.amountCents} for userId=${args.userId}, plan=${args.plan}, paystackReference=${args.paystackReference}, stripeEventId=${args.stripeEventId} — needs manual review.`,
+      );
+      return;
+    }
+
     // Deduplicate by reference/event-id so webhook retries never activate
     // a plan twice. Runs in the same Convex transaction so concurrent
     // deliveries of the same event get an OCC conflict, retry, find the row.

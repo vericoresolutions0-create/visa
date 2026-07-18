@@ -1,6 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getChecklist, type VisaType } from "../src/lib/visa-data.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -12,35 +15,27 @@ function now() {
 // ── Public mutations ───────────────────────────────────────────────────────────
 
 /**
- * computeReadiness — called by the agent frontend when they open a client's
- * Case Intelligence panel. Accepts the required document labels from the
- * frontend checklist (the canonical source for visa requirements) so we never
- * duplicate checklist data in the backend. Generates CRITICAL fix items for
- * any required document label that is not represented in the uploaded set,
- * plus structural MEDIUM/RECOMMEND items based on intake state.
+ * computeReadinessImpl — generates CRITICAL fix items for any required
+ * document label that is not represented in the uploaded set, plus
+ * structural MEDIUM/RECOMMEND items based on intake state.
  *
  * All fix items for this intake are replaced on every run so the list is
  * always current and never accumulates stale rows.
  */
-export const computeReadiness = mutation({
-  args: {
-    intakeId: v.id("client_intakes"),
-    // Required doc labels from getChecklist(destination, visaType).items
-    // .filter(i => i.required).map(i => i.title) — passed from frontend to
-    // avoid duplicating checklist data in the backend.
-    requiredDocLabels: v.array(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const agent = await getCurrentUserOrThrow(ctx);
-    if (!agent.agentPlan) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Active agent plan required." });
-    }
-
-    const intake = await ctx.db.get(args.intakeId);
-    if (!intake || intake.agentId !== agent._id) {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Not your client." });
-    }
-
+// Shared by computeReadiness (agent-invoked from the frontend, which passes
+// requiredDocLabels sourced from its own checklist data) and
+// recomputeReadinessForUpload (called server-side from clientIntakes.ts's
+// recordDocument, which has no frontend to source that list from — see the
+// getChecklist-based lookup on that path below). Keeping this as a plain
+// function called directly, not a second Convex mutation, means the upload
+// path's recompute happens atomically in the same transaction as the
+// document insert rather than a separate round trip.
+async function computeReadinessImpl(
+  ctx: MutationCtx,
+  intake: Doc<"client_intakes">,
+  agentId: Id<"users">,
+  requiredDocLabels: string[],
+) {
     // All uploaded documents for this intake.
     const documents = await ctx.db
       .query("client_documents")
@@ -48,21 +43,21 @@ export const computeReadiness = mutation({
       .take(50);
 
     const uploadedCount = documents.length;
-    const requiredCount = args.requiredDocLabels.length;
+    const requiredCount = requiredDocLabels.length;
 
     // Score: ratio of uploaded to required. Capped at 100 even if more docs
-    // than strictly required are uploaded. Returns 100 if no required docs are
-    // specified (visa type with no checklist data).
+    // than strictly required are uploaded. Always 100 if no required docs are
+    // specified (visa type with no checklist data) — a visa type with zero
+    // requirements is trivially "ready" regardless of how many (zero or more)
+    // documents have been uploaded.
     const score =
       requiredCount > 0
         ? Math.min(100, Math.round((uploadedCount / requiredCount) * 100))
-        : uploadedCount > 0
-          ? 100
-          : 0;
+        : 100;
 
     // Determine which required doc categories are missing via fuzzy label match.
     const uploadedNorm = documents.map((d) => d.label.toLowerCase().trim());
-    const missingLabels = args.requiredDocLabels.filter((req) => {
+    const missingLabels = requiredDocLabels.filter((req) => {
       const reqNorm = req.toLowerCase().trim();
       return !uploadedNorm.some((u) => u.includes(reqNorm) || reqNorm.includes(u));
     });
@@ -148,7 +143,7 @@ export const computeReadiness = mutation({
     // Insert all new fix items.
     for (const item of fixItems) {
       await ctx.db.insert("case_fix_items", {
-        agentId: agent._id,
+        agentId,
         intakeId: intake._id,
         ...item,
       });
@@ -177,7 +172,7 @@ export const computeReadiness = mutation({
       .unique();
 
     const readinessData = {
-      agentId: agent._id,
+      agentId,
       intakeId: intake._id,
       score,
       uploadedCount,
@@ -196,8 +191,44 @@ export const computeReadiness = mutation({
     }
 
     return { score, uploadedCount, requiredCount, criticalCount, mediumCount, recommendCount, fraudSignalCount };
+}
+
+export const computeReadiness = mutation({
+  args: {
+    intakeId: v.id("client_intakes"),
+    // Required doc labels from getChecklist(destination, visaType).items
+    // .filter(i => i.required).map(i => i.title) — passed from frontend to
+    // avoid duplicating checklist data in the backend.
+    requiredDocLabels: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const agent = await getCurrentUserOrThrow(ctx);
+    if (!agent.agentPlan) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Active agent plan required." });
+    }
+
+    const intake = await ctx.db.get(args.intakeId);
+    if (!intake || intake.agentId !== agent._id) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Not your client." });
+    }
+
+    return await computeReadinessImpl(ctx, intake, agent._id, args.requiredDocLabels);
   },
 });
+
+// Called directly (same transaction, not scheduled) from clientIntakes.ts's
+// recordDocument whenever a client uploads a document through the unauthenticated
+// portal link — that path has no frontend checklist to source requiredDocLabels
+// from the way the agent-invoked computeReadiness above does, so it derives the
+// same list itself from the shared checklist data. Without this, the readiness
+// score/critical-count badge stayed stale after a client fixed exactly the gap
+// the agent was waiting on, until the agent happened to reopen the panel and
+// click "Compute" again.
+export async function recomputeReadinessForUpload(ctx: MutationCtx, intake: Doc<"client_intakes">) {
+  const checklist = getChecklist(intake.destination, intake.visaType as VisaType);
+  const requiredDocLabels = checklist?.items.filter((i) => i.required).map((i) => i.title) ?? [];
+  await computeReadinessImpl(ctx, intake, intake.agentId, requiredDocLabels);
+}
 
 /**
  * resolveFixItem — agent marks a fix item as done. Syncs the readiness row

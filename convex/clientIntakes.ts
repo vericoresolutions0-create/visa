@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { validateUploadedFile } from "./fileValidation";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { mintFileToken } from "./fileTokens.ts";
+import { recomputeReadinessForUpload } from "./caseReadiness.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -287,6 +288,12 @@ export const recordDocument = mutation({
     if (intake.status === "awaiting_documents") {
       await ctx.db.patch(intake._id, { status: "documents_received" });
     }
+
+    // Keep the readiness score/critical-count badge current the moment a
+    // client uploads — without this it stayed stale (even after the client
+    // fixed the exact gap the agent was waiting on) until the agent reopened
+    // the panel and clicked "Compute" again.
+    await recomputeReadinessForUpload(ctx, intake);
 
     // In-app notification — appears in the agent's bell immediately, no email
     // dependency. Created here so it fires even if the email action fails.

@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 
 // One user, one org membership for v1 — keeps isolation reasoning simple.
 // Multi-org membership (an HR consultant managing several client companies)
@@ -27,6 +27,7 @@ export async function createOrganizationImpl(
   args: { name: string; type: "employer" | "household" | "university" | "law_firm" },
 ) {
   const user = await getCurrentUserOrThrow(ctx);
+  assertNotSuspended(user);
   if (!args.name.trim() || args.name.length > 200) {
     throw new ConvexError({
       code: "BAD_REQUEST",
@@ -93,7 +94,8 @@ export const getMyOrganization = query({
 export const renameOrganization = mutation({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    assertNotSuspended(user);
     if (!args.name.trim() || args.name.length > 200) {
       throw new ConvexError({
         code: "BAD_REQUEST",

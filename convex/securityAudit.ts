@@ -166,14 +166,24 @@ export const adminTakeAction = mutation({
     const admin = await requireAdmin(ctx);
     const now = new Date().toISOString();
 
-    if (args.action === "user_suspended") {
-      await ctx.db.patch(args.actorUserId, {
-        isSuspended: true,
-        suspendedAt: now,
-        suspendedByAdminId: admin._id,
-      });
-    } else if (args.action === "user_unsuspended") {
-      await ctx.db.patch(args.actorUserId, { isSuspended: false });
+    if (args.action === "user_suspended" || args.action === "user_unsuspended") {
+      const suspended = args.action === "user_suspended";
+      await ctx.db.patch(args.actorUserId, suspended
+        ? { isSuspended: true, suspendedAt: now, suspendedByAdminId: admin._id }
+        : { isSuspended: false });
+
+      // Mirror onto agent_profiles (if the suspended account is an agent) so
+      // the public marketplace — listing, search, public profile, contact —
+      // stops surfacing/accepting messages for them immediately. Without
+      // this, a suspended agent stayed fully visible and bookable, since
+      // those queries only ever checked `verified`, never account suspension.
+      const profile = await ctx.db
+        .query("agent_profiles")
+        .withIndex("by_user", (q) => q.eq("userId", args.actorUserId))
+        .unique();
+      if (profile) {
+        await ctx.db.patch(profile._id, { suspended });
+      }
     } else if (args.action === "leads_revoked" || args.action === "leads_restored") {
       // Enforced in marketplace.ts's unlockLead. A no-op audit-log-only entry
       // if the actor isn't an agent (no agent_profiles row) — logged, not

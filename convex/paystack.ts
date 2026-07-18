@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { action, query } from "./_generated/server";
 import { api } from "./_generated/api";
 import { assertNotSuspended } from "./authHelpers.ts";
+import { PLAN_PRICES_CENTS } from "./users.ts";
 
 // Lets the frontend know whether to offer the Mobile Money / Bank Transfer /
 // USSD option — same "not configured yet" pattern used for Stripe, Google,
@@ -50,6 +51,13 @@ export const initializeTransaction = action({
     assertNotSuspended(user);
 
     const amountKobo = NGN_PLAN_PRICES_KOBO[args.plan][args.billingCycle];
+    // amountKobo is what actually gets charged (NGN minor units) — but every
+    // downstream consumer of "amountCents" (subscriptionAmountCents, agent
+    // referral commissions, creator commissions) expects true USD cents.
+    // Use the canonical USD price for this plan/cycle for that bookkeeping,
+    // not the kobo figure, or a ₦13,000 payment gets commissioned as if it
+    // were $130,000.
+    const usdAmountCents = PLAN_PRICES_CENTS[args.plan][args.billingCycle];
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
 
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -69,7 +77,7 @@ export const initializeTransaction = action({
           product: "applicant",
           plan: args.plan,
           billingCycle: args.billingCycle,
-          amountCents: String(amountKobo),
+          amountCents: String(usdAmountCents),
           planLabel: PLAN_LABELS[args.plan],
         },
       }),

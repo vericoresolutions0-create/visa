@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin } from "./admin.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
 
@@ -23,6 +23,7 @@ export const submitWaitTimeReport = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     await checkUserDailyLimit(
       ctx, user._id, "wait_time_report", 5,
       "You can submit up to 5 wait time reports per day. Resets at midnight UTC.",

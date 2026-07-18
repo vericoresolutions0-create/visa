@@ -7,5 +7,17 @@
   "login.subtitle": "Sign in to your account to access your checklists, reminders, and documents.",
   "active.title": "You're signed in",
   "active.body": "Continue to your dashboard to manage checklists, reminders, and your visa progress.",
-  "active.cta": "Continue to Dashboard"
+  "active.cta": "Continue to Dashboard",
+  "hero.title1": "Your visa, cleared.",
+  "hero.title2": "No guesswork.",
+  "hero.subtitle": "Built for applicants who've been refused before — and for those who refuse to be.",
+  "features.checklist": "Personalised visa checklists in 60 seconds",
+  "features.rejectionAnalyser": "AI rejection analyser (Expert) — know exactly what to fix",
+  "features.passportPhoto": "Passport photo checker against embassy standards",
+  "features.reminders": "Deadline reminders so nothing slips through",
+  "badge.gdpr": "GDPR-Aligned",
+  "badge.encrypted": "End-to-end encrypted",
+  "badge.secure": "Secure",
+  "footer.protected": "Protected by Convex Auth · End-to-end encrypted",
+  "aria.goBack": "Go back"
 }

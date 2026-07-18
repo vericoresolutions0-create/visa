@@ -2,12 +2,14 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation, useQuery } from "convex/react";
 import { AuthLoading, Unauthenticated } from "convex/react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { ShieldCheck, ChevronRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { api } from "@/convex/_generated/api.js";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { convexErrMsg } from "@/lib/utils.ts";
 import {
   RISK_SCORE_QUESTIONS,
   computeRiskScore,
@@ -36,6 +38,9 @@ function AuditQuiz({ destination, visaType, isDemoAuthenticated, onComplete }: {
       setSubmitting(true);
       try {
         await submitAudit({ destination, visaType, answers: next });
+      } catch (err) {
+        toast.error(convexErrMsg(err) ?? "Could not save your audit. Please try again.");
+        return;
       } finally {
         setSubmitting(false);
       }

@@ -16,8 +16,22 @@ function daysSince(dateStr: string): number {
 export const sendStaleDataDigest = internalAction({
   args: {},
   handler: async (ctx) => {
+    // Merge admin verifications the same way dataFreshness.ts's
+    // getFreshnessReport does — otherwise an admin marking a destination
+    // current via markVerified has no effect here, and this digest keeps
+    // reporting it as stale using the original static seed date forever,
+    // training admins to ignore the one alert meant to catch real drift.
+    const overrides: { destination: string; lastVerified: string }[] = await ctx.runQuery(
+      internal.dataFreshness.getFreshnessOverrides,
+      {},
+    );
+    const overrideByDest = new Map(overrides.map((o) => [o.destination, o.lastVerified]));
+
     const stale = getDataFreshness()
-      .map((row) => ({ ...row, daysSinceVerified: daysSince(row.lastVerified) }))
+      .map((row) => {
+        const lastVerified = overrideByDest.get(row.destination) ?? row.lastVerified;
+        return { ...row, lastVerified, daysSinceVerified: daysSince(lastVerified) };
+      })
       .filter((row) => row.daysSinceVerified >= STALE_THRESHOLD_DAYS)
       .sort((a, b) => b.daysSinceVerified - a.daysSinceVerified);
 

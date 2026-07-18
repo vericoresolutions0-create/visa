@@ -189,6 +189,7 @@ export const flagPost = mutation({
   args: { postId: v.id("community_posts") },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     // Only paid members can flag — prevents 3 free accounts from coordinating
     // to hide a legitimate post by hitting the FLAG_AUTO_HIDE_THRESHOLD.

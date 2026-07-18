@@ -31,6 +31,24 @@ export const submitReview = mutation({
       throw new ConvexError({ code: "FORBIDDEN", message: "You cannot review your own profile." });
     }
 
+    // Require a real prior interaction — otherwise any authenticated,
+    // non-suspended account could review any verified agent with zero
+    // engagement, opening the door to review-bombing (competitor sabotage)
+    // or fake 5-star rings. Contacting an agent through the marketplace
+    // (agents.ts contactAgent) is the one real, provable interaction with a
+    // fromUserId we can check.
+    const hasContacted = await ctx.db
+      .query("agent_contact_requests")
+      .withIndex("by_from_user", (q) => q.eq("fromUserId", user._id))
+      .filter((q) => q.eq(q.field("agentProfileId"), args.agentProfileId))
+      .first();
+    if (!hasContacted) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "You can only review an agent you've contacted through VisaClear.",
+      });
+    }
+
     // One review per user per agent — enforced by the compound index
     const existing = await ctx.db
       .query("agent_reviews")

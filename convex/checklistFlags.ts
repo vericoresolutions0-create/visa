@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getCurrentUserOrThrow, getCurrentUser } from "./authHelpers.ts";
+import { getCurrentUserOrThrow, getCurrentUser, assertNotSuspended } from "./authHelpers.ts";
 
 const MAX_FLAGS_PER_DAY = 5;
 const MAX_NOTES_LENGTH = 200;
@@ -30,6 +30,7 @@ export const submitFlag = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if (
       args.origin.length > 100 ||

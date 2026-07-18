@@ -392,7 +392,12 @@ function AgentReportsPanel() {
 }
 
 // ─── Embassy Monitor panel ────────────────────────────────────────────────────
-type MonitorRowStatus = "changed" | "ok" | "unchecked";
+type MonitorRowStatus = "changed" | "stale" | "ok" | "unchecked";
+
+// Same 9-day grace window as convex/systemHealth.ts's EMBASSY_MONITOR_STALE_MS
+// (cron runs weekly) — kept in sync manually since one is server-side config
+// and the other drives this table's per-row badge.
+const EMBASSY_STALE_MS = 9 * 24 * 60 * 60 * 1000;
 
 type MonitorRow = {
   destination: string;
@@ -412,7 +417,7 @@ function EmbassyMonitorPanel() {
   const dismiss = useMutation(api.embassyData.dismissAlert);
   const [dismissing, setDismissing] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [regionFilter, setRegionFilter] = useState<EmbassyRegion | "all" | "alerts">("all");
+  const [regionFilter, setRegionFilter] = useState<EmbassyRegion | "all" | "alerts" | "stale">("all");
 
   const handleDismiss = async (destination: string) => {
     setDismissing(destination);
@@ -462,11 +467,12 @@ function EmbassyMonitorPanel() {
       const snap = byDestination.get(destination);
       const url = EMBASSY_MONITOR_URLS[destination];
       if (snap) {
+        const isStale = Date.now() - new Date(snap.lastCheckedAt).getTime() > EMBASSY_STALE_MS;
         return {
           destination,
           region: COUNTRY_REGION[destination],
           url: snap.url,
-          status: snap.changedAt && !snap.alertDismissedAt ? "changed" : "ok",
+          status: snap.changedAt && !snap.alertDismissedAt ? "changed" : isStale ? "stale" : "ok",
           lastCheckedAt: snap.lastCheckedAt,
           changedAt: snap.changedAt ?? null,
           snapshotId: snap._id,
@@ -488,11 +494,13 @@ function EmbassyMonitorPanel() {
     total: rows.length,
     alerts: rows.filter((r) => r.status === "changed").length,
     checkedThisWeek: rows.filter((r) => r.lastCheckedAt).length,
+    stale: rows.filter((r) => r.status === "stale").length,
   };
 
   const filteredRows = rows?.filter((r) => {
     if (search && !r.destination.toLowerCase().includes(search.toLowerCase())) return false;
     if (regionFilter === "alerts") return r.status === "changed";
+    if (regionFilter === "stale") return r.status === "stale";
     if (regionFilter !== "all") return r.region === regionFilter;
     return true;
   });
@@ -514,7 +522,7 @@ function EmbassyMonitorPanel() {
 
       {/* Coverage stats */}
       {counts && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="border border-gray-100 rounded-xl px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Monitored</p>
             <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.total}</p>
@@ -522,6 +530,10 @@ function EmbassyMonitorPanel() {
           <div className="border border-gray-100 rounded-xl px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Active alerts</p>
             <p className="text-xl font-semibold text-[#0f2040] mt-1">{counts.alerts}</p>
+          </div>
+          <div className={cn("border rounded-xl px-4 py-3", counts.stale > 0 ? "border-red-200 bg-red-50/40" : "border-gray-100")}>
+            <p className={cn("text-[11px] font-semibold uppercase tracking-wider", counts.stale > 0 ? "text-red-600" : "text-gray-400")}>Stale (9d+)</p>
+            <p className={cn("text-xl font-semibold mt-1", counts.stale > 0 ? "text-red-700" : "text-[#0f2040]")}>{counts.stale}</p>
           </div>
           <div className="border border-gray-100 rounded-xl px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Checked so far</p>
@@ -678,6 +690,14 @@ function EmbassyMonitorPanel() {
               ⚠ Alerts <span className="opacity-70 font-medium">{counts.alerts}</span>
             </button>
           )}
+          {counts && counts.stale > 0 && (
+            <button
+              onClick={() => setRegionFilter("stale")}
+              className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer", regionFilter === "stale" ? "bg-red-600 text-white border-red-600" : "border-red-200 text-red-700 hover:border-red-300")}
+            >
+              Stale <span className="opacity-70 font-medium">{counts.stale}</span>
+            </button>
+          )}
         </div>
 
         {grouped === undefined ? (
@@ -710,6 +730,7 @@ function EmbassyMonitorPanel() {
                           <td className="py-2 pr-4 text-gray-500">{row.lastCheckedAt ? new Date(row.lastCheckedAt).toLocaleDateString() : "—"}</td>
                           <td className="py-2">
                             {row.status === "changed" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Changed</span>}
+                            {row.status === "stale" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">Stale — hasn't succeeded in 9+ days</span>}
                             {row.status === "ok" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">OK</span>}
                             {row.status === "unchecked" && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Awaiting first check</span>}
                           </td>
@@ -5240,12 +5261,22 @@ function SystemHealthPanel() {
           </button>
         </div>
         <p className="px-5 pb-4 text-[11px] text-muted-foreground font-medium">
-          {health.embassyMonitor.monitoredCount} / {health.embassyMonitor.targetCount} destinations monitored.{" "}
+          {health.embassyMonitor.freshCount} / {health.embassyMonitor.targetCount} destinations reported a successful check in the last 9 days.{" "}
           {health.embassyMonitor.lastCheckedAt
-            ? `Last real check: ${new Date(health.embassyMonitor.lastCheckedAt).toLocaleString()}.`
+            ? `Most recent: ${new Date(health.embassyMonitor.lastCheckedAt).toLocaleString()}.`
             : "No check has ever run yet."}
-          {health.embassyMonitor.stale && " The weekly cron hasn't reported in over 9 days — check the Convex dashboard for a failed run."}
+          {health.embassyMonitor.stale && ` ${health.embassyMonitor.staleCount} destination${health.embassyMonitor.staleCount === 1 ? "" : "s"} ${health.embassyMonitor.staleCount === 1 ? "hasn't" : "haven't"} reported in over 9 days — see the list below or check the Embassy Monitor tab.`}
         </p>
+        {health.embassyMonitor.stale && health.embassyMonitor.staleDestinations.length > 0 && (
+          <div className="px-5 pb-4 flex flex-wrap gap-1.5">
+            {health.embassyMonitor.staleDestinations.map((d) => (
+              <span key={d} className="text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5">{d}</span>
+            ))}
+            {health.embassyMonitor.staleCount > health.embassyMonitor.staleDestinations.length && (
+              <span className="text-[10px] font-medium text-red-700">+{health.embassyMonitor.staleCount - health.embassyMonitor.staleDestinations.length} more</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* AI Assistant quality — real thumbs-down rate over the last 7 days */}

@@ -290,6 +290,24 @@ export default function PaymentPage() {
     billing === "yearly" ? Math.round(totalAmount / 12) : totalAmount;
 
   const cardDigits = cardNumber.replace(/\D/g, "");
+  // A real month (01-12) and a year that isn't already in the past — this
+  // path only runs in the no-Stripe simulated/demo checkout, but it still
+  // stores whatever's typed here as the displayed card expiry, so "99/00"
+  // shouldn't be able to pass client validation.
+  const isExpiryValid = useMemo(() => {
+    const month = Number(expiryMonth);
+    const yearDigits = expiryYear.trim();
+    if (!Number.isInteger(month) || month < 1 || month > 12) return false;
+    if (!/^\d{2}$/.test(yearDigits)) return false;
+    const year = 2000 + Number(yearDigits);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (year < currentYear) return false;
+    if (year === currentYear && month < currentMonth) return false;
+    return true;
+  }, [expiryMonth, expiryYear]);
+
   const canSubmit = useMemo(() => {
     // Real Stripe Checkout collects card details on Stripe's own hosted
     // page — nothing to validate locally beyond being ready to redirect.
@@ -297,8 +315,7 @@ export default function PaymentPage() {
     return (
       nameOnCard.trim().length > 1 &&
       cardDigits.length >= 12 &&
-      expiryMonth.trim().length >= 1 &&
-      expiryYear.trim().length >= 2 &&
+      isExpiryValid &&
       cvv.replace(/\D/g, "").length >= 3 &&
       (billingEmail || accountUser?.email || "").includes("@")
     );
@@ -307,8 +324,7 @@ export default function PaymentPage() {
     billingEmail,
     cardDigits.length,
     cvv,
-    expiryMonth,
-    expiryYear,
+    isExpiryValid,
     nameOnCard,
     useRealStripe,
   ]);
@@ -515,6 +531,18 @@ export default function PaymentPage() {
                     Our payment system is being configured. Please try again shortly or contact us at vericoresolutions0@gmail.com.
                   </p>
                 </div>
+              ) : !isDemoAuthenticated && isStripeConfigured === undefined ? (
+                // isStripeConfigured is still loading (undefined, not yet
+                // true/false) — without this branch, useRealStripe evaluates
+                // to false during this window and the raw card-entry form
+                // below flashes on screen for every real checkout, right
+                // before it's replaced by the Stripe redirect panel once the
+                // query resolves.
+                <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
               ) : (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-5">
@@ -550,8 +578,9 @@ export default function PaymentPage() {
                       </label>
                       <input
                         inputMode="numeric"
+                        maxLength={2}
                         value={expiryMonth}
-                        onChange={(event) => setExpiryMonth(event.target.value)}
+                        onChange={(event) => setExpiryMonth(event.target.value.replace(/\D/g, "").slice(0, 2))}
                         placeholder="MM"
                         className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />
@@ -562,8 +591,9 @@ export default function PaymentPage() {
                       </label>
                       <input
                         inputMode="numeric"
+                        maxLength={2}
                         value={expiryYear}
-                        onChange={(event) => setExpiryYear(event.target.value)}
+                        onChange={(event) => setExpiryYear(event.target.value.replace(/\D/g, "").slice(0, 2))}
                         placeholder="YY"
                         className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                       />

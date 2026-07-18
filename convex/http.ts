@@ -183,7 +183,12 @@ http.route({
           break;
         }
 
-        if (!metadata.userId || !metadata.product || !metadata.plan || !metadata.billingCycle) break;
+        if (!metadata.userId || !metadata.product || !metadata.plan || !metadata.billingCycle) {
+          console.error(
+            `stripe webhook checkout.session.completed: incomplete metadata (userId=${metadata.userId}, product=${metadata.product}, plan=${metadata.plan}, billingCycle=${metadata.billingCycle}) for session=${session.id}, event=${event.id} — plan not activated, needs manual review.`,
+          );
+          break;
+        }
 
         if (metadata.oneTime === "true") {
           // Pix / boleto / OXXO — one-time, no stored instrument to renew.
@@ -343,13 +348,28 @@ http.route({
     if (event.event === "charge.success") {
       const metadata = event.data?.metadata ?? {};
       if (metadata.userId && metadata.plan && metadata.billingCycle) {
-        await ctx.runMutation(internal.billing.applyOneTimePlanPayment, {
-          userId: metadata.userId,
-          plan: metadata.plan,
-          billingCycle: metadata.billingCycle,
-          amountCents: Number(event.data?.amount) || 0,
-          paystackReference: String(event.data?.reference ?? "") || undefined,
-        });
+        // event.data.amount is the real charge in NGN kobo — do not use it
+        // for amountCents, which every downstream consumer (commissions,
+        // subscriptionAmountCents) expects to be USD cents. metadata.amountCents
+        // was set at checkout-init time (paystack.ts) to the canonical USD
+        // price for this plan/cycle.
+        if (!metadata.amountCents) {
+          console.error(
+            `paystack webhook charge.success: missing amountCents metadata for reference=${event.data?.reference}, userId=${metadata.userId} — skipping plan activation, needs manual review.`,
+          );
+        } else {
+          await ctx.runMutation(internal.billing.applyOneTimePlanPayment, {
+            userId: metadata.userId,
+            plan: metadata.plan,
+            billingCycle: metadata.billingCycle,
+            amountCents: Number(metadata.amountCents) || 0,
+            paystackReference: String(event.data?.reference ?? "") || undefined,
+          });
+        }
+      } else {
+        console.error(
+          `paystack webhook charge.success: missing required metadata (userId/plan/billingCycle) for reference=${event.data?.reference} — skipping, needs manual review.`,
+        );
       }
     }
 
@@ -369,9 +389,20 @@ http.route({
     // Telegram echoes back whatever secret_token was set during
     // setWebhook registration on every real request — verifying it here
     // confirms the request actually came from Telegram, not a forged POST.
+    // Constant-time compare, same as the Stripe/Paystack signature checks
+    // above — a plain !== leaks timing information proportional to how many
+    // leading characters match, in principle usable to brute-force the
+    // secret one character at a time.
     const expectedSecret = await deriveWebhookSecret(botToken);
     const providedSecret = request.headers.get("x-telegram-bot-api-secret-token");
-    if (providedSecret !== expectedSecret) {
+    if (!providedSecret || providedSecret.length !== expectedSecret.length) {
+      return new Response("Invalid secret", { status: 401 });
+    }
+    let secretMismatch = 0;
+    for (let i = 0; i < expectedSecret.length; i++) {
+      secretMismatch |= providedSecret.charCodeAt(i) ^ expectedSecret.charCodeAt(i);
+    }
+    if (secretMismatch !== 0) {
       return new Response("Invalid secret", { status: 401 });
     }
 

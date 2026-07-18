@@ -7,5 +7,17 @@
   "login.subtitle": "Inicia sesión en tu cuenta para acceder a tus listas, recordatorios y documentos.",
   "active.title": "Has iniciado sesión",
   "active.body": "Continúa a tu panel para gestionar listas, recordatorios y tu progreso de visa.",
-  "active.cta": "Ir al panel"
+  "active.cta": "Ir al panel",
+  "hero.title1": "Tu visa, resuelta.",
+  "hero.title2": "Sin conjeturas.",
+  "hero.subtitle": "Creado para solicitantes a quienes ya han rechazado antes — y para quienes se niegan a que vuelva a pasar.",
+  "features.checklist": "Listas de verificación de visa personalizadas en 60 segundos",
+  "features.rejectionAnalyser": "Analizador de rechazos con IA (Expert) — sabe exactamente qué corregir",
+  "features.passportPhoto": "Verificador de foto de pasaporte según normas de embajadas",
+  "features.reminders": "Recordatorios de plazos para que nada se te escape",
+  "badge.gdpr": "Conforme al RGPD",
+  "badge.encrypted": "Cifrado de extremo a extremo",
+  "badge.secure": "Seguro",
+  "footer.protected": "Protegido por Convex Auth · Cifrado de extremo a extremo",
+  "aria.goBack": "Volver"
 }

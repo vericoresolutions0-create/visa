@@ -302,6 +302,13 @@ export default defineSchema({
     // true. Distinct from a full account suspension (isSuspended on users):
     // this only cuts off marketplace access, not the whole account.
     leadAccessRevoked: v.optional(v.boolean()),
+    // Mirrors users.isSuspended, kept in sync by the same
+    // securityAudit.ts adminTakeAction handler that sets it. Denormalized
+    // here (rather than joining agent_profiles -> users on every marketplace
+    // read) so listTieredAgents/searchAgents/getAgentPublicProfile/contactAgent
+    // can filter a suspended agent out of public visibility and contact
+    // without an extra lookup per row.
+    suspended: v.optional(v.boolean()),
     // EU/Global market split for lead marketplace routing and search filtering.
     region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
     // Self-reported professional credential. VisaClear does not verify this

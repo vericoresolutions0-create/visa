@@ -100,9 +100,18 @@ export const claimFirstAdmin = mutation({
     const user = await getCurrentUserOrThrow(ctx);
 
     // Restrict to the configured founder email so a random user cannot
-    // claim the admin seat if they sign up before the founder does.
+    // claim the admin seat if they sign up before the founder does. Fails
+    // closed: if FOUNDER_EMAIL isn't set, nobody can claim the seat (rather
+    // than silently letting anyone claim it) — an unset env var should
+    // never widen who can become admin.
     const founderEmail = process.env.FOUNDER_EMAIL;
-    if (founderEmail && user.email?.toLowerCase() !== founderEmail.toLowerCase()) {
+    if (!founderEmail) {
+      throw new ConvexError({
+        code: "NOT_CONFIGURED",
+        message: "Admin bootstrap is not configured (FOUNDER_EMAIL is unset). Set it in the Convex dashboard, then try again.",
+      });
+    }
+    if (user.email?.toLowerCase() !== founderEmail.toLowerCase()) {
       throw new ConvexError({
         code: "FORBIDDEN",
         message: "Admin seat claim is restricted to the platform owner.",
@@ -140,6 +149,12 @@ export const updateUserRole = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
+    if (args.userId === admin._id && args.role !== "admin") {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "You can't remove your own admin access. Have another admin do it, or use claimFirstAdmin recovery if you're the only one.",
+      });
+    }
     const target = await ctx.db.get(args.userId);
     await ctx.db.patch(args.userId, { role: args.role });
     await logAdminAction(ctx, admin, "updateUserRole", args.userId, `${target?.role ?? "user"} -> ${args.role} (${target?.email ?? "unknown"})`);
@@ -150,6 +165,12 @@ export const deleteUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
+    if (args.userId === admin._id) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "You can't delete your own account from the admin panel.",
+      });
+    }
     const target = await ctx.db.get(args.userId);
     if (!target) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
 

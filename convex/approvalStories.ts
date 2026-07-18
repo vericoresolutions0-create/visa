@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { getCurrentUserOrThrow, getCurrentUser } from "./authHelpers.ts";
+import { getCurrentUserOrThrow, getCurrentUser, assertNotSuspended } from "./authHelpers.ts";
+import { requireAdmin, logAdminAction } from "./admin.ts";
 
 function corridorKey(origin: string, destination: string): string {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -20,6 +21,7 @@ export const submitApprovalStory = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if ((user.plan ?? "free") === "free") {
       throw new ConvexError({
@@ -154,16 +156,14 @@ export const moderateStory = mutation({
     action: v.union(v.literal("approved"), v.literal("rejected")),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUserOrThrow(ctx);
-    if (user.role !== "admin") {
-      throw new ConvexError({ code: "FORBIDDEN", message: "Admin only." });
-    }
+    const admin = await requireAdmin(ctx);
     const story = await ctx.db.get(args.storyId);
     if (!story) throw new ConvexError({ code: "NOT_FOUND", message: "Story not found." });
     await ctx.db.patch(args.storyId, {
       status: args.action,
       moderatedAt: new Date().toISOString(),
-      moderatedByUserId: user._id,
+      moderatedByUserId: admin._id,
     });
+    await logAdminAction(ctx, admin, "moderateStory", args.storyId, `${args.action} (${story.origin} -> ${story.destination})`);
   },
 });

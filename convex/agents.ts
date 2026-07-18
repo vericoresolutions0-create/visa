@@ -32,9 +32,9 @@ export const listTieredAgents = query({
       ctx.db.query("agent_profiles").withIndex("by_tier", (q) => q.eq("tier", "agent_listing")).take(100),
     ]);
     return {
-      elite:    elite.filter((a) => a.verified),
-      featured: featured.filter((a) => a.verified),
-      listed:   listed.filter((a) => a.verified),
+      elite:    elite.filter((a) => a.verified && !a.suspended),
+      featured: featured.filter((a) => a.verified && !a.suspended),
+      listed:   listed.filter((a) => a.verified && !a.suspended),
     };
   },
 });
@@ -190,7 +190,7 @@ export const contactAgent = mutation({
     assertNotSuspended(user);
     const agent = await ctx.db.get(args.agentProfileId);
     if (!agent) throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found" });
-    if (!agent.verified) throw new ConvexError({ code: "FORBIDDEN", message: "You can only contact verified agents." });
+    if (!agent.verified || agent.suspended) throw new ConvexError({ code: "FORBIDDEN", message: "You can only contact verified agents." });
     if (args.message && args.message.length > 2000) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Message must be under 2,000 characters." });
     }
@@ -232,7 +232,7 @@ export const contactAgentAsGuest = mutation({
       throw new ConvexError({ code: "BAD_REQUEST", message: "Message must be under 2,000 characters." });
 
     const agent = await ctx.db.get(args.agentProfileId);
-    if (!agent || !agent.verified)
+    if (!agent || !agent.verified || agent.suspended)
       throw new ConvexError({ code: "NOT_FOUND", message: "Agent not found." });
 
     const dateKey = new Date().toISOString().slice(0, 10);
@@ -355,6 +355,7 @@ export const searchAgents = query({
       .take(1000);
 
     const matches = allVerified.filter((a) => {
+      if (a.suspended) return false;
       const matchesVisa =
         !visaType ||
         a.specialisations.some((s) => s.toLowerCase() === visaType.toLowerCase());
@@ -385,7 +386,7 @@ export const getAgentPublicProfile = query({
     const id = ctx.db.normalizeId("agent_profiles", args.profileId);
     if (!id) return null;
     const profile = await ctx.db.get(id);
-    if (!profile || !profile.verified) return null;
+    if (!profile || !profile.verified || profile.suspended) return null;
     // Strip internal/sensitive fields before returning to any caller.
     // email, userId, lastDashboardViewAt, creditBalance, region are never
     // rendered on the public profile and shouldn't be exposed to scrapers.

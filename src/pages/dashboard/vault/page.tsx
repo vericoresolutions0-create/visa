@@ -14,6 +14,7 @@ import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { api } from "@/convex/_generated/api.js";
 import type { Doc, Id } from "@/convex/_generated/dataModel.js";
 import { canUseDocumentVault } from "@/lib/plan-gates.ts";
@@ -122,6 +123,11 @@ export default function DocumentVaultPage() {
   const [demoDocuments, setDemoDocuments] = useState<DemoVaultDocument[]>(DEMO_VAULT_DOCUMENTS);
   const [demoReminders, setDemoReminders] = useState<Doc<"reminders">[]>(DEMO_VAULT_REMINDERS);
   const visibleDocuments = isDemoAuthenticated ? demoDocuments : (documents ?? []);
+  // Real documents haven't loaded yet — without this, every category
+  // briefly renders "no documents in this category" (t("doc.empty")) for
+  // one render cycle before listMyDocuments resolves, which reads as data
+  // loss for a page holding a user's ID/financial documents.
+  const documentsLoading = !isDemoAuthenticated && documents === undefined;
   const visibleReminders = isDemoAuthenticated ? demoReminders : (reminders ?? []);
 
   const plan = isDemoAuthenticated ? (demoUser?.plan ?? "expert") : (user?.plan ?? "free");
@@ -454,7 +460,11 @@ export default function DocumentVaultPage() {
                     <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">{cat.label}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{cat.hint}</p>
                   </div>
-                  {docsInCategory.length === 0 ? (
+                  {documentsLoading ? (
+                    <div className="space-y-2 mb-2">
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                    </div>
+                  ) : docsInCategory.length === 0 ? (
                     <p className="text-xs text-muted-foreground/70 italic mb-2">{t("doc.empty")}</p>
                   ) : (
                     <div className="space-y-2 mb-2">

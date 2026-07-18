@@ -35,9 +35,13 @@ export function InstallAppPrompt() {
       return;
     }
 
-    // Android / Chrome: capture the browser's install prompt
+    // Android / Chrome: capture the browser's install prompt. Respect a
+    // prior dismissal the same way the iOS branch does — without this, the
+    // prompt reappeared on every reload/new tab after being dismissed,
+    // since "Later"/X only ever cleared component state, never persisted.
     const handler = (e: Event) => {
       e.preventDefault();
+      if (sessionStorage.getItem("vc_android_prompt_dismissed")) return;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowAndroid(true);
     };
@@ -62,13 +66,18 @@ export function InstallAppPrompt() {
     setShowIos(false);
   };
 
+  const dismissAndroid = () => {
+    sessionStorage.setItem("vc_android_prompt_dismissed", "1");
+    setShowAndroid(false);
+  };
+
   // ── Android Chrome prompt ──────────────────────────────────────────────────
   if (showAndroid) {
     return (
       <div className="fixed bottom-20 right-4 z-50 w-[min(92vw,380px)] rounded-3xl border border-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl md:bottom-4">
         <button
           type="button"
-          onClick={() => setShowAndroid(false)}
+          onClick={dismissAndroid}
           className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
           aria-label="Dismiss"
         >
@@ -86,7 +95,7 @@ export function InstallAppPrompt() {
             <Download className="mr-2 h-4 w-4" />
             Install app
           </Button>
-          <Button variant="secondary" onClick={() => setShowAndroid(false)} className="cursor-pointer">
+          <Button variant="secondary" onClick={dismissAndroid} className="cursor-pointer">
             Later
           </Button>
         </div>

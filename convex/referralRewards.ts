@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
-import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { bumpPlanCounters } from "./platformStats.ts";
 
 const SIGNUPS_PER_REWARD_MONTH = 3;
@@ -57,6 +57,7 @@ export const redeemReferralReward = mutation({
   args: {},
   handler: async (ctx): Promise<{ monthsGranted: number; newExpiresAt: string | null; plan: "pro" }> => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
     if (!user.referralCode) {
       throw new ConvexError({ code: "NOT_ELIGIBLE", message: "You don't have a referral code yet." });
     }

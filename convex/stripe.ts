@@ -244,6 +244,13 @@ export const createLocalMethodCheckoutSession = action({
 
     const currency = LOCAL_METHOD_CURRENCY[args.method as LocalMethod];
     const amount = LOCAL_PLAN_PRICES[currency][args.plan][args.billingCycle];
+    // What we actually charge the card is in BRL/MXN minor units (`amount`
+    // above) — but everything downstream (subscriptionAmountCents, agent
+    // referral commissions, creator commissions) is USD cents. Use the
+    // canonical USD price for this plan/cycle for that bookkeeping instead
+    // of the local-currency figure, or a ~R$47 charge gets recorded and
+    // commissioned as if it were $47.
+    const usdAmountCents = PLAN_PRICES_CENTS[args.plan][args.billingCycle];
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
 
     let session: Stripe.Checkout.Session;
@@ -269,7 +276,7 @@ export const createLocalMethodCheckoutSession = action({
           product: "applicant",
           plan: args.plan,
           billingCycle: args.billingCycle,
-          amountCents: String(amount),
+          amountCents: String(usdAmountCents),
           oneTime: "true",
           localMethod: args.method,
         },

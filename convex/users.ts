@@ -479,10 +479,22 @@ export const completeAgentCheckout = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    // Same demo-only gate as completeCheckout above: only active when Stripe
+    // is not configured AND the deployment explicitly opts in with
+    // DEMO_CHECKOUT=true. Without the second check, this mutation would grant
+    // a full paid agent tier (up to $149/mo) for free to anyone who calls it
+    // whenever STRIPE_SECRET_KEY happens to be unset — a preview deploy or a
+    // secret-rotation gap, not just intentional local demo mode.
     if (process.env.STRIPE_SECRET_KEY) {
       throw new ConvexError({
         code: "INVALID_OPERATION",
         message: "Checkout is handled via Stripe. Please use the Stripe checkout flow.",
+      });
+    }
+    if (!process.env.DEMO_CHECKOUT) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Payment processing is not configured. Please contact support.",
       });
     }
 

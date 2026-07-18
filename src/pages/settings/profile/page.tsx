@@ -94,6 +94,7 @@ function ProfileSettingsInner() {
   const [mobileMoneyNumber, setMobileMoneyNumber] = useState("");
   const [paypalEmail, setPaypalEmail] = useState("");
   const [savingPayout, setSavingPayout] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -121,9 +122,15 @@ function ProfileSettingsInner() {
     toast.success("Your data export has downloaded.");
   }, [exportData, exportRequested]);
 
+  // Hydrate form fields from the server exactly once. Convex's useQuery
+  // returns a new object reference on every reactive update — without the
+  // `hydrated` guard, saving Personal Info (which re-resolves userQuery)
+  // would re-run this effect and silently reset any unsaved edit sitting in
+  // the Payout section's fields (and vice versa), discarding real work with
+  // no warning.
   useEffect(() => {
     const user = demoUser ?? userQuery;
-    if (!user) return;
+    if (!user || hydrated) return;
     setName(user.name ?? "");
     setEmail(user.email ?? "");
     setPhone(user.phone ?? "");
@@ -134,7 +141,8 @@ function ProfileSettingsInner() {
     setBankName(user.payoutSetup?.bankName ?? "");
     setMobileMoneyProvider(user.payoutSetup?.mobileMoneyProvider ?? "");
     setPaypalEmail(user.payoutSetup?.paypalEmail ?? user.email ?? "");
-  }, [demoUser, userQuery]);
+    setHydrated(true);
+  }, [demoUser, userQuery, hydrated]);
 
   if (!isDemoAuthenticated && userQuery === undefined) {
     return (

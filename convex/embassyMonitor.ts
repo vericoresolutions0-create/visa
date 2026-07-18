@@ -107,12 +107,21 @@ async function checkOneDestination(
       },
     });
     clearTimeout(timeoutId);
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.error(`checkOneDestination: ${destination} (${url}) returned HTTP ${res.status} — skipping this run, lastCheckedAt stays frozen.`);
+      return;
+    }
     const html = await res.text();
     newText = extractTextFingerprint(html);
     newHash = sha256(newText);
-  } catch {
-    return; // timeout or network error — skip this destination
+  } catch (err) {
+    // Timeout or network error — skip this destination for this run.
+    // lastCheckedAt intentionally stays frozen at its last real success
+    // (never updated to "now" on a failure) so systemHealth.ts's per-destination
+    // staleness check can actually detect a destination that's been silently
+    // failing for weeks, instead of every run looking identical to a fresh one.
+    console.error(`checkOneDestination: ${destination} (${url}) failed — ${err instanceof Error ? err.message : String(err)}`);
+    return;
   }
 
   const prev = stored[destination];

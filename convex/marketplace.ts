@@ -40,6 +40,7 @@ export const submitLead = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
 
     if (!args.visaType.trim() || args.visaType.length > 100)
       throw new ConvexError({

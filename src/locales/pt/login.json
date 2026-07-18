@@ -7,5 +7,17 @@
   "login.subtitle": "Inicie sessão na sua conta para aceder às suas listas, lembretes e documentos.",
   "active.title": "Está conectado",
   "active.body": "Continue para o seu painel para gerir listas, lembretes e o seu progresso de visto.",
-  "active.cta": "Ir para o painel"
+  "active.cta": "Ir para o painel",
+  "hero.title1": "O seu visto, resolvido.",
+  "hero.title2": "Sem suposições.",
+  "hero.subtitle": "Criado para candidatos que já foram recusados — e para quem se recusa a sê-lo.",
+  "features.checklist": "Listas de verificação de visto personalizadas em 60 segundos",
+  "features.rejectionAnalyser": "Analisador de recusas com IA (Expert) — saiba exatamente o que corrigir",
+  "features.passportPhoto": "Verificador de fotografia de passaporte segundo as normas das embaixadas",
+  "features.reminders": "Lembretes de prazos para que nada lhe escape",
+  "badge.gdpr": "Conforme o RGPD",
+  "badge.encrypted": "Encriptado de ponta a ponta",
+  "badge.secure": "Seguro",
+  "footer.protected": "Protegido pelo Convex Auth · Encriptado de ponta a ponta",
+  "aria.goBack": "Voltar"
 }

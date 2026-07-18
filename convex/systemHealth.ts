@@ -45,15 +45,32 @@ export const getSystemHealth = query({
 
     const now = Date.now();
 
-    // Embassy Monitor: is the weekly cron actually still running for real?
+    // Embassy Monitor: is the weekly cron actually still running for real —
+    // for EVERY destination, not just at least one. A single destination
+    // that starts silently failing (blocked User-Agent, layout change,
+    // timeout — checkOneDestination in embassyMonitor.ts skips it without
+    // recording an error) simply stops advancing that row's lastCheckedAt
+    // forever. Checking only the single freshest row across all ~190
+    // destinations let that go undetected as long as one destination still
+    // succeeded each week — so this checks per-destination coverage instead.
     const lastEmbassyCheck = embassySnapshots.reduce<string | null>(
       (latest, row) => (!latest || row.lastCheckedAt > latest ? row.lastCheckedAt : latest),
       null,
     );
+    const snapshotByDestination = new Map(embassySnapshots.map((row) => [row.destination, row]));
+    const targetDestinations = Object.keys(EMBASSY_MONITOR_URLS);
+    const staleDestinations = targetDestinations.filter((destination) => {
+      const row = snapshotByDestination.get(destination);
+      if (!row) return true; // never successfully checked at all
+      return now - new Date(row.lastCheckedAt).getTime() > EMBASSY_MONITOR_STALE_MS;
+    });
+    const freshCount = targetDestinations.length - staleDestinations.length;
+    // Flag as stale once more than 10% of destinations haven't reported a
+    // successful check in over 9 days — a handful of chronically flaky gov
+    // sites is normal and shouldn't cry wolf, but a large silent die-off
+    // (a WAF change, IP block, partial outage) needs to surface immediately.
     const embassyMonitorStale =
-      embassySnapshots.length === 0 ||
-      lastEmbassyCheck === null ||
-      now - new Date(lastEmbassyCheck).getTime() > EMBASSY_MONITOR_STALE_MS;
+      targetDestinations.length === 0 || staleDestinations.length / targetDestinations.length > 0.1;
 
     // Real, live trust & safety state — not derived anywhere else today.
     const suspendedUsersCount = users.filter((u) => u.isSuspended).length;
@@ -122,7 +139,13 @@ export const getSystemHealth = query({
         stale: embassyMonitorStale,
         lastCheckedAt: lastEmbassyCheck,
         monitoredCount: embassySnapshots.length,
-        targetCount: Object.keys(EMBASSY_MONITOR_URLS).length,
+        targetCount: targetDestinations.length,
+        freshCount,
+        staleCount: staleDestinations.length,
+        // Capped so a near-total outage doesn't bloat this query's payload —
+        // the full per-destination breakdown is already visible in the
+        // Embassy Monitor tab's table.
+        staleDestinations: staleDestinations.slice(0, 25),
       },
       trustAndSafety: {
         suspendedUsersCount,

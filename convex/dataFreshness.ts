@@ -77,6 +77,18 @@ export const markVerified = mutation({
 
 // Called via ctx.runQuery from the "use node" digest action in
 // dataFreshnessDigest.ts — node actions have no direct ctx.db access.
+// Returns the same DB overrides getFreshnessReport merges over the static
+// seed dates, so the weekly digest email respects markVerified the same way
+// the in-app report does, instead of nagging about a destination forever
+// after an admin has already reviewed and confirmed it current.
+export const getFreshnessOverrides = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const dbRows = await ctx.db.query("visa_freshness").collect();
+    return dbRows.map((r) => ({ destination: r.destination, lastVerified: r.lastVerified }));
+  },
+});
+
 export const getAdminEmails = internalQuery({
   args: {},
   handler: async (ctx) => {

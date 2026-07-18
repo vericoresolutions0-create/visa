@@ -3,6 +3,7 @@ import { Mail, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth.ts";
 import { convexErrMsg } from "@/lib/utils.ts";
 import { Button } from "@/components/ui/button.tsx";
@@ -29,6 +30,7 @@ export function AuthAccessPanel({
   hideDemoOption = false,
   initialMode = "signIn",
 }: AuthAccessPanelProps) {
+  const { t } = useTranslation("auth");
   const { signIn, isLoading } = useAuth();
   const isGoogleConfigured = useQuery(api.auth.isGoogleConfigured);
   const navigate = useNavigate();
@@ -55,8 +57,8 @@ export function AuthAccessPanel({
     try {
       await signIn("google", { redirectTo: safeReturn });
     } catch {
-      setError("Could not start Google sign-in. Please try again.");
-      toast.error("Could not start Google sign-in. Please try again.");
+      setError(t("google.error"));
+      toast.error(t("google.error"));
     }
   };
 
@@ -64,25 +66,25 @@ export function AuthAccessPanel({
     setError(null);
 
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Please enter a valid email address.");
+      setError(t("error.invalidEmail"));
       return;
     }
     if (!password.trim()) {
-      setError("Please enter your password.");
+      setError(t("error.noPassword"));
       return;
     }
     if (authMode === "signUp") {
       if (password.length < 8) {
-        setError("Password must be at least 8 characters.");
+        setError(t("error.passwordLength"));
         return;
       }
       if (/^\d+$/.test(password)) {
-        setError("Password cannot be all numbers. Add at least one letter.");
+        setError(t("error.passwordAllNumbers"));
         return;
       }
     }
     if (requiresConsent && !agreedToTerms) {
-      setError("Please agree to the Terms of Service and Privacy Policy to create an account.");
+      setError(t("error.mustAgree"));
       return;
     }
 
@@ -98,15 +100,13 @@ export function AuthAccessPanel({
         ...(partnerReferralSlug ? { partnerReferralSlug } : {}),
       });
       onAuthStart?.();
-      toast.success(authMode === "signUp" ? "Account created." : "Signed in successfully.");
+      toast.success(authMode === "signUp" ? t("toast.accountCreated") : t("toast.signedIn"));
       // replace: true — same reasoning as startDemoAccess above.
       navigate(safeReturn, { replace: true });
     } catch (err) {
       const message =
         convexErrMsg(err) ??
-        (authMode === "signIn"
-          ? "Incorrect email or password, or you don't have an account yet — try \"Create an account\" below."
-          : "Could not create your account. It may already exist — try signing in instead.");
+        (authMode === "signIn" ? t("error.signInFailed") : t("error.signUpFailed"));
       setError(message);
       toast.error(message);
     } finally {
@@ -118,10 +118,11 @@ export function AuthAccessPanel({
     <div className="bg-card border border-border rounded-xl p-5 text-left">
       <div className="space-y-3">
         <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-          By continuing, you agree to VisaClear's{" "}
-          <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms of Service</Link>
-          {" "}and{" "}
-          <Link to="/privacy" target="_blank" className="underline hover:text-primary">Privacy Policy</Link>.
+          {t("consent.prefix")}{" "}
+          <Link to="/terms" target="_blank" className="underline hover:text-primary">{t("consent.terms")}</Link>
+          {" "}{t("consent.and")}{" "}
+          <Link to="/privacy" target="_blank" className="underline hover:text-primary">{t("consent.privacy")}</Link>
+          {t("consent.suffix")}
         </p>
         <Button
           type="button"
@@ -155,7 +156,7 @@ export function AuthAccessPanel({
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
+          {t("google.continue")}
         </Button>
 
         <form
@@ -167,7 +168,7 @@ export function AuthAccessPanel({
         >
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Email address
+              {t("email.label")}
             </label>
             <input
               type="email"
@@ -179,13 +180,13 @@ export function AuthAccessPanel({
           </div>
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
-              Password
+              {t("password.label")}
             </label>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder={authMode === "signUp" ? "Create a secure password" : "Enter your password"}
+              placeholder={authMode === "signUp" ? t("password.placeholder.signUp") : t("password.placeholder.signIn")}
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -198,10 +199,11 @@ export function AuthAccessPanel({
                 className="mt-0.5 cursor-pointer"
               />
               <span>
-                I agree to the{" "}
-                <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms of Service</Link>
-                {" "}and{" "}
-                <Link to="/privacy" target="_blank" className="underline hover:text-primary">Privacy Policy</Link>.
+                {t("consentCheckbox.prefix")}{" "}
+                <Link to="/terms" target="_blank" className="underline hover:text-primary">{t("consent.terms")}</Link>
+                {" "}{t("consentCheckbox.and")}{" "}
+                <Link to="/privacy" target="_blank" className="underline hover:text-primary">{t("consent.privacy")}</Link>
+                {t("consentCheckbox.suffix")}
               </span>
             </label>
           )}
@@ -217,8 +219,8 @@ export function AuthAccessPanel({
           >
             <Mail className="w-4 h-4" />
             {submitting
-              ? authMode === "signUp" ? "Creating account…" : "Signing in…"
-              : authMode === "signUp" ? "Create account" : "Continue with email/password"}
+              ? authMode === "signUp" ? t("submit.creating") : t("submit.signingIn")
+              : authMode === "signUp" ? t("submit.createAccount") : t("submit.continueEmail")}
             <ArrowRight className="w-4 h-4 ml-auto" />
           </Button>
           <button
@@ -231,9 +233,9 @@ export function AuthAccessPanel({
             className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
           >
             {authMode === "signIn" ? (
-              <>New to VisaClear? <strong className="text-primary font-bold">Create an account</strong></>
+              <>{t("toggle.toSignUp.prompt")} <strong className="text-primary font-bold">{t("toggle.toSignUp.cta")}</strong></>
             ) : (
-              <>Already have an account? <strong className="text-primary font-bold">Sign in</strong></>
+              <>{t("toggle.toSignIn.prompt")} <strong className="text-primary font-bold">{t("toggle.toSignIn.cta")}</strong></>
             )}
           </button>
         </form>

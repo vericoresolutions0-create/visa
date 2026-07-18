@@ -7,5 +7,17 @@
   "login.subtitle": "Connectez-vous à votre compte pour accéder à vos listes, rappels et documents.",
   "active.title": "Vous êtes connecté",
   "active.body": "Continuez vers votre tableau de bord pour gérer vos listes, rappels et votre progression visa.",
-  "active.cta": "Accéder au tableau de bord"
+  "active.cta": "Accéder au tableau de bord",
+  "hero.title1": "Votre visa, obtenu.",
+  "hero.title2": "Sans incertitude.",
+  "hero.subtitle": "Conçu pour les candidats déjà refusés — et pour ceux qui refusent de l'être.",
+  "features.checklist": "Listes de contrôle visa personnalisées en 60 secondes",
+  "features.rejectionAnalyser": "Analyseur de refus par IA (Expert) — sachez exactement quoi corriger",
+  "features.passportPhoto": "Vérificateur de photo d'identité selon les normes des ambassades",
+  "features.reminders": "Rappels d'échéances pour ne rien manquer",
+  "badge.gdpr": "Conforme RGPD",
+  "badge.encrypted": "Chiffré de bout en bout",
+  "badge.secure": "Sécurisé",
+  "footer.protected": "Protégé par Convex Auth · Chiffré de bout en bout",
+  "aria.goBack": "Retour"
 }

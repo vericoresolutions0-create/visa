@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel.js";
 import { internal } from "./_generated/api";
 import { getMyOrgAdminMembershipOrThrow, createOrganizationImpl } from "./organizations.ts";
+import { assertNotSuspended } from "./authHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -33,6 +34,7 @@ export const inviteHouseholdMember = mutation({
   args: { email: v.string(), relationship: v.string() },
   handler: async (ctx, args): Promise<{ token: string }> => {
     const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    assertNotSuspended(user);
     const org = await ctx.db.get(organizationId);
     if (org?.type !== "household") {
       throw new ConvexError({ code: "FORBIDDEN", message: "This action is only available for households." });
@@ -86,7 +88,8 @@ export const inviteHouseholdMember = mutation({
 export const resendHouseholdInvite = mutation({
   args: { linkId: v.id("org_employee_links") },
   handler: async (ctx, args) => {
-    const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    const { organizationId, user } = await getMyOrgAdminMembershipOrThrow(ctx);
+    assertNotSuspended(user);
     const link = await getOwnedHouseholdLinkOrThrow(ctx, organizationId, args.linkId);
     if (link.status !== "pending") {
       throw new ConvexError({ code: "BAD_REQUEST", message: "This invite is no longer pending." });
