@@ -4,6 +4,7 @@
 import { v, ConvexError } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { bumpStat } from "./platformStats.ts";
 
 const AGENT_DAILY_LIMIT = 50;
 const BUSINESS_DAILY_LIMIT = 30;
@@ -47,6 +48,11 @@ export const _incrementAIUsage = internalMutation({
         count: 1,
       });
     }
+
+    // Keeps platform_stats.total{Agent,Business}AIMessages accurate so
+    // convex/admin.ts's getAIUsage never has to sum the full (unboundedly
+    // growing) user_daily_usage table just to report an all-time total.
+    await bumpStat(ctx, args.mode === "agent" ? "totalAgentAIMessages" : "totalBusinessAIMessages", 1);
 
     return { used: current + 1, limit };
   },

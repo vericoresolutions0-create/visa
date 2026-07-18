@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { requireAdmin } from "./admin.ts";
+import { bumpStat } from "./platformStats.ts";
 import type { Id } from "./_generated/dataModel";
 
 // Inline helper — call from within any mutation to write an audit event in the
@@ -168,9 +169,22 @@ export const adminTakeAction = mutation({
 
     if (args.action === "user_suspended" || args.action === "user_unsuspended") {
       const suspended = args.action === "user_suspended";
+      const actor = await ctx.db.get(args.actorUserId);
+      const wasSuspended = !!actor?.isSuspended;
+
       await ctx.db.patch(args.actorUserId, suspended
         ? { isSuspended: true, suspendedAt: now, suspendedByAdminId: admin._id }
         : { isSuspended: false });
+
+      // Keeps platform_stats.suspendedUsersCount accurate so
+      // convex/systemHealth.ts's getSystemHealth never has to take(5000) the
+      // whole users table just to count this flag. Guarded on the real
+      // before/after state (not just which button was clicked) so clicking
+      // "Suspend" twice on an already-suspended user — or "Unsuspend" on a
+      // user who isn't — can never drift the counter away from the truth.
+      if (wasSuspended !== suspended) {
+        await bumpStat(ctx, "suspendedUsersCount", suspended ? 1 : -1);
+      }
 
       // Mirror onto agent_profiles (if the suspended account is an agent) so
       // the public marketplace — listing, search, public profile, contact —
@@ -194,7 +208,14 @@ export const adminTakeAction = mutation({
         .withIndex("by_user", (q) => q.eq("userId", args.actorUserId))
         .unique();
       if (profile) {
-        await ctx.db.patch(profile._id, { leadAccessRevoked: args.action === "leads_revoked" });
+        const revoked = args.action === "leads_revoked";
+        const wasRevoked = !!profile.leadAccessRevoked;
+        await ctx.db.patch(profile._id, { leadAccessRevoked: revoked });
+        // Same drift-proofing as suspendedUsersCount above — only bump on a
+        // real state transition, not on every click of the button.
+        if (wasRevoked !== revoked) {
+          await bumpStat(ctx, "leadAccessRevokedCount", revoked ? 1 : -1);
+        }
       } else {
         console.error(`adminTakeAction: ${args.action} requested for ${args.actorUserId}, who has no agent_profiles row — logged only, nothing to enforce.`);
       }

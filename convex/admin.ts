@@ -259,6 +259,12 @@ export const deleteUser = mutation({
     await bumpStat(ctx, "totalChecklists", -checklists.length);
     await bumpStat(ctx, "totalRejectionAnalyses", -analyses.length);
     if (agentProfiles.length > 0) await bumpStat(ctx, "totalAgents", -agentProfiles.length);
+    // Deleting a suspended user/lead-revoked agent must also decrement these
+    // — otherwise the counter permanently over-reports for a row that no
+    // longer exists (see convex/securityAudit.ts for where they're bumped up).
+    if (target.isSuspended) await bumpStat(ctx, "suspendedUsersCount", -1);
+    const revokedProfileCount = agentProfiles.filter((p) => p.leadAccessRevoked).length;
+    if (revokedProfileCount > 0) await bumpStat(ctx, "leadAccessRevokedCount", -revokedProfileCount);
 
     await logAdminAction(ctx, admin, "deleteUser", args.userId, target.email ?? "unknown");
   },
@@ -393,20 +399,20 @@ export const verifyAdminForAction = internalQuery({
 });
 
 // ── AI Usage Analytics ────────────────────────────────────────────────────────
-// Real data from user_daily_usage. Admin-only. Full table scan is fine at this
-// scale — the table will have <10k rows for months, and this panel is admin-only.
+// Reworked 2026-07-18: this used to collect() the ENTIRE user_daily_usage
+// table (every resource, every user, every day since launch) just to derive
+// a 7-day trend and an all-time total — that scan only ever grows and was
+// reactive on every write anywhere in the app. Now: the 7-day trend/top-users
+// breakdown reads only the exact (resource, day) rows it needs via the
+// by_resource_date index (bounded by that day's real usage, not by table
+// history), and the all-time total comes from a denormalized counter on
+// platform_stats maintained incrementally where the rows are written
+// (convex/agentAIHelpers.ts _incrementAIUsage) — never summed from raw rows.
 
 export const getAIUsage = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-
-    const allRows = await ctx.db.query("user_daily_usage").collect();
-
-    // Only care about AI rows
-    const aiRows = allRows.filter(
-      (r) => r.resource === "agent_ai_agent" || r.resource === "agent_ai_business",
-    );
 
     // Build last-7-days date keys (UTC)
     const today = new Date();
@@ -416,36 +422,52 @@ export const getAIUsage = query({
       d.setUTCDate(d.getUTCDate() - i);
       days.push(d.toISOString().split("T")[0]);
     }
-
     const todayKey = days[days.length - 1];
 
-    // Aggregate by day
+    // One bounded, indexed read per (resource, day) — 14 total — each
+    // scoped by by_resource_date to exactly that day's rows for that
+    // resource. The 2,000-per-day/resource cap is a deliberately generous,
+    // currently-unreachable ceiling (same "generous ceiling" philosophy as
+    // the daily caps in convex/rateLimits.ts) — a real safety bound, not an
+    // arbitrary one.
+    const DAILY_ROW_CAP = 2000;
+    const AI_RESOURCES = ["agent_ai_agent", "agent_ai_business"] as const;
+    const dayResourceRows = await Promise.all(
+      days.flatMap((day) =>
+        AI_RESOURCES.map((resource) =>
+          ctx.db
+            .query("user_daily_usage")
+            .withIndex("by_resource_date", (q) => q.eq("resource", resource).eq("dateKey", day))
+            .take(DAILY_ROW_CAP)
+            .then((rows) => ({ day, resource, rows })),
+        ),
+      ),
+    );
+
+    // Aggregate by day, and by user (for the top-users breakdown below) in
+    // the same pass over this already-bounded result set.
     const byDay: Record<string, { agent: number; business: number }> = {};
     for (const day of days) byDay[day] = { agent: 0, business: 0 };
-    for (const row of aiRows) {
-      if (!byDay[row.dateKey]) continue;
-      if (row.resource === "agent_ai_agent") byDay[row.dateKey].agent += row.count;
-      else byDay[row.dateKey].business += row.count;
+    const userTotals: Record<string, { agent: number; business: number; userId: string }> = {};
+    for (const { day, resource, rows } of dayResourceRows) {
+      for (const row of rows) {
+        if (resource === "agent_ai_agent") byDay[day].agent += row.count;
+        else byDay[day].business += row.count;
+
+        if (!userTotals[row.userId]) userTotals[row.userId] = { agent: 0, business: 0, userId: row.userId };
+        if (resource === "agent_ai_agent") userTotals[row.userId].agent += row.count;
+        else userTotals[row.userId].business += row.count;
+      }
     }
 
     // Today's totals
     const todayAgent = byDay[todayKey]?.agent ?? 0;
     const todayBusiness = byDay[todayKey]?.business ?? 0;
 
-    // All-time totals
-    const totalAgent = aiRows.filter(r => r.resource === "agent_ai_agent").reduce((s, r) => s + r.count, 0);
-    const totalBusiness = aiRows.filter(r => r.resource === "agent_ai_business").reduce((s, r) => s + r.count, 0);
-
-    // Top users this week (last 7 days) — load emails from users table
-    const weekKeys = new Set(days);
-    const weekRows = aiRows.filter((r) => weekKeys.has(r.dateKey));
-    const userTotals: Record<string, { agent: number; business: number; userId: string }> = {};
-    for (const row of weekRows) {
-      const uid = row.userId;
-      if (!userTotals[uid]) userTotals[uid] = { agent: 0, business: 0, userId: uid };
-      if (row.resource === "agent_ai_agent") userTotals[uid].agent += row.count;
-      else userTotals[uid].business += row.count;
-    }
+    // All-time totals — O(1) read of the denormalized counter, never a scan.
+    const platformStats = await readStats(ctx);
+    const totalAgent = platformStats.totalAgentAIMessages ?? 0;
+    const totalBusiness = platformStats.totalBusinessAIMessages ?? 0;
 
     const topUserIds = Object.values(userTotals)
       .sort((a, b) => (b.agent + b.business) - (a.agent + a.business))

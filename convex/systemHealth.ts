@@ -27,7 +27,7 @@ export const getSystemHealth = query({
 
     const [
       platformStats, pendingFlags, pendingApprovals, pendingCreatorCommissions, pendingPayoutRequests,
-      users, agentProfiles, embassySnapshots, recentSecurityEvents, recentAiFeedback, authAttemptCounters,
+      embassySnapshots, recentSecurityEvents, recentAiFeedback, authAttemptCounters,
     ] =
       await Promise.all([
         readStats(ctx),
@@ -35,8 +35,6 @@ export const getSystemHealth = query({
         ctx.db.query("approval_stories").withIndex("by_status", (q) => q.eq("status", "pending")).take(500),
         ctx.db.query("creator_commissions").withIndex("by_status", (q) => q.eq("status", "pending")).take(2000),
         ctx.db.query("payout_requests").withIndex("by_status", (q) => q.eq("status", "pending")).take(200),
-        ctx.db.query("users").take(5000),
-        ctx.db.query("agent_profiles").take(2000),
         ctx.db.query("embassy_page_snapshots").take(400),
         ctx.db.query("security_audit_logs").withIndex("by_created").order("desc").take(1000),
         ctx.db.query("ai_checklist_feedback").order("desc").take(500),
@@ -72,9 +70,19 @@ export const getSystemHealth = query({
     const embassyMonitorStale =
       targetDestinations.length === 0 || staleDestinations.length / targetDestinations.length > 0.1;
 
-    // Real, live trust & safety state — not derived anywhere else today.
-    const suspendedUsersCount = users.filter((u) => u.isSuspended).length;
-    const leadAccessRevokedCount = agentProfiles.filter((p) => p.leadAccessRevoked).length;
+    // Real, live trust & safety state — reworked 2026-07-18 to read the
+    // denormalized counters on platform_stats instead of take(5000) on
+    // users / take(2000) on agent_profiles. Those two reads were reactive on
+    // EVERY write anywhere in the app (this whole query re-runs on any
+    // subscriber-relevant change), so they got more expensive the more the
+    // app was used — exactly backwards for a query an admin keeps open all
+    // day. The counters are bumped incrementally at the one place each flag
+    // is toggled (convex/securityAudit.ts adminTakeAction) and decremented
+    // on account deletion (convex/admin.ts deleteUser) — see
+    // convex/platformStats.ts's recalculateTrustAndSafetyCounters for a
+    // manual drift-recovery tool if these two numbers are ever doubted.
+    const suspendedUsersCount = platformStats.suspendedUsersCount ?? 0;
+    const leadAccessRevokedCount = platformStats.leadAccessRevokedCount ?? 0;
 
     // Recent (7-day) critical security events — a quick "is something bad
     // happening right now" signal that links through to the full Security Log.

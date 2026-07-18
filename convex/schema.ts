@@ -994,6 +994,17 @@ export default defineSchema({
     totalRejectionAnalyses: v.number(),
     proUsers: v.optional(v.number()),
     expertUsers: v.optional(v.number()),
+    // Added 2026-07-18 so convex/admin.ts's getAIUsage never has to
+    // collect() the full (unboundedly growing) user_daily_usage table just
+    // to report an all-time total — see platformStats.ts for the bump site.
+    totalAgentAIMessages: v.optional(v.number()),
+    totalBusinessAIMessages: v.optional(v.number()),
+    // Added 2026-07-18 so convex/systemHealth.ts's getSystemHealth never has
+    // to take(5000) users / take(2000) agent_profiles on every reactive
+    // re-run just to count two boolean flags — bumped from the single place
+    // each flag is toggled (convex/securityAudit.ts adminTakeAction).
+    suspendedUsersCount: v.optional(v.number()),
+    leadAccessRevokedCount: v.optional(v.number()),
   }),
 
   // Immutable idempotency log for payment webhooks. One row per processed
@@ -1232,7 +1243,13 @@ export default defineSchema({
     resource: v.string(),    // e.g. "community_post", "wall_of_fame", "vault_upload", "checklist_save"
     dateKey: v.string(),     // "YYYY-MM-DD"
     count: v.number(),
-  }).index("by_user_resource_date", ["userId", "resource", "dateKey"]),
+  })
+    .index("by_user_resource_date", ["userId", "resource", "dateKey"])
+    // Added 2026-07-18 for convex/admin.ts's getAIUsage — lets the admin
+    // panel's 7-day trend/top-users breakdown query "every row for resource
+    // X on day Y" directly via index (bounded by that day's real usage),
+    // instead of collect()-ing the whole table's history and filtering in JS.
+    .index("by_resource_date", ["resource", "dateKey"]),
 
   // Agent payout requests. One row per withdrawal request; status flows
   // pending → paid (or declined) when an admin processes it. The available
