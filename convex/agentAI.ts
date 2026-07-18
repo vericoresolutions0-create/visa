@@ -5,6 +5,7 @@ import { v, ConvexError } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getOpenAIClient } from "./openaiClient.ts";
 
 const MAX_RESPONSE_TOKENS = 600;
 const MAX_HISTORY_TURNS = 6;
@@ -72,7 +73,10 @@ export const chat = action({
     const history = args.conversationHistory.slice(-MAX_HISTORY_TURNS);
 
     // 6. OpenAI — gpt-4o-mini at temp 0.3 for consistent, factual output
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    if (!process.env.OPENAI_API_KEY) {
+      throw new ConvexError({ code: "INTERNAL", message: "AI service not configured." });
+    }
+    const openai = getOpenAIClient(process.env.OPENAI_API_KEY);
     let reply: string;
     try {
       const response = await openai.chat.completions.create({

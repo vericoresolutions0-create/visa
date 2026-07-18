@@ -3,8 +3,8 @@
 import { internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import * as crypto from "crypto";
-import OpenAI from "openai";
 import { EMBASSY_MONITOR_URLS } from "../src/lib/embassy-monitor-urls.ts";
+import { getOpenAIClient } from "./openaiClient.ts";
 
 // Strip HTML tags and normalise whitespace so the hash is stable across
 // cosmetic reloads (session tokens, date headers, nav banners).
@@ -58,7 +58,7 @@ async function summarizeChange(
   if (!apiKey) return null;
 
   try {
-    const openai = new OpenAI({ apiKey });
+    const openai = getOpenAIClient(apiKey);
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       max_tokens: 400,

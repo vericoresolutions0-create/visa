@@ -517,6 +517,24 @@ export const getMyProfileViewStats = query({
 // Returns how many applicants searched specialisations this agent covers
 // in the last 30 days. Drives the "real demand is flowing past you" prompt
 // that converts listing agents to featured.
+//
+// Reworked 2026-07-18: this used to take(10000) across EVERY agent's search
+// events platform-wide (via by_created, unscoped) and filter down to this
+// agent's specialisations in JS. Two problems: (1) it re-scanned the whole
+// platform's 30-day search volume on every single agent's dashboard load,
+// not just this agent's relevant slice; (2) with no explicit .order(), that
+// take(10000) returned the OLDEST 10k events in the window first — so once
+// platform volume exceeded 10k/month, agents would silently see stale,
+// early-in-the-window data instead of a representative sample, with no
+// error to signal it. Now: one indexed query per specialisation via
+// by_visa_type_created, each bounded to that specific visa type's own
+// 30-day volume — scales with how much real demand THIS agent's
+// specialisations get, not with total platform-wide search traffic.
+// agent_search_events.visaType and agent_profiles.specialisations both draw
+// from the same shared SPECIALISATIONS constant (src/lib/agent-plans.ts),
+// so an exact-match index query is correct here, not an approximation.
+const DEMAND_SIGNAL_PER_SPEC_CAP = 5000;
+
 export const getMyDemandSignals = query({
   args: {},
   handler: async (ctx) => {
@@ -532,19 +550,20 @@ export const getMyDemandSignals = query({
 
     // Last 30 days — capped to avoid full-table scans at early stage
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) + "T00:00:00.000Z";
-    const events = await ctx.db
-      .query("agent_search_events")
-      .withIndex("by_created", (q) => q.gte("createdAt", cutoff))
-      .take(10000);
 
-    const mySpecs = new Set(profile.specialisations.map((s) => s.toLowerCase()));
-
-    const matching = events.filter(
-      (e) => e.visaType && mySpecs.has(e.visaType.toLowerCase())
+    const matchingCounts = await Promise.all(
+      profile.specialisations.map((spec) =>
+        ctx.db
+          .query("agent_search_events")
+          .withIndex("by_visa_type_created", (q) => q.eq("visaType", spec).gte("createdAt", cutoff))
+          .take(DEMAND_SIGNAL_PER_SPEC_CAP)
+          .then((rows) => rows.length),
+      ),
     );
+    const totalSearches = matchingCounts.reduce((sum, count) => sum + count, 0);
 
     return {
-      totalSearches: matching.length,
+      totalSearches,
       isFeatured: FEATURED_TIERS.has(profile.tier ?? ""),
       specialisations: profile.specialisations,
     };

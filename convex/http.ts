@@ -412,6 +412,20 @@ http.route({
     } catch {
       return new Response("Invalid JSON", { status: 400 });
     }
+
+    // Telegram can redeliver an update it considers slow/unacknowledged
+    // even after a 200 response — this is real, not hypothetical, so skip
+    // straight to acking anything already handled before doing any work.
+    const updateId = update.update_id;
+    if (updateId !== undefined && updateId !== null) {
+      const isNewUpdate: boolean = await ctx.runMutation(internal.telegramBot.claimUpdateForProcessing, {
+        updateId: String(updateId),
+      });
+      if (!isNewUpdate) {
+        return new Response(null, { status: 200 });
+      }
+    }
+
     const message = update.message as Record<string, unknown> | null | undefined;
     const chat = message?.chat as Record<string, unknown> | null | undefined;
     const chatId = chat?.id;
@@ -420,11 +434,23 @@ http.route({
     if (chatId && typeof text === "string") {
       const { replyText, matchedDestination, matchedVisaType, matched } = buildReplyForMessage(text);
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: replyText }),
-      });
+      // A failed Telegram send (rate limit, blocked bot, brief outage) must
+      // never crash the whole webhook response — same best-effort spirit as
+      // the WhatsApp route below. Without this, an unwrapped failure here
+      // propagated as an unhandled action error, which Convex surfaces as a
+      // non-200 response, and Telegram retries on non-2xx too.
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: replyText }),
+        });
+        if (!res.ok) {
+          console.error(`Telegram sendMessage returned ${res.status} for chat [redacted]`);
+        }
+      } catch (err) {
+        console.error(`Failed to send Telegram reply to chat [redacted]`, err);
+      }
 
       await ctx.runMutation(internal.telegramBot.logBotInteraction, {
         chatId: String(chatId),

@@ -1,36 +1,42 @@
 /// <reference types="vite/client" />
-// Tests the two highest-consequence endpoints in the app: the Stripe and
-// Paystack webhook handlers in convex/http.ts. A silent regression here
-// costs real money — a plan granted for free, a payment that never
-// activates a subscription, a forged webhook accepted, or (the exact bug
-// fixed earlier this build) a foreign-currency amount treated as USD cents.
+// Tests the highest-consequence endpoints in convex/http.ts:
+// - Stripe / Paystack webhooks: a silent regression costs real money — a
+//   plan granted for free, a payment that never activates a subscription,
+//   a forged webhook accepted, or (the exact bug fixed earlier this build)
+//   a foreign-currency amount treated as USD cents.
+// - Telegram webhook: a regression here means a duplicate reply sent to a
+//   real user, or an unhandled crash on a routine send failure.
 //
 // These are genuine end-to-end tests: a real HTTP request goes through
-// t.fetch(), with a real HMAC signature computed the same way Stripe/
-// Paystack compute theirs, through the actual httpAction, the actual
-// signature verifier, and the actual internal mutations in billing.ts —
-// nothing here is mocked. If any of these functions change in a way that
-// breaks the real flow, these tests fail.
+// t.fetch(), with a real HMAC signature (or secret token) computed the
+// same way each provider computes theirs, through the actual httpAction,
+// the actual signature verifier, and the actual internal mutations —
+// nothing here is mocked except the outbound fetch() to Telegram's own
+// API, which would otherwise make a real network call on every test run.
 import { convexTest } from "convex-test";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { deriveWebhookSecret } from "./telegramBot.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 
 const STRIPE_WEBHOOK_SECRET = "whsec_test_secret_for_automated_tests_only";
 const PAYSTACK_SECRET_KEY = "sk_test_secret_for_automated_tests_only";
+const TELEGRAM_BOT_TOKEN = "123456:test-bot-token-for-automated-tests-only";
 
 const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = STRIPE_WEBHOOK_SECRET;
   process.env.PAYSTACK_SECRET_KEY = PAYSTACK_SECRET_KEY;
+  process.env.TELEGRAM_BOT_TOKEN = TELEGRAM_BOT_TOKEN;
 });
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  vi.unstubAllGlobals();
 });
 
 // --- Real signature construction, mirroring exactly what Stripe/Paystack
@@ -263,5 +269,85 @@ describe("Paystack webhook — /paystack/webhook", () => {
       (await ctx.db.query("processed_webhook_events").collect()).filter((e) => e.reference === "ref_duplicate_delivery").length,
     );
     expect(processedCount).toBe(1);
+  });
+});
+
+describe("Telegram webhook — /telegram/webhook", () => {
+  function mockTelegramSendSuccess() {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  test("rejects when TELEGRAM_BOT_TOKEN is not configured", async () => {
+    const t = convexTest(schema, modules);
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    const res = await t.fetch("/telegram/webhook", { method: "POST", body: "{}" });
+    expect(res.status).toBe(500);
+  });
+
+  test("rejects a request with no secret token header", async () => {
+    const t = convexTest(schema, modules);
+    const res = await t.fetch("/telegram/webhook", { method: "POST", body: "{}" });
+    expect(res.status).toBe(401);
+  });
+
+  test("rejects a wrong secret token — never reaches (and never calls) the send path", async () => {
+    const t = convexTest(schema, modules);
+    const fetchMock = mockTelegramSendSuccess();
+    const res = await t.fetch("/telegram/webhook", {
+      method: "POST",
+      body: JSON.stringify({ update_id: 1, message: { chat: { id: 42 }, text: "UK tourist visa" } }),
+      headers: { "x-telegram-bot-api-secret-token": "wrong-secret" },
+    });
+    expect(res.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("a genuine update with the correct secret sends exactly one reply", async () => {
+    const t = convexTest(schema, modules);
+    const fetchMock = mockTelegramSendSuccess();
+    const secret = await deriveWebhookSecret(TELEGRAM_BOT_TOKEN);
+    const res = await t.fetch("/telegram/webhook", {
+      method: "POST",
+      body: JSON.stringify({ update_id: 100, message: { chat: { id: 42 }, text: "UK tourist visa" } }),
+      headers: { "x-telegram-bot-api-secret-token": secret },
+    });
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("api.telegram.org");
+  });
+
+  test(
+    "the same update_id delivered twice sends only one reply — proves the dedup fix works, " +
+      "not just that the code compiles",
+    async () => {
+      const t = convexTest(schema, modules);
+      const fetchMock = mockTelegramSendSuccess();
+      const secret = await deriveWebhookSecret(TELEGRAM_BOT_TOKEN);
+      const body = JSON.stringify({ update_id: 200, message: { chat: { id: 42 }, text: "UK tourist visa" } });
+      const headers = { "x-telegram-bot-api-secret-token": secret };
+
+      const first = await t.fetch("/telegram/webhook", { method: "POST", body, headers });
+      const second = await t.fetch("/telegram/webhook", { method: "POST", body, headers });
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200); // still acked cleanly, not an error — just a no-op
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  test("a send failure (Telegram API error) is caught, logged, and still acks 200 — never crashes the webhook", async () => {
+    const t = convexTest(schema, modules);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Bad Request", { status: 400 })));
+    const secret = await deriveWebhookSecret(TELEGRAM_BOT_TOKEN);
+    const res = await t.fetch("/telegram/webhook", {
+      method: "POST",
+      body: JSON.stringify({ update_id: 300, message: { chat: { id: 42 }, text: "UK tourist visa" } }),
+      headers: { "x-telegram-bot-api-secret-token": secret },
+    });
+    expect(res.status).toBe(200);
   });
 });

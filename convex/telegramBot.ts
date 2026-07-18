@@ -140,6 +140,31 @@ export function buildReplyForMessage(text: string): BotReply {
   return { matched: true, matchedDestination: destination, matchedVisaType: visaType, replyText };
 }
 
+// Returns true the first time this Telegram update_id is seen, false if
+// it's a redelivery of one already handled. Reuses the exact idempotency
+// mechanism already proven for the Stripe/Paystack webhooks
+// (processed_webhook_events) rather than inventing a second one. Telegram
+// can redeliver an update it considers slow/unacknowledged even after a
+// 200 response, so this is real defense-in-depth beneath http.ts's webhook
+// handler always returning 200 (see the comment there) — without this
+// check, a redelivered update would send a second reply to the same user.
+export const claimUpdateForProcessing = internalMutation({
+  args: { updateId: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("processed_webhook_events")
+      .withIndex("by_provider_reference", (q) => q.eq("provider", "telegram").eq("reference", args.updateId))
+      .unique();
+    if (existing) return false;
+    await ctx.db.insert("processed_webhook_events", {
+      provider: "telegram",
+      reference: args.updateId,
+      processedAt: new Date().toISOString(),
+    });
+    return true;
+  },
+});
+
 export const logBotInteraction = internalMutation({
   args: {
     chatId: v.string(),

@@ -1,17 +1,17 @@
 "use node";
 
-import OpenAI from "openai";
 import { ConvexError, v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getOpenAIClient } from "./openaiClient.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getOpenAI() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new ConvexError({ code: "INTERNAL", message: "AI service not configured." });
-  return new OpenAI({ apiKey: key });
+  return getOpenAIClient(key);
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
