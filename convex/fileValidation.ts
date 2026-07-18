@@ -16,8 +16,16 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
 
 // Validates the actual stored blob (size + content type Convex recorded at
 // upload time), never the client-supplied fileSize/mimeType arguments —
-// those are just claims and can't be trusted. Deletes the blob and throws
-// if it fails either check, so a rejected upload doesn't leak storage.
+// those are just claims and can't be trusted.
+//
+// The storage.delete() calls below are a best-effort cleanup attempt, not a
+// guarantee: Convex mutations are all-or-nothing, so when this function
+// throws, the delete is rolled back along with everything else in the same
+// mutation call — the blob is NOT actually removed. What does hold, always:
+// the invalid file is never recorded as a document, so it never appears
+// anywhere in the product (no client can see it, no agent dashboard shows
+// it). The only cost of a rejected upload is a small, harmless leftover
+// blob in storage — never a correctness or visibility issue.
 export async function validateUploadedFile(
   ctx: MutationCtx,
   storageId: Id<"_storage">,

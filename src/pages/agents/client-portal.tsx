@@ -21,8 +21,16 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",   // non-standard but reported by some Windows/older systems
+  "image/png",
+  "image/webp",
+  "image/heic",  // iPhone camera photos
+  "image/heif",
+  "application/pdf",
+];
 
 function PortalHeader() {
   const { t } = useTranslation("client-portal");
@@ -189,7 +197,7 @@ function ClientPortalInner({
                 {isUploading ? t("upload.uploading") : isUploaded ? t("upload.replace") : t("upload.upload")}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,application/pdf"
                   className="hidden"
                   disabled={isUploading}
                   onChange={(e) => {
