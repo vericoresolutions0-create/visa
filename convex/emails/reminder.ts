@@ -12,7 +12,7 @@ export const sendReminderEmail = internalAction({
     dueDate: v.string(),
     note: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const formattedDate = new Date(args.dueDate).toLocaleDateString("en-GB", {
       weekday: "long",
       day: "numeric",
@@ -71,6 +71,6 @@ export const sendReminderEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to: args.to, subject, html });
+    await sendEmail(ctx, { to: args.to, subject, html });
   },
 });

@@ -7,7 +7,7 @@ import { sendEmail } from "./sendEmail.ts";
 
 export const sendSettleInReadyEmail = internalAction({
   args: { to: v.string(), destination: v.string(), tripId: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, destination, tripId } = args;
     const safeDestination = escapeHtml(destination);
     const subject = `Your ${destination} visa is approved — here's what's next`;
@@ -58,6 +58,6 @@ export const sendSettleInReadyEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });

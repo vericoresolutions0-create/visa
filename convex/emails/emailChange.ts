@@ -7,7 +7,7 @@ import { sendEmail } from "./sendEmail.ts";
 
 export const sendEmailChangeConfirmationEmail = internalAction({
   args: { to: v.string(), token: v.string(), name: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, token, name } = args;
     const safeName = escapeHtml(name);
     const subject = "Confirm your new VisaClear email";
@@ -58,13 +58,13 @@ export const sendEmailChangeConfirmationEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });
 
 export const sendEmailChangeNoticeEmail = internalAction({
   args: { to: v.string(), newEmail: v.string(), name: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, newEmail, name } = args;
     const safeName = escapeHtml(name);
     const safeNewEmail = escapeHtml(newEmail);
@@ -110,6 +110,6 @@ export const sendEmailChangeNoticeEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });

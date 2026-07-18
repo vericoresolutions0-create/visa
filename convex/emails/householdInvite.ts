@@ -7,7 +7,7 @@ import { sendEmail } from "./sendEmail.ts";
 
 export const sendHouseholdInviteEmail = internalAction({
   args: { to: v.string(), householdName: v.string(), token: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, householdName, token } = args;
     const safeHouseholdName = escapeHtml(householdName);
     const subject = `${householdName} has invited you to share visa readiness on VisaClear`;
@@ -61,6 +61,6 @@ export const sendHouseholdInviteEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });

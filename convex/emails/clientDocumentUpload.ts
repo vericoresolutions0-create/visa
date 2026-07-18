@@ -12,12 +12,12 @@ export const sendAgentUploadAlert = internalAction({
     documentLabel: v.string(),
     destination: v.string(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const dashboardUrl = process.env.SITE_URL
       ? `${process.env.SITE_URL}/agents/dashboard`
       : "https://visaclear.app/agents/dashboard";
 
-    await sendEmail({
+    await sendEmail(ctx, {
       to: args.to,
       subject: `${args.clientName} just uploaded a document`,
       html: `

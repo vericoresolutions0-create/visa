@@ -803,6 +803,24 @@ export default defineSchema({
     createdAt: v.string(),
   }).index("by_created", ["createdAt"]),
 
+  // Added 2026-07-18. Every email in the app goes through the single
+  // chokepoint convex/emails/sendEmail.ts — before this table existed, a
+  // Resend failure (after retries) was only ever a console.error, with no
+  // durable record and no way for an admin to know a real user's password
+  // reset / email-change confirmation / invite never arrived. One row per
+  // exhausted-retries failure; resolvedAt is set when an admin has reviewed
+  // it (same reviewed/dismissed pattern as security_audit_logs).
+  email_delivery_failures: defineTable({
+    to: v.string(),
+    subject: v.string(),
+    errorMessage: v.string(),
+    attempts: v.number(),
+    resolvedAt: v.optional(v.string()),
+    createdAt: v.string(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_resolved_created", ["resolvedAt", "createdAt"]),
+
   // Real-time in-app notifications for paid users (pro/expert) and active agents.
   // Created by cron dispatchers (document expiry, trip deadline, reminder due)
   // and the lead sentinel (marketplace_lead_alert for agents with stale leads).
@@ -1005,6 +1023,11 @@ export default defineSchema({
     // each flag is toggled (convex/securityAudit.ts adminTakeAction).
     suspendedUsersCount: v.optional(v.number()),
     leadAccessRevokedCount: v.optional(v.number()),
+    // Added 2026-07-18, bumped from convex/emails/emailFailures.ts —
+    // surfaced on the System Health score so a run of failed emails is a
+    // live, scored signal rather than something only visible by opening the
+    // Email Delivery admin tab and counting rows.
+    unresolvedEmailFailuresCount: v.optional(v.number()),
   }),
 
   // Immutable idempotency log for payment webhooks. One row per processed

@@ -14,7 +14,7 @@ export const sendDocumentExpiryEmail = internalAction({
     expiryDate: v.string(),
     daysRemaining: v.number(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     if (!args.to) return;
 
     const formattedDate = new Date(args.expiryDate).toLocaleDateString(
@@ -86,7 +86,7 @@ export const sendDocumentExpiryEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to: args.to, subject, html });
+    await sendEmail(ctx, { to: args.to, subject, html });
   },
 });
 
@@ -100,7 +100,7 @@ export const sendTripDeadlineEmail = internalAction({
     daysRemaining: v.number(),
     progress: v.number(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     if (!args.to) return;
 
     const formattedDate = new Date(args.travelDate).toLocaleDateString(
@@ -174,6 +174,6 @@ export const sendTripDeadlineEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to: args.to, subject, html });
+    await sendEmail(ctx, { to: args.to, subject, html });
   },
 });

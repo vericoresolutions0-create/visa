@@ -11,7 +11,8 @@ type StatField =
   | "totalAgentAIMessages"
   | "totalBusinessAIMessages"
   | "suspendedUsersCount"
-  | "leadAccessRevokedCount";
+  | "leadAccessRevokedCount"
+  | "unresolvedEmailFailuresCount";
 
 const ZERO_ROW = {
   totalUsers: 0,
@@ -24,6 +25,7 @@ const ZERO_ROW = {
   totalBusinessAIMessages: 0,
   suspendedUsersCount: 0,
   leadAccessRevokedCount: 0,
+  unresolvedEmailFailuresCount: 0,
 };
 
 // Single denormalized counters row, read/written here only. This exists so
@@ -32,9 +34,9 @@ const ZERO_ROW = {
 // outright fail. Every insert/delete of a counted table must call bumpStat.
 //
 // ctx is typed as the minimal `{ db }` shape (not the full MutationCtx) so
-// this is callable from convex/rateLimits.ts's checkUserDailyLimit, which
-// only ever receives that narrower type — a real MutationCtx satisfies it
-// too, so every existing call site keeps working unchanged.
+// this stays callable from any helper that only receives that narrower type
+// (e.g. convex/rateLimits.ts's checkUserDailyLimit) — a real MutationCtx
+// satisfies it too, so every existing call site keeps working unchanged.
 async function getOrCreateRow(ctx: Pick<MutationCtx, "db">) {
   const existing = await ctx.db.query("platform_stats").first();
   if (existing) return existing;
@@ -130,7 +132,7 @@ export const recalculateTrustAndSafetyCounters = internalMutation({
 
 // One-time migration + drift-recovery tool for totalAgentAIMessages /
 // totalBusinessAIMessages (added 2026-07-18, bumped from
-// convex/rateLimits.ts checkUserDailyLimit). Uses the by_resource_date index
+// convex/agentAIHelpers.ts _incrementAIUsage). Uses the by_resource_date index
 // to read only AI-resource rows (excluding every other resource type that
 // shares the user_daily_usage table), capped generously — a manual
 // reconciliation tool, not a hot path.
@@ -147,5 +149,24 @@ export const recalculateAiUsageCounters = internalMutation({
     if (!row) return;
     await ctx.db.patch(row._id, { totalAgentAIMessages, totalBusinessAIMessages });
     return { totalAgentAIMessages, totalBusinessAIMessages };
+  },
+});
+
+// One-time migration + drift-recovery tool for unresolvedEmailFailuresCount
+// (added 2026-07-18, bumped from convex/emails/emailFailures.ts). Uses the
+// by_resolved_created index to read only unresolved rows directly, bounded —
+// a manual reconciliation tool, not a hot path.
+export const recalculateEmailFailureCounter = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const unresolved = await ctx.db
+      .query("email_delivery_failures")
+      .withIndex("by_resolved_created", (q) => q.eq("resolvedAt", undefined))
+      .take(50_000);
+    const unresolvedEmailFailuresCount = unresolved.length;
+    const row = await getOrCreateRow(ctx);
+    if (!row) return;
+    await ctx.db.patch(row._id, { unresolvedEmailFailuresCount });
+    return { unresolvedEmailFailuresCount };
   },
 });

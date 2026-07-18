@@ -11,7 +11,7 @@ export const sendPolicyUpdateEmail = internalAction({
     title: v.string(),
     body: v.string(),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const subject = `${args.countryName} policy update — VisaClear`;
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const html = `
@@ -59,6 +59,6 @@ export const sendPolicyUpdateEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to: args.to, subject, html });
+    await sendEmail(ctx, { to: args.to, subject, html });
   },
 });

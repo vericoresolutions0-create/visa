@@ -16,7 +16,7 @@ export const sendAgentWelcomeEmail = internalAction({
     bio: v.string(),
     region: v.optional(v.union(v.literal("global"), v.literal("europe"))),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, agentName, specialisations, country, yearsExperience, bio, region } = args;
 
     // Generate an AI bio suggestion — this is a draft for the agent to review,
@@ -171,7 +171,7 @@ Write a 2-3 sentence professional bio in third person that highlights their expe
 </body>
 </html>`;
 
-    await sendEmail({
+    await sendEmail(ctx, {
       to,
       subject: `Welcome to VisaClear, ${agentName} — your agent workspace is ready`,
       html,

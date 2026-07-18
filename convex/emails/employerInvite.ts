@@ -7,7 +7,7 @@ import { sendEmail } from "./sendEmail.ts";
 
 export const sendEmployerInviteEmail = internalAction({
   args: { to: v.string(), orgName: v.string(), token: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, orgName, token } = args;
     const safeOrgName = escapeHtml(orgName);
     const subject = `${orgName} has invited you to VisaClear`;
@@ -61,6 +61,6 @@ export const sendEmployerInviteEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });

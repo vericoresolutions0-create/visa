@@ -47,7 +47,7 @@ export const sendStaleDataDigest = internalAction({
     const html = `<p>${stale.length} destination${stale.length === 1 ? "" : "s"} ${stale.length === 1 ? "has" : "have"} not been re-verified in ${STALE_THRESHOLD_DAYS}+ days:</p><table>${rows}</table>`;
 
     for (const email of adminEmails) {
-      await sendEmail({
+      await sendEmail(ctx, {
         to: email,
         subject: `VisaClear: ${stale.length} checklist${stale.length === 1 ? "" : "s"} need${stale.length === 1 ? "s" : ""} re-verification`,
         html,

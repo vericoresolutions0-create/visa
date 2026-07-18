@@ -7,7 +7,7 @@ import { sendEmail } from "./sendEmail.ts";
 
 export const sendWelcomeEmail = internalAction({
   args: { to: v.string(), name: v.optional(v.string()) },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const { to, name } = args;
     const displayName = name ?? "there";
     const subject = "Welcome to VisaClear — Your visa checklist is ready";
@@ -78,6 +78,6 @@ export const sendWelcomeEmail = internalAction({
 </body>
 </html>`;
 
-    await sendEmail({ to, subject, html });
+    await sendEmail(ctx, { to, subject, html });
   },
 });

@@ -50,6 +50,7 @@ import type * as emails_agentWelcome from "../emails/agentWelcome.js";
 import type * as emails_clientDocumentUpload from "../emails/clientDocumentUpload.js";
 import type * as emails_documentExpiry from "../emails/documentExpiry.js";
 import type * as emails_emailChange from "../emails/emailChange.js";
+import type * as emails_emailFailures from "../emails/emailFailures.js";
 import type * as emails_employerInvite from "../emails/employerInvite.js";
 import type * as emails_householdInvite from "../emails/householdInvite.js";
 import type * as emails_policyUpdate from "../emails/policyUpdate.js";
@@ -150,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   "emails/clientDocumentUpload": typeof emails_clientDocumentUpload;
   "emails/documentExpiry": typeof emails_documentExpiry;
   "emails/emailChange": typeof emails_emailChange;
+  "emails/emailFailures": typeof emails_emailFailures;
   "emails/employerInvite": typeof emails_employerInvite;
   "emails/householdInvite": typeof emails_householdInvite;
   "emails/policyUpdate": typeof emails_policyUpdate;

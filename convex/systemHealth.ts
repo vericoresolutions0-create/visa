@@ -84,6 +84,12 @@ export const getSystemHealth = query({
     const suspendedUsersCount = platformStats.suspendedUsersCount ?? 0;
     const leadAccessRevokedCount = platformStats.leadAccessRevokedCount ?? 0;
 
+    // Email delivery — added 2026-07-18 alongside convex/emails/sendEmail.ts's
+    // retry-and-record hardening. Unlike suspended/lead-revoked above, this
+    // IS scored: a failed password-reset or invite email is a real live
+    // problem for a real user, not a safety system working as intended.
+    const unresolvedEmailFailuresCount = platformStats.unresolvedEmailFailuresCount ?? 0;
+
     // Recent (7-day) critical security events — a quick "is something bad
     // happening right now" signal that links through to the full Security Log.
     const recentCriticalSecurityEvents = recentSecurityEvents.filter(
@@ -133,6 +139,7 @@ export const getSystemHealth = query({
     }
     if (embassyMonitorStale) score -= 10;
     score -= Math.min(20, recentCriticalSecurityEvents * 5);
+    score -= Math.min(15, unresolvedEmailFailuresCount * 3);
     score = Math.max(0, score);
 
     return {
@@ -160,6 +167,9 @@ export const getSystemHealth = query({
         leadAccessRevokedCount,
         recentCriticalSecurityEvents,
         activeLockouts,
+      },
+      emailDelivery: {
+        unresolvedFailuresCount: unresolvedEmailFailuresCount,
       },
       aiQuality: {
         recentFeedbackTotal: recentFeedback.length,

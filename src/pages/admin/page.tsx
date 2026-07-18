@@ -19,7 +19,7 @@ import {
   Building2, Copy, Plus, Eye, UserPlus, ListChecks, MessageCircle,
   RefreshCw, Award, LogOut, Menu, X, Coins, Lock, LockOpen, Info,
   Sparkles, CalendarClock, Languages, Brain, ShieldAlert, AlertTriangle,
-  Search, UserX,
+  Search, UserX, Mail,
 } from "lucide-react";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ import { COUNTRY_REGION } from "@/lib/country-region.ts";
 import { EMBASSY_MONITOR_URLS, type EmbassyRegion } from "@/lib/embassy-monitor-urls.ts";
 import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 
-type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback";
+type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback" | "email-delivery";
 
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "overview",             icon: BarChart3,     label: "Overview" },
@@ -61,6 +61,7 @@ const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "embassy-monitor",      icon: Globe,         label: "Embassy Monitor" },
   { id: "ai-usage",             icon: Sparkles,      label: "AI Usage" },
   { id: "ai-feedback",          icon: Brain,         label: "AI Feedback" },
+  { id: "email-delivery",       icon: Mail,          label: "Email Delivery" },
 ];
 
 // Isolates a single admin tab panel from crashing the whole page.
@@ -1287,6 +1288,7 @@ function AdminInner() {
           {tab === "risk-mitigations" && <RiskMitigationsPanel />}
           {tab === "ai-usage" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AIUsagePanel /></div>}
           {tab === "ai-feedback" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AiFeedbackPanel /></div>}
+          {tab === "email-delivery" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><EmailDeliveryPanel /></div>}
 
         </PanelErrorBoundary>
         </main>
@@ -4139,6 +4141,107 @@ function AiFeedbackPanel() {
   );
 }
 
+// Added 2026-07-18 alongside convex/emails/sendEmail.ts's retry-and-record
+// hardening — previously a failed password-reset/invite/reminder email was
+// only ever a console.error, invisible to everyone. This is the queue that
+// makes it visible: unresolved failures first (the ones needing a look),
+// a handful of recently-resolved ones for context underneath.
+function EmailDeliveryPanel() {
+  const data = useQuery(api.emails.emailFailures.listRecent, {});
+  const markReviewed = useMutation(api.emails.emailFailures.markReviewed);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  const handleReview = async (failureId: string) => {
+    setReviewingId(failureId);
+    try {
+      await markReviewed({ failureId: failureId as Parameters<typeof markReviewed>[0]["failureId"] });
+      toast.success("Marked as reviewed");
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  if (data === undefined) {
+    return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>;
+  }
+
+  const { unresolved, recentResolved } = data;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-serif font-semibold text-[#0f2040]">Email Delivery</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Real Resend delivery failures — every email is retried 3 times before landing here, so anything shown is a real problem, not a blip.
+          </p>
+        </div>
+        <span className={cn(
+          "text-xs font-bold px-3 py-1 rounded-full border",
+          unresolved.length > 0 ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-100"
+        )}>
+          {unresolved.length} unresolved
+        </span>
+      </div>
+
+      {unresolved.length === 0 ? (
+        <div className="text-center py-16">
+          <CheckCircle2 className="w-10 h-10 text-green-300 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-gray-400">No unresolved failures</p>
+          <p className="text-xs text-gray-400 mt-1">Every email sent recently either delivered or was retried successfully.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {unresolved.map((failure) => (
+            <div key={failure._id} className="border border-red-100 bg-red-50/40 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span className="font-semibold text-sm text-[#0f2040] truncate">{failure.to}</span>
+                    <span className="text-xs font-semibold text-red-700 bg-red-100 border border-red-200 rounded-full px-2 py-0.5">
+                      {failure.attempts} attempts, all failed
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mb-1">{failure.subject}</p>
+                  <p className="text-xs text-gray-500 font-mono truncate">{failure.errorMessage}</p>
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {new Date(failure.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { void handleReview(failure._id); }}
+                  disabled={reviewingId === failure._id}
+                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0f2040] text-white hover:bg-[#0f2040]/90 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  Mark Reviewed
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {recentResolved.length > 0 && (
+        <div className="pt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Recently resolved</p>
+          <div className="space-y-2">
+            {recentResolved.map((failure) => (
+              <div key={failure._id} className="border border-gray-100 rounded-xl p-3 opacity-70">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-xs text-gray-600 truncate">{failure.to}</span>
+                  <span className="text-xs text-gray-400 truncate">— {failure.subject}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { t } = useTranslation("admin");
   const navigate = useNavigate();
@@ -5237,6 +5340,38 @@ function SystemHealthPanel() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Email Delivery — added 2026-07-18 alongside sendEmail.ts's
+          retry-and-record hardening. Unlike Trust & Safety above, an
+          unresolved failure here IS a real problem (a real user's email
+          never arrived after 3 retries), so it gets the same red/green
+          treatment as Embassy Monitor below, not neutral info styling. */}
+      <div className={cn(
+        "rounded-xl border shadow-sm overflow-hidden",
+        health.emailDelivery.unresolvedFailuresCount > 0 ? "border-red-200 bg-red-50/40" : "border-gray-100 bg-white",
+      )}>
+        <div className="px-5 py-3.5 flex items-center justify-between flex-wrap gap-2">
+          <span className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", health.emailDelivery.unresolvedFailuresCount > 0 ? "text-red-700" : "text-gray-500")}>
+            <Mail className="w-3.5 h-3.5" /> Email Delivery
+          </span>
+          <button
+            onClick={() => navigate("/admin?tab=email-delivery")}
+            className={cn(
+              "text-[9.5px] font-bold border rounded-full px-2 py-0.5 cursor-pointer transition-colors",
+              health.emailDelivery.unresolvedFailuresCount > 0
+                ? "bg-red-100 text-red-700 border-red-200 hover:bg-red-200"
+                : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
+            )}
+          >
+            {health.emailDelivery.unresolvedFailuresCount > 0 ? "Needs a look →" : "All delivered ✓"}
+          </button>
+        </div>
+        <p className="px-5 pb-4 text-[11px] text-muted-foreground font-medium">
+          {health.emailDelivery.unresolvedFailuresCount > 0
+            ? `${health.emailDelivery.unresolvedFailuresCount} email${health.emailDelivery.unresolvedFailuresCount === 1 ? "" : "s"} failed to send after 3 retries — password resets, invites, and reminders all go through this same check.`
+            : "Every email sent recently either delivered or was retried successfully — nothing has silently failed."}
+        </p>
       </div>
 
       {/* Embassy Monitor — is the weekly automated check actually still running? */}
