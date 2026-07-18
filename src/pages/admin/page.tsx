@@ -4910,12 +4910,6 @@ function SystemHealthPanel() {
   const tgConfigured  = useQuery(api.telegramBot.isTelegramConfigured, {});
   const waConfigured  = useQuery(api.whatsappBot.isWhatsAppConfigured, {});
   const navigate = useNavigate();
-  const [patDismissed, setPatDismissed] = useState(() =>
-    localStorage.getItem("vc_admin_pat_fixed") === "1"
-  );
-  const [ogDismissed, setOgDismissed] = useState(() =>
-    localStorage.getItem("vc_admin_og_fixed") === "1"
-  );
 
   if (health === undefined) {
     return (
@@ -5143,7 +5137,7 @@ function SystemHealthPanel() {
       </div>
 
       {/* Action Now — only rendered when there are real outstanding items */}
-      {(!patDismissed || !health?.envVars?.PAYSTACK_SECRET_KEY) && (
+      {!health?.envVars?.PAYSTACK_SECRET_KEY && (
         <div className="rounded-xl border border-red-200 bg-red-50/50 overflow-hidden">
           <div className="px-5 py-3.5 border-b border-red-200">
             <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
@@ -5151,74 +5145,103 @@ function SystemHealthPanel() {
             </span>
           </div>
           <div className="divide-y divide-red-100/60">
-            {!patDismissed && (
-              <div className="flex items-start gap-3 px-5 py-3.5">
-                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-red-900">GitHub PAT token — security risk</p>
-                  <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
-                    A personal access token is embedded in the git remote URL and is visible in git config. Rotate it on GitHub and replace the remote URL with SSH or a token-only credential. Do this before your next push.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <a
-                    href="https://github.com/settings/tokens"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9.5px] font-bold bg-red-100 text-red-700 border border-red-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-red-200 transition-colors text-center"
-                  >
-                    GitHub →
-                  </a>
-                  <button
-                    onClick={() => { localStorage.setItem("vc_admin_pat_fixed", "1"); setPatDismissed(true); }}
-                    className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-emerald-100 transition-colors cursor-pointer"
-                  >
-                    Mark fixed
-                  </button>
-                </div>
+            <div className="flex items-start gap-3 px-5 py-3.5">
+              <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-red-900">Paystack secret key — Nigerian payments blocked</p>
+                <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
+                  All other payment integrations are live. Nigerian card payments are gated on this key. Add <code className="bg-red-100 rounded px-0.5">PAYSTACK_SECRET_KEY</code> in the Convex Dashboard → Environment Variables when Paystack provides it.
+                </p>
               </div>
-            )}
-            {!health?.envVars?.PAYSTACK_SECRET_KEY && (
-              <div className="flex items-start gap-3 px-5 py-3.5">
-                <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-red-900">Paystack secret key — Nigerian payments blocked</p>
-                  <p className="text-[11px] text-red-700/80 font-medium mt-0.5">
-                    All other payment integrations are live. Nigerian card payments are gated on this key. Add <code className="bg-red-100 rounded px-0.5">PAYSTACK_SECRET_KEY</code> in the Convex Dashboard → Environment Variables when Paystack provides it.
-                  </p>
-                </div>
-                <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">Waiting</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Watch list — only shown while items remain */}
-      {!ogDismissed && (
-        <div className="rounded-xl border border-amber-100 bg-amber-50/40 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-amber-100">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" /> Watch list — no urgency
-            </span>
-          </div>
-          <div className="divide-y divide-amber-100/60">
-            <div className="flex items-start gap-3 px-5 py-3">
-              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-amber-900">OG social share image</p>
-                <p className="text-[11px] text-amber-700/80 font-medium">1200×630 og-image.png is deployed and wired in index.html — WhatsApp, Twitter and LinkedIn previews are live.</p>
-              </div>
-              <button
-                onClick={() => { localStorage.setItem("vc_admin_og_fixed", "1"); setOgDismissed(true); }}
-                className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap hover:bg-emerald-100 transition-colors cursor-pointer shrink-0"
-              >
-                Mark fixed
-              </button>
+              <span className="text-[9.5px] font-bold bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap shrink-0">Waiting</span>
             </div>
           </div>
         </div>
       )}
+
+      {/* Trust & Safety — real, live counts, not a static list. Suspended/
+          lead-revoked counts aren't "problems" by themselves (they mean the
+          enforcement built earlier is doing its job) — shown as neutral
+          info, not red alerts. */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5" /> Trust &amp; Safety
+          </span>
+          <span className="text-[10.5px] text-muted-foreground font-medium">Live counts</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50">
+          {[
+            { label: "Suspended accounts", value: health.trustAndSafety.suspendedUsersCount, tab: "security-log" as Tab, alert: health.trustAndSafety.suspendedUsersCount > 0 },
+            { label: "Lead access revoked", value: health.trustAndSafety.leadAccessRevokedCount, tab: "security-log" as Tab, alert: health.trustAndSafety.leadAccessRevokedCount > 0 },
+            { label: "Critical events (7d)", value: health.trustAndSafety.recentCriticalSecurityEvents, tab: "security-log" as Tab, alert: health.trustAndSafety.recentCriticalSecurityEvents > 0 },
+            { label: "Active login lockouts", value: health.trustAndSafety.activeLockouts, tab: undefined, alert: false },
+          ].map(({ label, value, tab: targetTab, alert }) => (
+            <button
+              key={label}
+              onClick={targetTab ? () => navigate(`/admin?tab=${targetTab}`) : undefined}
+              disabled={!targetTab}
+              className={cn(
+                "text-center py-4 px-2 transition-colors",
+                targetTab ? "cursor-pointer hover:bg-gray-50" : "cursor-default",
+              )}
+            >
+              <div className={cn("text-xl font-black tabular-nums", alert ? "text-amber-600" : "text-gray-800")}>{value}</div>
+              <div className="text-[10px] font-semibold text-gray-400 mt-0.5">{label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Embassy Monitor — is the weekly automated check actually still running? */}
+      <div className={cn(
+        "rounded-xl border shadow-sm overflow-hidden",
+        health.embassyMonitor.stale ? "border-red-200 bg-red-50/40" : "border-gray-100 bg-white",
+      )}>
+        <div className="px-5 py-3.5 flex items-center justify-between flex-wrap gap-2">
+          <span className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", health.embassyMonitor.stale ? "text-red-700" : "text-gray-500")}>
+            <Globe className="w-3.5 h-3.5" /> Embassy Monitor
+          </span>
+          <button
+            onClick={() => navigate("/admin?tab=embassy-monitor")}
+            className={cn(
+              "text-[9.5px] font-bold border rounded-full px-2 py-0.5 cursor-pointer transition-colors",
+              health.embassyMonitor.stale
+                ? "bg-red-100 text-red-700 border-red-200 hover:bg-red-200"
+                : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
+            )}
+          >
+            {health.embassyMonitor.stale ? "Needs a look →" : "Running on schedule ✓"}
+          </button>
+        </div>
+        <p className="px-5 pb-4 text-[11px] text-muted-foreground font-medium">
+          {health.embassyMonitor.monitoredCount} / {health.embassyMonitor.targetCount} destinations monitored.{" "}
+          {health.embassyMonitor.lastCheckedAt
+            ? `Last real check: ${new Date(health.embassyMonitor.lastCheckedAt).toLocaleString()}.`
+            : "No check has ever run yet."}
+          {health.embassyMonitor.stale && " The weekly cron hasn't reported in over 9 days — check the Convex dashboard for a failed run."}
+        </p>
+      </div>
+
+      {/* AI Assistant quality — real thumbs-down rate over the last 7 days */}
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 flex items-center justify-between flex-wrap gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+            <Brain className="w-3.5 h-3.5" /> AI Assistant Quality
+          </span>
+          <button
+            onClick={() => navigate("/admin?tab=ai-feedback")}
+            className="text-[9.5px] font-bold bg-gray-50 text-gray-600 border border-gray-200 rounded-full px-2 py-0.5 hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            Review feedback →
+          </button>
+        </div>
+        <p className="px-5 pb-4 text-[11px] text-muted-foreground font-medium">
+          {health.aiQuality.recentFeedbackTotal === 0
+            ? "No feedback recorded in the last 7 days yet."
+            : `${health.aiQuality.recentFeedbackDown} of ${health.aiQuality.recentFeedbackTotal} ratings (${Math.round((health.aiQuality.recentFeedbackDown / health.aiQuality.recentFeedbackTotal) * 100)}%) were "not helpful" in the last 7 days.`}
+        </p>
+      </div>
 
     </div>
   );
