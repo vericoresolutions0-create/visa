@@ -753,9 +753,9 @@ const CHECKLISTS: Record<string, Record<VisaType, RawVisaChecklist>> = {
       visaType: "student",
       destination: "Poland",
       origin: "Nigeria",
-      processingTime: "2–4 weeks (national visa) or 5–15 days (Schengen)",
-      fee: "€80 for Schengen / PLN 440 (~€100) for national D-visa",
-      successTip: "A Polish national visa (Type D) is what most international students get. It allows stays over 90 days and can be converted to a temporary residence permit (karta pobytu) once you arrive.",
+      processingTime: "2–4 weeks (national D-visa)",
+      fee: "PLN 440 (~€100) — national D-visa fee",
+      successTip: "Poland issues a national visa (Type D) for study, not a Schengen (Type C) visa — this is the one visa that applies here, valid for stays over 90 days, and it can be converted to a temporary residence permit (karta pobytu) once you arrive.",
       items: [
         { id: "pl-s-1", title: "Valid Passport", description: "Valid for at least 3 months beyond your study end date.", where: "Nigerian Immigration Service.", required: true },
         { id: "pl-s-2", title: "University Acceptance Letter", description: "Official admission letter from a Polish university.", where: "Your Polish university's international office.", tip: "Top affordable options: University of Warsaw, AGH University Krakow, Wroclaw University of Technology.", required: true },
