@@ -91,7 +91,7 @@ export const sendEmailChangeNoticeEmail = internalAction({
               We received a request to change the email address on your VisaClear account to <strong>${safeNewEmail}</strong>. The change won't take effect until that address is confirmed.
             </p>
             <p style="font-size:14px;color:#666;line-height:1.7;margin:0;">
-              <strong>If you didn't request this</strong>, sign in to your account and cancel the pending change from Settings, or contact us at <a href="mailto:vericoresolutions0@gmail.com" style="color:#0f2040;">vericoresolutions0@gmail.com</a>.
+              <strong>If you didn't request this</strong>, sign in to your account and cancel the pending change from Settings, or contact us at <a href="mailto:hello@visaclear.app" style="color:#0f2040;">hello@visaclear.app</a>.
             </p>
           </td>
         </tr>

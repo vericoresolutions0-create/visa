@@ -528,7 +528,7 @@ export default function PaymentPage() {
                     <h2 className="font-semibold text-primary">Payment temporarily unavailable</h2>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Our payment system is being configured. Please try again shortly or contact us at vericoresolutions0@gmail.com.
+                    Our payment system is being configured. Please try again shortly or contact us at hello@visaclear.app.
                   </p>
                 </div>
               ) : !isDemoAuthenticated && isStripeConfigured === undefined ? (

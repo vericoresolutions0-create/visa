@@ -48,7 +48,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">1. Who We Are</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Vericore Ltd ("we", "us", "our") operates VisaClear. We are the data controller for personal data collected through the Service. Our registered address and data protection contact: <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>.
+              Vericore Ltd ("we", "us", "our") operates VisaClear. We are the data controller for personal data collected through the Service. Our registered address and data protection contact: <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a>.
             </p>
           </section>
 
@@ -89,7 +89,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">4. Nigeria Data Protection Act (NDPA)</h2>
             <p className="text-muted-foreground leading-relaxed">
-              We comply with the Nigeria Data Protection Act 2023. Nigerian users have the right to access, correct, delete, and object to the processing of their personal data. We do not transfer Nigerian personal data outside Nigeria without appropriate safeguards. To exercise your rights, contact <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>.
+              We comply with the Nigeria Data Protection Act 2023. Nigerian users have the right to access, correct, delete, and object to the processing of their personal data. We do not transfer Nigerian personal data outside Nigeria without appropriate safeguards. To exercise your rights, contact <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a>.
             </p>
           </section>
 
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
               <li>Withdraw consent at any time</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
-              For rights that cannot be exercised directly in-app (access requests, objections, restrictions), contact <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>. We will respond within 30 days.
+              For rights that cannot be exercised directly in-app (access requests, objections, restrictions), contact <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a>. We will respond within 30 days.
             </p>
           </section>
 
@@ -152,7 +152,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="font-serif text-xl font-semibold text-primary mb-3">11. Contact and Complaints</h2>
             <p className="text-muted-foreground leading-relaxed">
-              For privacy questions, contact <a href="mailto:vericoresolutions0@gmail.com" className="text-primary underline">vericoresolutions0@gmail.com</a>. If you are in the UK or EU and are not satisfied with our response, you have the right to lodge a complaint with your local data protection authority (UK: ICO; EU: your national DPA; Nigeria: NDPC).
+              For privacy questions, contact <a href="mailto:hello@visaclear.app" className="text-primary underline">hello@visaclear.app</a>. If you are in the UK or EU and are not satisfied with our response, you have the right to lodge a complaint with your local data protection authority (UK: ICO; EU: your national DPA; Nigeria: NDPC).
             </p>
           </section>
 

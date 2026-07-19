@@ -44,7 +44,7 @@ export async function sendEmail(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const { error } = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || "VisaClear <vericoresolutions0@gmail.com>",
+        from: process.env.RESEND_FROM_EMAIL || "VisaClear <hello@visaclear.app>",
         to: args.to,
         subject: args.subject,
         html: args.html,

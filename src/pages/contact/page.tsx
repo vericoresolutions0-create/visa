@@ -31,17 +31,17 @@ export default function ContactPage() {
     {
       icon: Mail,
       label: t("info.email.label"),
-      value: "vericoresolutions0@gmail.com",
+      value: "hello@visaclear.app",
       hint: t("info.email.hint"),
-      action: "mailto:vericoresolutions0@gmail.com",
+      action: "mailto:hello@visaclear.app",
       actionLabel: t("info.email.action"),
     },
     {
       icon: Briefcase,
       label: t("info.agent.label"),
-      value: "vericoresolutions0@gmail.com",
+      value: "hello@visaclear.app",
       hint: t("info.agent.hint"),
-      action: "mailto:vericoresolutions0@gmail.com",
+      action: "mailto:hello@visaclear.app",
       actionLabel: t("info.agent.action"),
     },
   ];
