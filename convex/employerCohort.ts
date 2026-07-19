@@ -188,11 +188,21 @@ export const listMyCohort = query({
   args: {},
   handler: async (ctx) => {
     const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
+    // Raised from 1000 as a safe near-term stopgap — a real university
+    // pilot tracking its full international student body could plausibly
+    // exceed 1000 over time, and this query silently drops anything past
+    // its cap with no pagination, no error, no visible sign anything's
+    // missing. 5000 removes any realistic near-term risk; if a real org
+    // ever approaches that, this needs proper cursor-based pagination
+    // (the same paginationOptsValidator pattern already used for the
+    // marketplace leads list) plus denormalized stat counters instead of
+    // computing Total/Active/Invited/Completed from the full fetched set —
+    // not worth building against a scale nobody's hit yet.
     const links = await ctx.db
       .query("org_employee_links")
       .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
       .order("desc")
-      .take(1000);
+      .take(5000);
 
     return await Promise.all(
       links.map(async (link) => {
