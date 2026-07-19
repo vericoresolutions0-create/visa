@@ -923,6 +923,16 @@ export default defineSchema({
     active: v.boolean(),
     createdAt: v.string(),
     updatedAt: v.string(),
+    // ILR/settlement document checklist — real user-entered state, not a
+    // computed placeholder. Each field here is something the user actually
+    // confirmed, not inferred from elapsed time.
+    passportExpiryDate: v.optional(v.string()),               // ISO date
+    employmentRecordsConfirmedYears: v.optional(v.array(v.number())), // which qualifying years (1..N) the user has confirmed they hold records for
+    travelLogConfirmedComplete: v.optional(v.boolean()),       // explicit "this is my full absence history" confirmation
+    lifeInUkTestTaken: v.optional(v.boolean()),
+    lifeInUkTestDate: v.optional(v.string()),
+    englishQualificationConfirmed: v.optional(v.boolean()),
+    englishQualificationType: v.optional(v.string()),          // e.g. "IELTS", "Degree taught in English"
   })
     .index("by_user", ["userId"])
     .index("by_user_active", ["userId", "active"]),

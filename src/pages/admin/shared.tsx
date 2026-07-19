@@ -46,7 +46,7 @@ export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = 
   { id: "community",            icon: Users,         label: "Community" },
   { id: "wait-times",           icon: Clock,         label: "Wait Times" },
   { id: "partners",             icon: Building2,     label: "Partners" },
-  { id: "leads",                icon: UserPlus,      label: "Leads" },
+  { id: "leads",                icon: UserPlus,      label: "Partner Applications" },
   { id: "messages",             icon: MessageCircle, label: "Messages" },
   { id: "employers",            icon: Building2,     label: "Organisations" },
   { id: "marketplace-leads",    icon: UserPlus,      label: "Marketplace Leads" },

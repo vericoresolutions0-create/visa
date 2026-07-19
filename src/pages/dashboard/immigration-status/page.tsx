@@ -590,6 +590,132 @@ function TripForm({ onSave, onCancel, initial }: {
   );
 }
 
+// ── Document readiness — real, interactive checklist ────────────────────────
+// One collapsed row per item; expanding it reveals the exact control that
+// writes to convex/visaStatus.ts's updateDocumentChecklist. Every value shown
+// here — the ready/not-ready state, the detail text, the overall percent —
+// comes from api.visaStatus.getDocumentReadiness, never a constant.
+type ReadinessItem = { key: string; label: string; ready: boolean; detail: string; percent?: number };
+type DocumentReadiness = { items: ReadinessItem[]; overallPercent: number; yearsElapsed: number };
+
+const READINESS_ICONS: Record<string, React.ElementType> = {
+  passport: FileText,
+  employment: Building2,
+  travelLog: MapPin,
+  lifeInUk: Shield,
+  english: Globe,
+};
+
+function DocReadinessRow({
+  icon: Icon, ready, label, detail, expanded, onToggle, children, editable = true,
+}: {
+  icon: React.ElementType; ready: boolean; label: string; detail: string;
+  expanded: boolean; onToggle: () => void; children?: React.ReactNode; editable?: boolean;
+}) {
+  return (
+    <div className="border-b border-slate-50 last:border-0">
+      <button
+        type="button"
+        onClick={editable ? onToggle : undefined}
+        className={cn("w-full flex items-center gap-2.5 py-2.5 text-left", editable ? "cursor-pointer" : "cursor-default")}
+      >
+        <Icon className={cn("w-4 h-4 shrink-0", ready ? "text-emerald-500" : "text-slate-400")} />
+        <span className="flex-1 text-xs text-slate-700">{label}</span>
+        <span className={cn("text-[11px] font-semibold shrink-0", ready ? "text-emerald-600" : "text-slate-400")}>{detail}</span>
+        {editable && (
+          <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-slate-300 transition-transform", expanded && "rotate-180")} />
+        )}
+      </button>
+      {expanded && children && <div className="pb-3.5 pl-6.5 pr-1">{children}</div>}
+    </div>
+  );
+}
+
+function EditorActions({ onSave, onCancel, saving, disabled }: {
+  onSave: () => void; onCancel: () => void; saving: boolean; disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <button type="button" onClick={onSave} disabled={saving || disabled}
+        className="h-7 px-3 bg-blue-600 text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <button type="button" onClick={onCancel} className="h-7 px-3 text-[11px] font-medium text-slate-500 hover:text-slate-700">
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function PassportEditor({ initial, onSave, saving, onCancel }: {
+  initial: string | undefined; onSave: (date: string) => void; saving: boolean; onCancel: () => void;
+}) {
+  const [date, setDate] = useState(initial ?? "");
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">Passport expiry date</label>
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+        className="h-8 px-2.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-900" />
+      <EditorActions onSave={() => date && onSave(date)} onCancel={onCancel} saving={saving} disabled={!date} />
+    </div>
+  );
+}
+
+function EmploymentYearsEditor({ yearsElapsed, initial, onSave, saving, onCancel }: {
+  yearsElapsed: number; initial: number[]; onSave: (years: number[]) => void; saving: boolean; onCancel: () => void;
+}) {
+  const [years, setYears] = useState<number[]>(initial);
+  const toggle = (y: number) => setYears((prev) => (prev.includes(y) ? prev.filter((x) => x !== y) : [...prev, y].sort((a, b) => a - b)));
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-500 mb-1.5">Which qualifying years do you hold employment records for?</label>
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: yearsElapsed }, (_, i) => i + 1).map((y) => (
+          <button key={y} type="button" onClick={() => toggle(y)}
+            className={cn(
+              "h-7 px-2.5 rounded-lg text-[11px] font-semibold border transition-colors",
+              years.includes(y) ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "border-slate-200 text-slate-500 hover:border-slate-300",
+            )}>
+            Year {y}{years.includes(y) ? " ✓" : ""}
+          </button>
+        ))}
+      </div>
+      <EditorActions onSave={() => onSave(years)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
+function ToggleDetailEditor({
+  confirmLabel, initialConfirmed, detailType, detailPlaceholder, initialDetail, onSave, saving, onCancel,
+}: {
+  confirmLabel: string; initialConfirmed: boolean; detailType: "date" | "text" | null;
+  detailPlaceholder?: string; initialDetail?: string;
+  onSave: (confirmed: boolean, detail?: string) => void; saving: boolean; onCancel: () => void;
+}) {
+  const [confirmed, setConfirmed] = useState(initialConfirmed);
+  const [detail, setDetail] = useState(initialDetail ?? "");
+  return (
+    <div>
+      <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+        <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)}
+          className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30" />
+        {confirmLabel}
+      </label>
+      {confirmed && detailType && (
+        <input
+          type={detailType === "date" ? "date" : "text"}
+          value={detail}
+          onChange={(e) => setDetail(e.target.value)}
+          placeholder={detailPlaceholder}
+          maxLength={detailType === "text" ? 100 : undefined}
+          className="mt-2 h-8 px-2.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-900 placeholder:text-slate-400 w-full max-w-[220px]"
+        />
+      )}
+      <EditorActions onSave={() => onSave(confirmed, detail || undefined)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
 // ── Demo data ────────────────────────────────────────────────────────────────
 const DEMO_VISA: Doc<"visa_status"> = {
   _id: "demo_visa" as Doc<"visa_status">["_id"],
@@ -604,6 +730,12 @@ const DEMO_VISA: Doc<"visa_status"> = {
   active: true,
   createdAt: "2022-03-15T00:00:00.000Z",
   updatedAt: "2022-03-15T00:00:00.000Z",
+  passportExpiryDate: "2029-06-01",
+  employmentRecordsConfirmedYears: [1, 2, 3],
+  travelLogConfirmedComplete: false,
+  lifeInUkTestTaken: true,
+  lifeInUkTestDate: "2025-11-02",
+  englishQualificationConfirmed: false,
 };
 
 const DEMO_TRIPS: Doc<"travel_trips">[] = [
@@ -657,6 +789,20 @@ const DEMO_ABSENCE_SUMMARY = {
   totalDaysSinceGrant: 40,
 };
 
+// Mirrors what convex/visaStatus.ts's getDocumentReadiness would compute for
+// DEMO_VISA (grant date 2022-03-15) if it were a real, saved record.
+const DEMO_DOCUMENT_READINESS: DocumentReadiness = {
+  items: [
+    { key: "passport", label: "Valid host-country passport (6+ months beyond ILR date)", ready: true, detail: "Expires 2029-06-01" },
+    { key: "employment", label: "Employment records for all 5 years so far", ready: false, detail: "3 of 5 confirmed", percent: 60 },
+    { key: "travelLog", label: "Complete absence travel log (full history required)", ready: false, detail: "Not yet confirmed" },
+    { key: "lifeInUk", label: "Life in the UK Test certificate (or equivalent)", ready: true, detail: "Taken 2025-11-02" },
+    { key: "english", label: "English language qualification (B1+ CEFR)", ready: false, detail: "Not yet gathered" },
+  ],
+  overallPercent: 52,
+  yearsElapsed: 5,
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ImmigrationStatusPage() {
   useSeo({ title: "Immigration Status — VisaClear", description: "Track your visa, ILR countdown, and absence days." });
@@ -673,23 +819,28 @@ export default function ImmigrationStatusPage() {
   const trips = useQuery(api.travelLog.getMyTrips, isDemoAuthenticated ? "skip" : {});
   const absenceSummary = useQuery(api.travelLog.getAbsenceSummary, isDemoAuthenticated ? "skip" : {});
   const tripsForExport = useQuery(api.travelLog.getTripsForExport, isDemoAuthenticated ? "skip" : {});
+  const documentReadiness = useQuery(api.visaStatus.getDocumentReadiness, isDemoAuthenticated ? "skip" : {});
 
   const setVisaMutation = useMutation(api.visaStatus.setVisaStatus);
   const deleteVisaMutation = useMutation(api.visaStatus.deleteVisaStatus);
   const addTripMutation = useMutation(api.travelLog.addTrip);
   const updateTripMutation = useMutation(api.travelLog.updateTrip);
   const deleteTripMutation = useMutation(api.travelLog.deleteTrip);
+  const updateChecklistMutation = useMutation(api.visaStatus.updateDocumentChecklist);
 
   const [editingVisa, setEditingVisa] = useState(false);
   const [showTripForm, setShowTripForm] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Doc<"travel_trips"> | null>(null);
   const [deletingTripId, setDeletingTripId] = useState<Id<"travel_trips"> | null>(null);
+  const [expandedChecklistItem, setExpandedChecklistItem] = useState<string | null>(null);
+  const [checklistSaving, setChecklistSaving] = useState(false);
 
   // In demo mode: use static demo data, never wait on real queries
   const resolvedVisa = isDemoAuthenticated ? DEMO_VISA : visaStatus;
   const resolvedTrips = isDemoAuthenticated ? DEMO_TRIPS : trips;
   const resolvedAbsenceSummary = isDemoAuthenticated ? DEMO_ABSENCE_SUMMARY : absenceSummary;
   const resolvedTripsForExport = isDemoAuthenticated ? DEMO_TRIPS : tripsForExport;
+  const resolvedReadiness: DocumentReadiness | null | undefined = isDemoAuthenticated ? DEMO_DOCUMENT_READINESS : documentReadiness;
 
   const loading = !isDemoAuthenticated && (visaStatus === undefined || trips === undefined || absenceSummary === undefined);
 
@@ -743,6 +894,20 @@ export default function ImmigrationStatusPage() {
       const msg = convexErrMsg(e) ?? "Failed to save.";
       toast.error(msg);
       throw e;
+    }
+  };
+
+  const handleSaveChecklist = async (patch: Parameters<typeof updateChecklistMutation>[0]) => {
+    if (isDemoAuthenticated) { toast.info("Sign up to track your own document readiness."); setExpandedChecklistItem(null); return; }
+    setChecklistSaving(true);
+    try {
+      await updateChecklistMutation(patch);
+      setExpandedChecklistItem(null);
+      toast.success("Saved.");
+    } catch (e) {
+      toast.error(convexErrMsg(e) ?? "Failed to save.");
+    } finally {
+      setChecklistSaving(false);
     }
   };
 
@@ -973,102 +1138,157 @@ export default function ImmigrationStatusPage() {
                 </div>
               </div>
 
-              {/* Document readiness — Pro gate */}
+              {/* Document readiness — real, server-computed, editable checklist */}
               <div className="mt-5 pt-5 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">ILR Document Readiness</span>
-                  {!canSeeDocReadiness && <Chip color="blue">Pro Feature</Chip>}
+                  <div className="flex items-center gap-1.5">
+                    {canSeeDocReadiness && resolvedReadiness && (
+                      <Chip color={resolvedReadiness.overallPercent >= 80 ? "green" : resolvedReadiness.overallPercent >= 40 ? "blue" : "amber"}>
+                        {resolvedReadiness.overallPercent}% ready
+                      </Chip>
+                    )}
+                    {!canSeeDocReadiness && <Chip color="blue">Pro Feature</Chip>}
+                  </div>
                 </div>
 
-                {/* Always-visible items (real data, all plans) */}
-                <div>
-                  <div className="flex items-center gap-2.5 py-2 border-b border-slate-50">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <span className="flex-1 text-xs text-slate-700">Valid host-country passport (6+ months beyond ILR date)</span>
-                    <span className="text-[11px] font-semibold shrink-0 text-emerald-600">Ready</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 py-2 border-b border-slate-50">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <span className="flex-1 text-xs text-slate-700">P60 / Employment records for all {Math.floor(monthsIntoJourney / 12)} years so far</span>
-                    <span className="text-[11px] font-semibold shrink-0 text-emerald-600">{Math.floor(monthsIntoJourney / 12)} of 5</span>
-                  </div>
-
-                  {/* Conditionally locked items */}
-                  {canSeeDocReadiness ? (
-                    <>
-                      <div className="flex items-center gap-2.5 py-2 border-b border-slate-50">
-                        <AlertTriangle className={cn("w-4 h-4 shrink-0", (resolvedTrips?.length ?? 0) === 0 ? "text-amber-500" : "text-emerald-500")} />
-                        <span className="flex-1 text-xs text-slate-700">Complete absence travel log (full history required)</span>
-                        <span className={cn("text-[11px] font-semibold shrink-0", (resolvedTrips?.length ?? 0) === 0 ? "text-amber-600" : "text-emerald-600")}>
-                          {(resolvedTrips?.length ?? 0) === 0 ? "No trips logged" : `${resolvedTrips?.length} trips logged`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2.5 py-2 border-b border-slate-50">
-                        <Clock className="w-4 h-4 shrink-0 text-slate-400" />
-                        <span className="flex-1 text-xs text-slate-700">Life in the UK Test certificate (or equivalent)</span>
-                        <span className="text-[11px] font-semibold shrink-0 text-slate-400">Not yet taken</span>
-                      </div>
-                      <div className="flex items-center gap-2.5 py-2">
-                        <Clock className="w-4 h-4 shrink-0 text-slate-400" />
-                        <span className="flex-1 text-xs text-slate-700">English language qualification (B1+ CEFR)</span>
-                        <span className="text-[11px] font-semibold shrink-0 text-slate-400">Not yet gathered</span>
-                      </div>
-                      <div className="mt-3">
-                        <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-600 rounded-full" style={{ width: "28%" }} />
-                        </div>
-                        <div className="text-[10.5px] text-slate-400 mt-1.5">Start gathering documents now — ILR applications can take months to compile</div>
-                      </div>
-                    </>
+                {canSeeDocReadiness ? (
+                  resolvedReadiness === undefined ? (
+                    <div className="space-y-2 py-1">
+                      {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9 rounded-lg" />)}
+                    </div>
+                  ) : resolvedReadiness === null ? (
+                    <div className="text-xs text-slate-400 py-3">Set up your visa status above to start tracking document readiness.</div>
                   ) : (
-                    <>
-                      {/* Locked rows */}
-                      {[
-                        "Complete absence travel log (full history required)",
-                        "Life in the UK Test certificate (or equivalent)",
-                        "English language qualification (B1+ CEFR)",
-                      ].map((label) => (
-                        <div key={label} className="flex items-center gap-2.5 py-2 border-b border-slate-50 last:border-0">
-                          <div className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center shrink-0">
-                            <Lock className="w-2.5 h-2.5 text-slate-400" />
-                          </div>
-                          <span className="flex-1 text-xs text-slate-300">{label}</span>
-                          <span className="text-[11px] font-semibold shrink-0 text-slate-300">Unlock with Pro</span>
-                        </div>
+                    <div>
+                      {resolvedReadiness.items.map((item) => (
+                        <DocReadinessRow
+                          key={item.key}
+                          icon={READINESS_ICONS[item.key] ?? CheckCircle2}
+                          ready={item.ready}
+                          label={item.label}
+                          detail={item.detail}
+                          expanded={expandedChecklistItem === item.key}
+                          onToggle={() => setExpandedChecklistItem(expandedChecklistItem === item.key ? null : item.key)}
+                        >
+                          {item.key === "passport" && (
+                            <PassportEditor
+                              initial={resolvedVisa.passportExpiryDate}
+                              saving={checklistSaving}
+                              onCancel={() => setExpandedChecklistItem(null)}
+                              onSave={(date) => { void handleSaveChecklist({ passportExpiryDate: date }); }}
+                            />
+                          )}
+                          {item.key === "employment" && (
+                            <EmploymentYearsEditor
+                              yearsElapsed={resolvedReadiness.yearsElapsed}
+                              initial={resolvedVisa.employmentRecordsConfirmedYears ?? []}
+                              saving={checklistSaving}
+                              onCancel={() => setExpandedChecklistItem(null)}
+                              onSave={(years) => { void handleSaveChecklist({ employmentRecordsConfirmedYears: years }); }}
+                            />
+                          )}
+                          {item.key === "travelLog" && (
+                            <ToggleDetailEditor
+                              confirmLabel="I confirm my travel log above is my complete absence history"
+                              initialConfirmed={resolvedVisa.travelLogConfirmedComplete ?? false}
+                              detailType={null}
+                              saving={checklistSaving}
+                              onCancel={() => setExpandedChecklistItem(null)}
+                              onSave={(confirmed) => { void handleSaveChecklist({ travelLogConfirmedComplete: confirmed }); }}
+                            />
+                          )}
+                          {item.key === "lifeInUk" && (
+                            <ToggleDetailEditor
+                              confirmLabel="I've taken the Life in the UK Test"
+                              initialConfirmed={resolvedVisa.lifeInUkTestTaken ?? false}
+                              detailType="date"
+                              detailPlaceholder="Date taken"
+                              initialDetail={resolvedVisa.lifeInUkTestDate}
+                              saving={checklistSaving}
+                              onCancel={() => setExpandedChecklistItem(null)}
+                              onSave={(confirmed, detail) => { void handleSaveChecklist({ lifeInUkTestTaken: confirmed, ...(detail ? { lifeInUkTestDate: detail } : {}) }); }}
+                            />
+                          )}
+                          {item.key === "english" && (
+                            <ToggleDetailEditor
+                              confirmLabel="I hold a qualifying English language qualification"
+                              initialConfirmed={resolvedVisa.englishQualificationConfirmed ?? false}
+                              detailType="text"
+                              detailPlaceholder="e.g. IELTS, degree taught in English"
+                              initialDetail={resolvedVisa.englishQualificationType}
+                              saving={checklistSaving}
+                              onCancel={() => setExpandedChecklistItem(null)}
+                              onSave={(confirmed, detail) => { void handleSaveChecklist({ englishQualificationConfirmed: confirmed, ...(detail ? { englishQualificationType: detail } : {}) }); }}
+                            />
+                          )}
+                        </DocReadinessRow>
                       ))}
-
-                      {/* Progress */}
-                      <div className="mt-3 mb-0.5">
+                      <div className="mt-3">
                         <div className="flex justify-between text-[10px] mb-1">
-                          <span className="font-bold text-blue-700">28%</span>
-                          <span className="text-slate-400">document ready</span>
+                          <span className={cn("font-bold", resolvedReadiness.overallPercent >= 80 ? "text-emerald-600" : "text-blue-700")}>
+                            {resolvedReadiness.items.filter((i) => i.ready).length} of {resolvedReadiness.items.length} complete
+                          </span>
+                          <span className="text-slate-400">{resolvedReadiness.overallPercent}% ready</span>
                         </div>
                         <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-600 rounded-full" style={{ width: "28%" }} />
+                          <div
+                            className={cn("h-full rounded-full transition-all", resolvedReadiness.overallPercent >= 80 ? "bg-emerald-500" : "bg-blue-600")}
+                            style={{ width: `${resolvedReadiness.overallPercent}%` }}
+                          />
                         </div>
+                        <div className="text-[10.5px] text-slate-400 mt-1.5">Tap any item above to update it — ILR applications can take months to compile</div>
                       </div>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {/* Locked rows — labels only, no fabricated status */}
+                    {resolvedReadiness?.items.map((item) => (
+                      <div key={item.key} className="flex items-center gap-2.5 py-2 border-b border-slate-50 last:border-0">
+                        <div className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center shrink-0">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                        </div>
+                        <span className="flex-1 text-xs text-slate-300">{item.label}</span>
+                        <span className="text-[11px] font-semibold shrink-0 text-slate-300">Unlock with Pro</span>
+                      </div>
+                    ))}
 
-                      {/* Pro gate strip */}
-                      <div className="mt-4 -mx-5 px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                          <Lock className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[12.5px] font-extrabold text-blue-900 leading-snug">Your ILR is 28% ready — track the rest with Pro</div>
-                          <div className="text-[11px] text-blue-700 mt-1 leading-relaxed">
-                            Unlock all 5 document categories, set expiry reminders, and know exactly what the Home Office needs before your application date.
-                          </div>
-                          <button
-                            onClick={() => navigate("/pricing")}
-                            className="mt-2.5 h-8 px-4 bg-blue-600 text-white text-[11.5px] font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
-                          >
-                            Upgrade to Pro · £9/mo <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                    {/* Real progress, obscured — not a fabricated number */}
+                    <div className="mt-3 mb-0.5">
+                      <div className="flex justify-between text-[10px] mb-1">
+                        <span className="font-bold text-blue-700 blur-[3px] select-none tabular-nums" aria-hidden="true">
+                          {resolvedReadiness ? `${resolvedReadiness.overallPercent}%` : "—"}
+                        </span>
+                        <span className="text-slate-400">document ready</span>
                       </div>
-                    </>
-                  )}
-                </div>
+                      <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${resolvedReadiness?.overallPercent ?? 0}%` }} />
+                      </div>
+                    </div>
+
+                    {/* Pro gate strip */}
+                    <div className="mt-4 -mx-5 px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                        <Lock className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12.5px] font-extrabold text-blue-900 leading-snug">
+                          Your ILR{resolvedReadiness ? ` is ${resolvedReadiness.overallPercent}%` : ""} ready — track the rest with Pro
+                        </div>
+                        <div className="text-[11px] text-blue-700 mt-1 leading-relaxed">
+                          Unlock all 5 document categories, set expiry reminders, and know exactly what the Home Office needs before your application date.
+                        </div>
+                        <button
+                          onClick={() => navigate("/pricing")}
+                          className="mt-2.5 h-8 px-4 bg-blue-600 text-white text-[11.5px] font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+                        >
+                          Upgrade to Pro · £9/mo <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
