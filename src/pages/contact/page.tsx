@@ -31,9 +31,9 @@ export default function ContactPage() {
     {
       icon: Mail,
       label: t("info.email.label"),
-      value: "hello@visaclear.app",
+      value: "support@visaclear.app",
       hint: t("info.email.hint"),
-      action: "mailto:hello@visaclear.app",
+      action: "mailto:support@visaclear.app",
       actionLabel: t("info.email.action"),
     },
     {
