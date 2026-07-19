@@ -64,6 +64,7 @@ export const inviteEmployee = mutation({
     await ctx.scheduler.runAfter(0, internal.emails.employerInvite.sendEmployerInviteEmail, {
       to: email,
       orgName: org?.name ?? "an employer",
+      orgType: org?.type,
       token,
     });
     return { token };
@@ -83,6 +84,7 @@ export const resendInvite = mutation({
     await ctx.scheduler.runAfter(0, internal.emails.employerInvite.sendEmployerInviteEmail, {
       to: link.invitedEmail,
       orgName: org?.name ?? "an employer",
+      orgType: org?.type,
       token: link.token,
     });
   },

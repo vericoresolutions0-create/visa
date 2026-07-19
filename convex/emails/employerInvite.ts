@@ -5,11 +5,22 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { sendEmail } from "./sendEmail.ts";
 
+// Mirrors src/pages/business/dashboard.tsx's getOrgCtx — same three real
+// org types, same default. Keeps the recipient noun (a Vistula University
+// student is not an "employee") consistent between what the org admin sees
+// in their dashboard and what actually lands in the invitee's inbox.
+export function memberNoun(orgType?: string | null): string {
+  if (orgType === "university") return "students";
+  if (orgType === "law_firm") return "clients";
+  return "employees";
+}
+
 export const sendEmployerInviteEmail = internalAction({
-  args: { to: v.string(), orgName: v.string(), token: v.string() },
+  args: { to: v.string(), orgName: v.string(), orgType: v.optional(v.string()), token: v.string() },
   handler: async (ctx, args) => {
-    const { to, orgName, token } = args;
+    const { to, orgName, orgType, token } = args;
     const safeOrgName = escapeHtml(orgName);
+    const noun = memberNoun(orgType);
     const subject = `${orgName} has invited you to VisaClear`;
     const siteUrl = process.env.SITE_URL || "https://visaclear.app";
     const inviteUrl = `${siteUrl}/business/invite/${token}`;
@@ -31,7 +42,7 @@ export const sendEmployerInviteEmail = internalAction({
           <td style="padding:40px 40px 32px;">
             <h2 style="font-family:Georgia,serif;font-size:22px;color:#0f2040;margin:0 0 16px;font-weight:600;">${safeOrgName} has invited you to track your visa readiness.</h2>
             <p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 16px;">
-              ${safeOrgName} uses VisaClear to support employees relocating abroad. If you accept, they will be able to see your overall readiness percentage and a simple status (Ready / Needs Attention / Not Started) for the relocation you choose to link.
+              ${safeOrgName} uses VisaClear to support ${noun} relocating abroad. If you accept, they will be able to see your overall readiness percentage and a simple status (Ready / Needs Attention / Not Started) for the relocation you choose to link.
             </p>
             <p style="font-size:14px;color:#666;line-height:1.7;margin:0 0 24px;">
               <strong>They will never see your financial answers, your risk score breakdown, or your document contents.</strong> You decide which checklist (if any) to link, and you can disconnect at any time.
