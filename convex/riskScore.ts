@@ -48,13 +48,19 @@ export const submitRiskScore = mutation({
 // with the link (the whole mechanic: screenshot it, send it, post it) can
 // view a specific result by its id, same pattern as the client-portal
 // token-based access already used elsewhere in this app.
+//
+// Returns null (not a thrown error) when the id doesn't resolve — a bad,
+// expired, or malformed shared link is an expected outcome of a public
+// lookup, not an exceptional failure. Convex's useQuery throws render-time
+// on a genuine error, which the result page has no local error boundary
+// for — it would fall through to the app's generic crash screen instead of
+// the friendly "this result no longer exists, take the quiz" state the
+// page is actually built to show.
 export const getRiskScoreResult = query({
   args: { resultId: v.id("risk_score_results") },
   handler: async (ctx, args) => {
     const result = await ctx.db.get(args.resultId);
-    if (!result) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "This result no longer exists." });
-    }
+    if (!result) return null;
     const { rawScore, displayScore, factors, topWeakFactors } = computeRiskScore(result.answers);
     return {
       destination: result.destination,

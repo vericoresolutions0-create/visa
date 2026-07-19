@@ -111,6 +111,7 @@ export const updateDocumentExpiry = mutation({
   args: { id: v.id("vault_documents"), expiryDate: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
+    requirePlan(user.plan);
     const doc = await ctx.db.get(args.id);
     if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Document not found" });
     if (doc.userId !== user._id) {
@@ -151,6 +152,7 @@ export const createExpiryReminder = mutation({
   args: { id: v.id("vault_documents"), leadDays: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
+    requirePlan(user.plan);
     const doc = await ctx.db.get(args.id);
     if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Document not found" });
     if (doc.userId !== user._id) {
@@ -198,6 +200,11 @@ export const listMyDocuments = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
+    // Return empty rather than throw: a plan downgrade shouldn't crash the
+    // page for a real user (this query fires unconditionally on load) — the
+    // frontend's own canUseVault check (driven by user.plan, not this list)
+    // is what shows the upgrade prompt instead of the vault UI.
+    if (user.plan !== "pro" && user.plan !== "expert") return [];
     const docs = await ctx.db
       .query("vault_documents")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -214,6 +221,7 @@ export const getDocumentDownloadUrl = mutation({
   args: { documentId: v.id("vault_documents") },
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
+    requirePlan(user.plan);
     const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.userId !== user._id) {
       throw new ConvexError({ code: "NOT_FOUND", message: "Document not found." });

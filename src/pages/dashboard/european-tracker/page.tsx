@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api.js";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
@@ -245,11 +246,13 @@ export default function EuropeanTrackerPage() {
 
   const visaStatus = useQuery(api.visaStatus.getMyVisaStatus, isDemoAuthenticated ? "skip" : {});
   const trips = useQuery(api.travelLog.getMyTrips, isDemoAuthenticated ? "skip" : {});
+  const euChecklist = useQuery(api.euRenewalChecklist.getMyEuRenewalChecklist, isDemoAuthenticated ? "skip" : {});
+  const toggleEuRenewalDocument = useMutation(api.euRenewalChecklist.toggleEuRenewalDocument);
 
   const resolvedVisa = isDemoAuthenticated ? DEMO_VISA : visaStatus;
   const resolvedTrips = isDemoAuthenticated ? DEMO_TRIPS : (trips ?? []);
 
-  const loading = !isDemoAuthenticated && (visaStatus === undefined || trips === undefined);
+  const loading = !isDemoAuthenticated && (visaStatus === undefined || trips === undefined || euChecklist === undefined);
 
   const jInfo = resolvedVisa ? EU_JURISDICTIONS[resolvedVisa.jurisdiction] : null;
   const isEUJurisdiction = !!jInfo;
@@ -279,29 +282,38 @@ export default function EuropeanTrackerPage() {
   const schengenStatus: "safe" | "warning" | "critical" =
     schengen.used >= 90 ? "critical" : schengen.used >= 75 ? "warning" : "safe";
 
-  // Persisted to localStorage — this was previously in-memory only, so a
-  // refresh silently wiped every box a user had checked with no warning.
-  const EU_DOC_STORAGE_KEY = "vc_eu_tracker_checked_docs";
-  const [checkedDocs, setCheckedDocs] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem(EU_DOC_STORAGE_KEY);
-      return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch {
-      return new Set();
+  // Real, account-scoped persistence (convex/euRenewalChecklist.ts) — synced
+  // across every device, survives a cleared browser. Previously localStorage
+  // only, before that in-memory only; both silently lost a user's progress.
+  // `localCheckedDocs` holds an optimistic override once the user actually
+  // interacts, so a toggle feels instant instead of waiting on the round
+  // trip — it's computed from the same resolved state it's overriding, so
+  // it naturally matches whatever the mutation eventually confirms.
+  const [demoCheckedDocs, setDemoCheckedDocs] = useState<Set<string>>(new Set(["passport", "permit", "photos"]));
+  const [localCheckedDocs, setLocalCheckedDocs] = useState<Set<string> | null>(null);
+  const checkedDocs = isDemoAuthenticated
+    ? demoCheckedDocs
+    : (localCheckedDocs ?? new Set(euChecklist ?? []));
+  const toggleDoc = async (id: string) => {
+    if (isDemoAuthenticated) {
+      setDemoCheckedDocs((prev) => {
+        const s = new Set(prev);
+        if (s.has(id)) s.delete(id); else s.add(id);
+        return s;
+      });
+      return;
     }
-  });
-  const toggleDoc = (id: string) =>
-    setCheckedDocs((prev) => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      try {
-        localStorage.setItem(EU_DOC_STORAGE_KEY, JSON.stringify([...s]));
-      } catch {
-        // Private browsing / storage disabled — checklist still works for
-        // this session, it just won't survive a refresh. Not worth erroring.
-      }
-      return s;
-    });
+    const wasChecked = checkedDocs.has(id);
+    const next = new Set(checkedDocs);
+    if (wasChecked) next.delete(id); else next.add(id);
+    setLocalCheckedDocs(next);
+    try {
+      await toggleEuRenewalDocument({ documentId: id, checked: !wasChecked });
+    } catch {
+      setLocalCheckedDocs(checkedDocs);
+      toast.error("Couldn't save that — please try again.");
+    }
+  };
   const docProgress = Math.round((checkedDocs.size / EU_DOCUMENT_CHECKLIST.length) * 100);
 
   if (loading) {

@@ -625,6 +625,25 @@ export default function ChecklistPage() {
     setCheckedItems({});
   }, [urlFrom, urlTo, urlType]);
 
+  // Enforce the free-plan destination lock at the actual point of access,
+  // not just on the selector's picker button. `step` above is derived
+  // purely from URL params with no plan check, so a direct or shared link
+  // straight to a locked destination (/checklist?from=X&to=<locked>&type=Y)
+  // used to render the full checklist regardless of plan. Waits for the
+  // real plan to resolve (currentUser !== undefined) before acting, so a
+  // genuinely paying user's session is never disrupted by a false "locked"
+  // flash during the loading window.
+  useEffect(() => {
+    if (step !== "checklist") return;
+    if (isDemoAuthenticated) return;
+    if (currentUser === undefined) return;
+    const destinationIndex = AVAILABLE_DESTINATIONS.indexOf(urlTo);
+    if (destinationIndex === -1) return;
+    if (canAccessDestination(plan, destinationIndex)) return;
+    toast.error(t("selector.upgrade_toast"));
+    setSearchParams({});
+  }, [step, isDemoAuthenticated, currentUser, plan, urlTo, setSearchParams, t]);
+
   // Scroll to top when the checklist results appear (setSearchParams doesn't
   // change the pathname so useScrollToTop never fires on this transition).
   useEffect(() => {

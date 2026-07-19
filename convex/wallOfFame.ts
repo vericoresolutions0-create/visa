@@ -79,25 +79,33 @@ export const listApprovedStories = query({
     destination: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const result = await ctx.db
-      .query("wall_of_fame_stories")
-      .withIndex("by_status", (q) => q.eq("status", "approved"))
-      .order("desc")
-      .paginate(args.paginationOpts);
+    // Filter by destination inside the query itself (via the compound
+    // index) rather than fetching an "approved" page and filtering it in
+    // memory afterward — the latter can return a near-empty page for a
+    // less-common destination even though real matches exist further back.
+    const result = args.destination
+      ? await ctx.db
+          .query("wall_of_fame_stories")
+          .withIndex("by_status_destination", (q) => q.eq("status", "approved").eq("destination", args.destination!))
+          .order("desc")
+          .paginate(args.paginationOpts)
+      : await ctx.db
+          .query("wall_of_fame_stories")
+          .withIndex("by_status", (q) => q.eq("status", "approved"))
+          .order("desc")
+          .paginate(args.paginationOpts);
 
     return {
       ...result,
-      page: result.page
-        .filter((s) => !args.destination || s.destination === args.destination)
-        .map((s) => ({
-          _id: s._id,
-          destination: s.destination,
-          visaType: s.visaType,
-          refusalCount: s.refusalCount,
-          whatWentWrong: s.whatWentWrong,
-          whatFixedIt: s.whatFixedIt,
-          createdAt: s.createdAt,
-        })),
+      page: result.page.map((s) => ({
+        _id: s._id,
+        destination: s.destination,
+        visaType: s.visaType,
+        refusalCount: s.refusalCount,
+        whatWentWrong: s.whatWentWrong,
+        whatFixedIt: s.whatFixedIt,
+        createdAt: s.createdAt,
+      })),
     };
   },
 });

@@ -503,7 +503,14 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_user", ["submittedByUserId"])
-    .index("by_destination_visatype", ["destination", "visaType"]),
+    .index("by_destination_visatype", ["destination", "visaType"])
+    // Lets listApprovedStories filter by destination inside the DB query
+    // itself when a destination filter is applied, instead of paginating
+    // "approved" first and filtering the page in memory afterward — the
+    // in-memory approach could return a near-empty page (status:
+    // "CanLoadMore") for a less-common destination, requiring several
+    // "Load more" clicks to surface real matches even though they exist.
+    .index("by_status_destination", ["status", "destination"]),
 
   // A submitted Risk Score result — deliberately readable by anyone with
   // the _id (no auth check on the read), since the whole point is a
@@ -953,6 +960,20 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_departure", ["userId", "departureDate"]),
+
+  // The European Tracker's "Renewal Document Readiness" checklist — was
+  // localStorage-only until 2026-07-19 (silently wiped on browser clear,
+  // never synced across devices). Document IDs are defined and owned by the
+  // frontend (src/pages/dashboard/european-tracker/page.tsx's
+  // EU_DOCUMENT_CHECKLIST), same precedent as visa_status.jurisdiction —
+  // this table just stores whichever ID strings the frontend sends, one row
+  // per user.
+  eu_renewal_checklist: defineTable({
+    userId: v.id("users"),
+    checkedDocumentIds: v.array(v.string()),
+    updatedAt: v.string(),
+  })
+    .index("by_user", ["userId"]),
 
   // A content creator or YouTuber who promotes VisaClear via a clean URL
   // (visaclear.app/ref/creator-slug). Different from influencer_codes (?af=):

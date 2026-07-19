@@ -228,7 +228,7 @@ export default function PassportPhotoPage() {
             1. Select your destination country
           </label>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {AVAILABLE_DESTINATIONS.slice(0, 10).map((d) => (
+            {AVAILABLE_DESTINATIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDestination(d)}

@@ -111,12 +111,13 @@ export default function NotificationsPage() {
   const goBack = useSmartBack("/dashboard");
   const { isDemoAuthenticated } = useDemoAuth();
 
+  const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
   const notifications = useQuery(api.notifications.getMyNotifications, isDemoAuthenticated ? "skip" : {});
   const unreadCount = useQuery(api.notifications.getUnreadCount, isDemoAuthenticated ? "skip" : {});
   const markAllRead = useMutation(api.notifications.markAllRead);
   const markRead = useMutation(api.notifications.markRead);
 
-  const loading = !isDemoAuthenticated && notifications === undefined;
+  const loading = !isDemoAuthenticated && (notifications === undefined || user === undefined);
 
   const [filter, setFilter] = useState<FilterType>("all");
 
@@ -155,8 +156,13 @@ export default function NotificationsPage() {
     }
   };
 
-  // Plan access check — free users see the gate
-  const isPaidUser = isDemoAuthenticated || (notifications !== undefined && notifications !== null);
+  // Plan access check — mirrors convex/notifications.ts's own gate exactly
+  // (isPaid(plan) || agentPlan). Previously this inferred "paid" from
+  // notifications.length === 0, which is indistinguishable from "genuinely
+  // paid but nothing to show yet" — a brand-new Pro subscriber with an empty
+  // inbox saw "Notifications require a Pro plan" despite already being Pro.
+  const PAID_PLANS = ["pro", "expert"];
+  const isPaidUser = isDemoAuthenticated || Boolean(user && (PAID_PLANS.includes(user.plan ?? "free") || user.agentPlan));
 
   if (loading) {
     return (
@@ -222,8 +228,8 @@ export default function NotificationsPage() {
           </p>
         </div>
 
-        {/* Free-plan gate */}
-        {!isDemoAuthenticated && notifications !== undefined && notifications.length === 0 && resolvedUnread === 0 && (
+        {/* Free-plan gate — driven by the user's real plan, not an empty inbox */}
+        {!isDemoAuthenticated && !isPaidUser && (
           <div className="bg-primary/4 border border-primary/20 rounded-2xl p-8 text-center mb-6">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Lock className="w-5 h-5 text-primary/60" />
