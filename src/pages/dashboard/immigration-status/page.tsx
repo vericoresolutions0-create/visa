@@ -27,45 +27,45 @@ const JURISDICTIONS = [
   { value: "uk_flr",         label: "🇬🇧 United Kingdom — Further Leave to Remain (FLR)", absenceLabel: "180 days / rolling 12-month period", limit: 180, warning: 150, rule: "rolling_year" },
 
   // ── EU — generic fallback ───────────────────────────────────────────────
-  { value: "eu_ltr",         label: "🇪🇺 EU — Long-Term Residency (generic)", absenceLabel: "6 months consecutive / 10 months total over 5 yrs", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "eu_ltr",         label: "🇪🇺 EU — Long-Term Residency (generic)", absenceLabel: "6 months consecutive / 10 months total over 5 yrs", limit: 304, warning: 270, rule: "eu_ltr" },
 
   // ── EU Member States A–Z ────────────────────────────────────────────────
-  { value: "at_nb",          label: "🇦🇹 Austria — Niederlassungsbewilligung", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "be_ts",          label: "🇧🇪 Belgium — Titre de séjour / Verblijfstitel", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "bg_dp",          label: "🇧🇬 Bulgaria — Разрешение за постоянно пребиваване", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "hr_bp",          label: "🇭🇷 Croatia — Boravišna dozvola", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "cy_pr",          label: "🇨🇾 Cyprus — Άδεια Μόνιμης Κατοικίας", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "cz_pp",          label: "🇨🇿 Czech Republic — Povolení k trvalému pobytu", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "dk_op",          label: "🇩🇰 Denmark — Opholdstilladelse (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "ee_ep",          label: "🇪🇪 Estonia — Elamisluba (alaline)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "fi_op",          label: "🇫🇮 Finland — Oleskelulupa (pysyvä)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "fr_cr",          label: "🇫🇷 France — Carte de résident (10 ans)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "de_nbe",         label: "🇩🇪 Germany — Niederlassungserlaubnis", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "de_nbe_eu",      label: "🇩🇪 Germany — Erlaubnis zum Daueraufenthalt-EU", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "gr_at",          label: "🇬🇷 Greece — Άδεια Διαμονής (αόριστης διάρκειας)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "hu_at",          label: "🇭🇺 Hungary — Tartózkodási engedély (állandó)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "ie_stamp4",      label: "🇮🇪 Ireland — Stamp 4 (Long-Term Residence)", absenceLabel: "6 months consecutive / 10 months total over 5 yrs", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "ie_stamp4eu",    label: "🇮🇪 Ireland — Stamp 4 EUFam", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "it_ps",          label: "🇮🇹 Italy — Permesso di soggiorno (lungo periodo)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "lv_up",          label: "🇱🇻 Latvia — Uzturēšanās atļauja (pastāvīgā)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "lt_lgl",         label: "🇱🇹 Lithuania — Leidimas nuolat gyventi", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "lu_as",          label: "🇱🇺 Luxembourg — Autorisation de séjour (perm.)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "mt_rc",          label: "🇲🇹 Malta — Residency Card (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "nl_vvotd",       label: "🇳🇱 Netherlands — Verblijfsvergunning onbepaalde tijd", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "pl_kp",          label: "🇵🇱 Poland — Karta Pobytu (czasowy)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "pl_perm",        label: "🇵🇱 Poland — Zezwolenie na pobyt stały", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "pt_ar",          label: "🇵🇹 Portugal — Autorização de Residência (perm.)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "ro_sr",          label: "🇷🇴 Romania — Drept de ședere permanentă", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "sk_pd",          label: "🇸🇰 Slovakia — Povolenie na trvalý pobyt", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "si_dp",          label: "🇸🇮 Slovenia — Dovoljenje za stalno prebivanje", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "es_tar",         label: "🇪🇸 Spain — Tarjeta de Residencia (larga duración)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "se_ut",          label: "🇸🇪 Sweden — Uppehållstillstånd (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "at_nb",          label: "🇦🇹 Austria — Niederlassungsbewilligung", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "be_ts",          label: "🇧🇪 Belgium — Titre de séjour / Verblijfstitel", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "bg_dp",          label: "🇧🇬 Bulgaria — Разрешение за постоянно пребиваване", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "hr_bp",          label: "🇭🇷 Croatia — Boravišna dozvola", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "cy_pr",          label: "🇨🇾 Cyprus — Άδεια Μόνιμης Κατοικίας", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "cz_pp",          label: "🇨🇿 Czech Republic — Povolení k trvalému pobytu", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "dk_op",          label: "🇩🇰 Denmark — Opholdstilladelse (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "ee_ep",          label: "🇪🇪 Estonia — Elamisluba (alaline)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "fi_op",          label: "🇫🇮 Finland — Oleskelulupa (pysyvä)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "fr_cr",          label: "🇫🇷 France — Carte de résident (10 ans)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "de_nbe",         label: "🇩🇪 Germany — Niederlassungserlaubnis", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "de_nbe_eu",      label: "🇩🇪 Germany — Erlaubnis zum Daueraufenthalt-EU", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "gr_at",          label: "🇬🇷 Greece — Άδεια Διαμονής (αόριστης διάρκειας)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "hu_at",          label: "🇭🇺 Hungary — Tartózkodási engedély (állandó)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "ie_stamp4",      label: "🇮🇪 Ireland — Stamp 4 (Long-Term Residence)", absenceLabel: "6 months consecutive / 10 months total over 5 yrs", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "ie_stamp4eu",    label: "🇮🇪 Ireland — Stamp 4 EUFam", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "it_ps",          label: "🇮🇹 Italy — Permesso di soggiorno (lungo periodo)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "lv_up",          label: "🇱🇻 Latvia — Uzturēšanās atļauja (pastāvīgā)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "lt_lgl",         label: "🇱🇹 Lithuania — Leidimas nuolat gyventi", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "lu_as",          label: "🇱🇺 Luxembourg — Autorisation de séjour (perm.)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "mt_rc",          label: "🇲🇹 Malta — Residency Card (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "nl_vvotd",       label: "🇳🇱 Netherlands — Verblijfsvergunning onbepaalde tijd", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "pl_kp",          label: "🇵🇱 Poland — Karta Pobytu (czasowy)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "pl_perm",        label: "🇵🇱 Poland — Zezwolenie na pobyt stały", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "pt_ar",          label: "🇵🇹 Portugal — Autorização de Residência (perm.)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "ro_sr",          label: "🇷🇴 Romania — Drept de ședere permanentă", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "sk_pd",          label: "🇸🇰 Slovakia — Povolenie na trvalý pobyt", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "si_dp",          label: "🇸🇮 Slovenia — Dovoljenje za stalno prebivanje", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "es_tar",         label: "🇪🇸 Spain — Tarjeta de Residencia (larga duración)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "se_ut",          label: "🇸🇪 Sweden — Uppehållstillstånd (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
 
   // ── EEA (non-EU) ────────────────────────────────────────────────────────
-  { value: "is_dv",          label: "🇮🇸 Iceland — Dvalarleyfi (durable)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "li_at",          label: "🇱🇮 Liechtenstein — Aufenthaltsbewilligung (B)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "no_op",          label: "🇳🇴 Norway — Oppholdstillatelse (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
-  { value: "ch_au",          label: "🇨🇭 Switzerland — Ausweis C (Niederlassungsbewilligung)", absenceLabel: "6 months consecutive / 10 months total", limit: 182, warning: 150, rule: "eu_ltr" },
+  { value: "is_dv",          label: "🇮🇸 Iceland — Dvalarleyfi (durable)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "li_at",          label: "🇱🇮 Liechtenstein — Aufenthaltsbewilligung (B)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "no_op",          label: "🇳🇴 Norway — Oppholdstillatelse (permanent)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
+  { value: "ch_au",          label: "🇨🇭 Switzerland — Ausweis C (Niederlassungsbewilligung)", absenceLabel: "6 months consecutive / 10 months total", limit: 304, warning: 270, rule: "eu_ltr" },
 
   // ── Other major destinations ─────────────────────────────────────────────
   { value: "au_pr",          label: "🇦🇺 Australia — Permanent Residence", absenceLabel: "5-year RRV travel facility", limit: 365, warning: 300, rule: "rolling_year" },
@@ -653,6 +653,8 @@ const DEMO_ABSENCE_SUMMARY = {
   daysUsedThisWindow: 21,
   totalTrips: 3,
   totalDaysAllTime: 40,
+  longestSingleTripDays: 19,
+  totalDaysSinceGrant: 40,
 };
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -710,13 +712,26 @@ export default function ImmigrationStatusPage() {
   const daysToExpiry = resolvedVisa ? daysUntil(resolvedVisa.expiryDate) : 0;
   const daysToILR = ilrEligibleDate ? daysUntil(ilrEligibleDate) : 0;
 
-  // Absence
-  const daysUsed = resolvedAbsenceSummary?.daysUsedThisWindow ?? 0;
+  // Absence — the two rules measure genuinely different things, not just
+  // different thresholds. "rolling_year" (UK-style) caps days absent in
+  // any rolling 12-month window. "eu_ltr" caps total days absent across
+  // the whole 5-year qualifying period (the 10-months-total half of the
+  // rule) — a rolling-12-month figure doesn't measure that at all, so
+  // using the wrong source here would silently under-count an EU-track
+  // user's real cumulative absence once they're more than a year in.
+  const daysUsed = jInfo.rule === "eu_ltr"
+    ? (resolvedAbsenceSummary?.totalDaysSinceGrant ?? resolvedAbsenceSummary?.totalDaysAllTime ?? 0)
+    : (resolvedAbsenceSummary?.daysUsedThisWindow ?? 0);
   const absenceLimit = jInfo.limit;
   const absenceWarning = jInfo.warning;
   const daysRemaining = Math.max(absenceLimit - daysUsed, 0);
   const absenceSafe = daysUsed < absenceWarning;
   const absenceCritical = daysUsed >= absenceLimit;
+  // The other half of the EU rule — 6 consecutive months in one absence —
+  // isn't captured by any total/rolling sum, so it needs its own flag.
+  const longestSingleTripDays = resolvedAbsenceSummary?.longestSingleTripDays ?? 0;
+  const consecutiveAbsenceWarning = jInfo.rule === "eu_ltr" && longestSingleTripDays >= 150;
+  const consecutiveAbsenceCritical = jInfo.rule === "eu_ltr" && longestSingleTripDays >= 182;
 
   const handleSaveVisa = async (data: Parameters<typeof setVisaMutation>[0]) => {
     if (isDemoAuthenticated) { toast.info("Sign up to save your visa details."); setEditingVisa(false); return; }
@@ -1094,7 +1109,22 @@ export default function ImmigrationStatusPage() {
               <span>
                 {jInfo.rule === "rolling_year"
                   ? `Your ${absenceLimit}-day allowance runs on a rolling 12-month basis — not a calendar year. You've used ${daysUsed} days. Log every trip to keep an accurate record for your ${jInfo.label.replace(/^.*— /, "")} application.`
-                  : `EU Long-Term Residency requires no more than 6 consecutive months OR 10 months total absent over 5 years. Log every trip outside ${resolvedVisa.hostCountry}.`}
+                  : `EU Long-Term Residency requires no more than 6 consecutive months OR 10 months total absent over 5 years. The gauge below tracks your total since your visa was granted. Log every trip outside ${resolvedVisa.hostCountry}.`}
+              </span>
+            </div>
+          )}
+
+          {/* Consecutive-absence flag — the "6 consecutive months" half of
+              the EU rule, which the total-days gauge below doesn't cover
+              (a long single trip can trip this even while total days stay
+              well under the 10-month cap). */}
+          {resolvedVisa && jInfo.rule === "eu_ltr" && consecutiveAbsenceWarning && (
+            <div className={`mx-5 mt-2.5 flex items-start gap-2.5 p-3 rounded-lg text-xs ${consecutiveAbsenceCritical ? "bg-red-50 border border-red-200 text-red-800" : "bg-amber-50 border border-amber-200 text-amber-800"}`}>
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                {consecutiveAbsenceCritical
+                  ? `Your longest single trip was ${longestSingleTripDays} days — over the 6-consecutive-month limit (≈182 days) on its own, regardless of your total. This can break continuous residence even with a low total-days count.`
+                  : `Your longest single trip was ${longestSingleTripDays} days — getting close to the 6-consecutive-month limit (≈182 days). A trip this long counts against continuous residence even if your total absence is otherwise low.`}
               </span>
             </div>
           )}

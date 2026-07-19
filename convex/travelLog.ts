@@ -37,8 +37,16 @@ export const getMyTrips = query({
   },
 });
 
-// Returns the rolling-12-month absence summary needed for the tracker gauge.
-// Separate from getMyTrips so the UI can request both independently.
+// Returns the absence summary needed for the tracker gauge — both the
+// rolling-12-month figure (the correct measure for "rolling_year" rule
+// jurisdictions like the UK: no more than N days in any rolling 12-month
+// period) AND the EU Long-Term Residency figures (a genuinely different
+// test: 6 consecutive months absent, OR 10 months total across the whole
+// 5-year qualifying period — neither of which a rolling-12-month sum
+// actually measures). Computing both here, always, is deliberate: it's
+// one extra pass over an already-fetched, already-small trip list, and it
+// means the frontend never has to guess which fields are meaningful for
+// which jurisdiction.
 export const getAbsenceSummary = query({
   args: {},
   handler: async (ctx) => {
@@ -67,11 +75,41 @@ export const getAbsenceSummary = query({
     const totalTrips = allTrips.length;
     const totalDaysAllTime = allTrips.reduce((sum, t) => sum + t.daysAbsent, 0);
 
+    // Longest single trip — the practical proxy for "6 consecutive months
+    // absent". A single trip's length is an unambiguous, real number;
+    // stitching together back-to-back separate trips into one "consecutive"
+    // streak is a genuinely ambiguous edge case even under the real rule,
+    // so this deliberately doesn't attempt that — it flags the clear case.
+    const longestSingleTripDays = allTrips.reduce((max, t) => Math.max(max, t.daysAbsent), 0);
+
+    // Total absence since the visa was granted, clamped to trips that
+    // actually fall on/after the grant date — this is the real "10 months
+    // total over the 5-year qualifying period" measure. Null if there's no
+    // active visa record yet (nothing to measure "since" without a start
+    // date).
+    let totalDaysSinceGrant: number | null = null;
+    const visa = await ctx.db
+      .query("visa_status")
+      .withIndex("by_user_active", (q) => q.eq("userId", user._id).eq("active", true))
+      .first();
+    if (visa) {
+      totalDaysSinceGrant = allTrips
+        .filter((t) => t.returnDate >= visa.grantDate)
+        .reduce((sum, t) => {
+          const clampedStart = t.departureDate < visa.grantDate ? visa.grantDate : t.departureDate;
+          const departure = parseDateStr(clampedStart);
+          const returnDate = parseDateStr(t.returnDate);
+          return sum + Math.max(0, diffDays(departure, returnDate));
+        }, 0);
+    }
+
     return {
       windowStart,
       daysUsedThisWindow,
       totalTrips,
       totalDaysAllTime,
+      longestSingleTripDays,
+      totalDaysSinceGrant,
     };
   },
 });
