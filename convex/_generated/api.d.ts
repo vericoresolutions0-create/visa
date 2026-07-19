@@ -96,6 +96,7 @@ import type * as telegramBot from "../telegramBot.js";
 import type * as travelLog from "../travelLog.js";
 import type * as users from "../users.js";
 import type * as vault from "../vault.js";
+import type * as vendorWatch from "../vendorWatch.js";
 import type * as visaCorridors from "../visaCorridors.js";
 import type * as visaStatus from "../visaStatus.js";
 import type * as waitTimeTracker from "../waitTimeTracker.js";
@@ -198,6 +199,7 @@ declare const fullApi: ApiFromModules<{
   travelLog: typeof travelLog;
   users: typeof users;
   vault: typeof vault;
+  vendorWatch: typeof vendorWatch;
   visaCorridors: typeof visaCorridors;
   visaStatus: typeof visaStatus;
   waitTimeTracker: typeof waitTimeTracker;

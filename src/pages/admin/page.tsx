@@ -42,6 +42,7 @@ import { BlogAdminPanel } from "./panels/BlogAdminPanel.tsx";
 import { AIUsagePanel } from "./panels/AIUsagePanel.tsx";
 import { AiFeedbackPanel } from "./panels/AiFeedbackPanel.tsx";
 import { EmailDeliveryPanel } from "./panels/EmailDeliveryPanel.tsx";
+import { VendorWatchPanel } from "./panels/VendorWatchPanel.tsx";
 import { CorridorIntelligencePanel } from "./panels/CorridorIntelligencePanel.tsx";
 import { ChecklistFlagsPanel } from "./panels/ChecklistFlagsPanel.tsx";
 import { ApprovalsAdminPanel } from "./panels/ApprovalsAdminPanel.tsx";
@@ -588,6 +589,7 @@ function AdminInner() {
           {tab === "ai-usage" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AIUsagePanel /></div>}
           {tab === "ai-feedback" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AiFeedbackPanel /></div>}
           {tab === "email-delivery" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><EmailDeliveryPanel /></div>}
+          {tab === "vendor-watch" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><VendorWatchPanel /></div>}
 
         </PanelErrorBoundary>
         </main>

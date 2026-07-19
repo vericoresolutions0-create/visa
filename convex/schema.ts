@@ -810,6 +810,22 @@ export default defineSchema({
     createdAt: v.string(),
   }).index("by_created", ["createdAt"]),
 
+  // Admin Panel "Vendor Watch" (2026-07-19) — most vendor billing/plan state
+  // (Vercel's plan tier, Convex's usage-tier ceiling, a domain registrar's
+  // renewal date) has no API this app can read; it only exists on that
+  // vendor's own dashboard. Rather than fake a live number, this just
+  // records that a human checked it and when — one row per vendor, upserted
+  // on each check. vendorKey/label/dashboardUrl are owned by the frontend
+  // (src/pages/admin/panels/VendorWatchPanel.tsx), same precedent as
+  // visa_status.jurisdiction and eu_renewal_checklist's document ids — this
+  // table just stores whichever key string the frontend sends.
+  vendor_checks: defineTable({
+    vendorKey: v.string(),
+    lastCheckedAt: v.string(),
+    lastCheckedByAdminId: v.id("users"),
+    note: v.optional(v.string()),
+  }).index("by_vendorKey", ["vendorKey"]),
+
   // Added 2026-07-18. Every email in the app goes through the single
   // chokepoint convex/emails/sendEmail.ts — before this table existed, a
   // Resend failure (after retries) was only ever a console.error, with no

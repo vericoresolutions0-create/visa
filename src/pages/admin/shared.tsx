@@ -26,9 +26,10 @@ import {
   Sparkles,
   Brain,
   Mail,
+  DollarSign,
 } from "lucide-react";
 
-export type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback" | "email-delivery";
+export type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback" | "email-delivery" | "vendor-watch";
 
 export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "overview",             icon: BarChart3,     label: "Overview" },
@@ -62,6 +63,7 @@ export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = 
   { id: "ai-usage",             icon: Sparkles,      label: "AI Usage" },
   { id: "ai-feedback",          icon: Brain,         label: "AI Feedback" },
   { id: "email-delivery",       icon: Mail,          label: "Email Delivery" },
+  { id: "vendor-watch",         icon: DollarSign,    label: "Vendor Watch" },
 ];
 
 export class PanelErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
