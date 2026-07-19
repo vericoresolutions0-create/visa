@@ -827,7 +827,13 @@ export default function AgentsPage() {
                 size="sm"
                 variant={tier.highlight ? "secondary" : "default"}
                 className={cn("mt-5 cursor-pointer", tier.highlight && "bg-white text-primary hover:bg-white/90")}
-                onClick={() => navigate(`/payment?product=agent&plan=${tier.id}&billing=monthly`)}
+                onClick={() =>
+                  navigate(
+                    tier.id === "agency_white_label"
+                      ? "/white-label"
+                      : `/payment?product=agent&plan=${tier.id}&billing=monthly`,
+                  )
+                }
               >
                 {tier.cta}
               </Button>

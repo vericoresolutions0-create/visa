@@ -56,7 +56,12 @@ export default function AgentRegisterPage() {
   );
   const selectedPlan = getAgentPlan(selectedPlanId);
   const selectedPrice = getAgentPlanPrice(selectedPlan, billing);
-  const checkoutPath = `/payment?product=agent&plan=${selectedPlan.id}&billing=${billing}`;
+  // Agency White-Label isn't self-serve — send straight to the application
+  // page instead of a checkout screen that would just redirect there anyway.
+  const checkoutPath =
+    selectedPlan.id === "agency_white_label"
+      ? "/white-label"
+      : `/payment?product=agent&plan=${selectedPlan.id}&billing=${billing}`;
 
   const upsertAgentProfile = useMutation(api.agents.upsertProfile);
   const myProfile = useQuery(api.agents.getMyProfile, {});
@@ -249,8 +254,12 @@ export default function AgentRegisterPage() {
                 className="mt-4 w-full cursor-pointer"
                 onClick={() => navigate(checkoutPath)}
               >
-                {t("register.activate", { plan: selectedPlan.name })}
-                <CreditCard className="w-4 h-4 ml-2" />
+                {selectedPlan.id === "agency_white_label"
+                  ? t("register.apply", { plan: selectedPlan.name })
+                  : t("register.activate", { plan: selectedPlan.name })}
+                {selectedPlan.id === "agency_white_label"
+                  ? <ChevronRight className="w-4 h-4 ml-2" />
+                  : <CreditCard className="w-4 h-4 ml-2" />}
               </Button>
             </div>
           </motion.section>
@@ -505,7 +514,9 @@ export default function AgentRegisterPage() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button variant="secondary" onClick={() => navigate("/agents/onboarding")} className="cursor-pointer">{t("register.preview_onboarding")}</Button>
                     <Button onClick={() => navigate(checkoutPath)} className="cursor-pointer">
-                      {t("register.continue_checkout")} <ChevronRight className="w-4 h-4 ml-1.5" />
+                      {selectedPlan.id === "agency_white_label"
+                        ? t("register.continue_application")
+                        : t("register.continue_checkout")} <ChevronRight className="w-4 h-4 ml-1.5" />
                     </Button>
                   </div>
                 </div>

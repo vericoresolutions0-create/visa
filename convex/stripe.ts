@@ -52,12 +52,30 @@ export const createCheckoutSession = action({
     referralCode: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ url: string }> => {
-    const stripe = getStripeClient();
     const user = await ctx.runQuery(api.users.getCurrentUser, {});
     if (!user) {
       throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not logged in" });
     }
     assertNotSuspended(user);
+
+    // Agency White-Label isn't self-serve — the custom domain/branding it
+    // implies is hand-built per partner, not automated infrastructure that
+    // exists today. Self-serve checkout for it would take someone's money
+    // for a deliverable the app can't actually provide. The real on-ramp is
+    // the /white-label application (convex/whitelabel.ts submit) reviewed
+    // personally, which then issues a license code (convex/licenseCodes.ts)
+    // — that path is untouched by this guard. Checked before touching
+    // Stripe at all, both so this rejection is instant/cheap and so it
+    // doesn't depend on Stripe being configured in whatever environment
+    // this runs in.
+    if (args.plan === "agency_white_label") {
+      throw new ConvexError({
+        code: "NOT_SELF_SERVE",
+        message: "Agency White-Label isn't available for instant checkout yet. Apply at /white-label and our team will follow up personally.",
+      });
+    }
+
+    const stripe = getStripeClient();
 
     const baseAmountCents =
       args.product === "applicant"

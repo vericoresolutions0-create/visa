@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
@@ -218,6 +218,18 @@ export default function PaymentPage() {
     description: selectedPlan.description,
   });
   const navigate = useNavigate();
+
+  // Agency White-Label isn't self-serve — the custom domain/branding it
+  // implies is hand-built per partner, not automated infrastructure. Bounce
+  // straight to the application page instead of showing a checkout screen
+  // for something that can't actually be delivered instantly. Backstopped
+  // server-side too (convex/stripe.ts createCheckoutSession rejects this
+  // plan outright), so this is a UX redirect, not the real security gate.
+  useEffect(() => {
+    if (product === "agent" && plan === "agency_white_label") {
+      navigate("/white-label", { replace: true });
+    }
+  }, [product, plan, navigate]);
   const goBack = useSmartBack(
     product === "agent" ? "/agents/register" : "/pricing",
   );
@@ -428,6 +440,12 @@ export default function PaymentPage() {
       setSaving(false);
     }
   };
+
+  // Redirecting away (see the effect above) — render nothing rather than
+  // flash a checkout screen for a plan that isn't actually purchasable yet.
+  if (product === "agent" && plan === "agency_white_label") {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
