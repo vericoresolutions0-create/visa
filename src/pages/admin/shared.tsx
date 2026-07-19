@@ -48,7 +48,7 @@ export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = 
   { id: "partners",             icon: Building2,     label: "Partners" },
   { id: "leads",                icon: UserPlus,      label: "Leads" },
   { id: "messages",             icon: MessageCircle, label: "Messages" },
-  { id: "employers",            icon: Building2,     label: "Employers" },
+  { id: "employers",            icon: Building2,     label: "Organisations" },
   { id: "marketplace-leads",    icon: UserPlus,      label: "Marketplace Leads" },
   { id: "credit-mgmt",          icon: Star,          label: "Credit Management" },
   { id: "blog",                 icon: FileText,      label: "Blog" },

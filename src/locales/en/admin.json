@@ -139,7 +139,7 @@
   "leads.subscribers_heading": "Newsletter Subscribers ({{count}})",
   "leads.subscribers_empty": "No subscribers yet.",
   "employers.heading": "Organisations ({{count}} most recent)",
-  "employers.description": "Read-only oversight of both employer accounts and households — per-member detail stays inside each organisation's own dashboard.",
+  "employers.description": "Read-only oversight of every organisation type — employers, universities, law firms, and households. Per-member detail stays inside each organisation's own dashboard.",
   "employers.empty": "No organisations yet.",
   "employers.household": "Household",
   "employers.employer": "Employer",
