@@ -416,7 +416,11 @@ function VisaSetupForm({ onSave, initial }: {
   }) => void;
   initial?: Doc<"visa_status"> | null;
 }) {
-  const [jurisdiction, setJurisdiction] = useState(initial?.jurisdiction ?? "uk_ilr");
+  // Empty by default for a new visa — forces a conscious choice instead of
+  // silently pre-selecting the first jurisdiction in the list (previously
+  // defaulted to "uk_ilr", so anyone who didn't notice the dropdown already
+  // had a value could save the wrong country's rules without ever choosing).
+  const [jurisdiction, setJurisdiction] = useState(initial?.jurisdiction ?? "");
   const [visaType, setVisaType] = useState(initial?.visaType ?? "");
   const [hostCountry, setHostCountry] = useState(initial?.hostCountry ?? "");
   const [grantDate, setGrantDate] = useState(initial?.grantDate ?? "");
@@ -429,7 +433,7 @@ function VisaSetupForm({ onSave, initial }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!visaType.trim() || !hostCountry.trim() || !grantDate || !expiryDate) {
+    if (!jurisdiction || !visaType.trim() || !hostCountry.trim() || !grantDate || !expiryDate) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -450,9 +454,10 @@ function VisaSetupForm({ onSave, initial }: {
       <div>
         <label className={labelClass}>Jurisdiction *</label>
         <div className="relative">
-          <select value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)} className={selectClass}>
+          <select value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)} className={cn(selectClass, !jurisdiction && "text-slate-400")} required>
+            <option value="" disabled>Choose your jurisdiction…</option>
             {JURISDICTIONS.map((j) => (
-              <option key={j.value} value={j.value}>{j.label}</option>
+              <option key={j.value} value={j.value} className="text-slate-900">{j.label}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />

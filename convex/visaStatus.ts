@@ -38,6 +38,8 @@ export const setVisaStatus = mutation({
     const user = await getCurrentUserOrThrow(ctx);
 
     // Input validation — prevent excessively long strings
+    if (!args.jurisdiction.trim()) throw new ConvexError({ code: "INVALID_INPUT", message: "Please choose a jurisdiction." });
+    if (args.jurisdiction.length > 50) throw new ConvexError({ code: "INVALID_INPUT", message: "Invalid jurisdiction." });
     if (args.visaType.length > 100) throw new ConvexError({ code: "INVALID_INPUT", message: "Visa type too long." });
     if (args.hostCountry.length > 100) throw new ConvexError({ code: "INVALID_INPUT", message: "Host country too long." });
     if ((args.sponsorEmployer ?? "").length > 200) throw new ConvexError({ code: "INVALID_INPUT", message: "Sponsor name too long." });

@@ -214,3 +214,57 @@ describe("visaStatus.getDocumentReadiness — no fake data", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("visaStatus.setVisaStatus — jurisdiction can't be silently defaulted", () => {
+  // Regression test: the frontend form used to default its jurisdiction
+  // dropdown to "uk_ilr" even before the user picked anything, so a save
+  // could go through with a jurisdiction nobody actually chose. The fix is
+  // a real placeholder + required selection client-side, backed here by a
+  // genuine server-side rejection so an empty/blank value can never be
+  // saved regardless of what any future client sends.
+  test("rejects an empty jurisdiction", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await seedUser(t);
+
+    await expect(
+      t.withIdentity({ subject: userId }).mutation(api.visaStatus.setVisaStatus, {
+        jurisdiction: "",
+        visaType: "Skilled Worker",
+        hostCountry: "United Kingdom",
+        grantDate: "2023-01-01",
+        expiryDate: "2099-01-01",
+      }),
+    ).rejects.toThrow(/choose a jurisdiction/);
+  });
+
+  test("rejects a whitespace-only jurisdiction", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await seedUser(t);
+
+    await expect(
+      t.withIdentity({ subject: userId }).mutation(api.visaStatus.setVisaStatus, {
+        jurisdiction: "   ",
+        visaType: "Skilled Worker",
+        hostCountry: "United Kingdom",
+        grantDate: "2023-01-01",
+        expiryDate: "2099-01-01",
+      }),
+    ).rejects.toThrow(/choose a jurisdiction/);
+  });
+
+  test("accepts a real jurisdiction, unaffected", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await seedUser(t);
+
+    await t.withIdentity({ subject: userId }).mutation(api.visaStatus.setVisaStatus, {
+      jurisdiction: "uk_ilr",
+      visaType: "Skilled Worker",
+      hostCountry: "United Kingdom",
+      grantDate: "2023-01-01",
+      expiryDate: "2099-01-01",
+    });
+
+    const visa = await t.withIdentity({ subject: userId }).query(api.visaStatus.getMyVisaStatus, {});
+    expect(visa?.jurisdiction).toBe("uk_ilr");
+  });
+});
