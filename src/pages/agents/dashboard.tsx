@@ -2401,7 +2401,12 @@ function Sidebar({
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col h-full bg-[#0f2040] text-white">
+    // Grid, not flexbox, for the fixed-header/scrollable-nav/fixed-footer
+    // layout — flexbox's default min-height:auto on children has repeatedly
+    // failed to keep the footer correctly pinned in Safari mobile (same
+    // issue already fixed this way in the admin panel sidebar). A direct
+    // "auto 1fr auto" row constraint can't be overridden by content size.
+    <div className="h-full grid bg-[#0f2040] text-white" style={{ gridTemplateRows: "auto 1fr auto" }}>
       {/* Logo */}
       <div className="px-5 py-6 border-b border-white/10">
         <button onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
@@ -2416,7 +2421,7 @@ function Sidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map(({ id, labelKey, Icon }) => {
           const active = section === id;
           const badge = id === "overview" && unread > 0 ? unread : null;
@@ -2443,8 +2448,14 @@ function Sidebar({
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-white/10 space-y-1">
+      {/* Footer — real safe-area padding so Sign out clears the home
+          indicator / thumb-reach zone on notched phones, not just guessed
+          spacing. Matters most in installed-PWA standalone mode, where
+          there's no browser chrome absorbing that space for you. */}
+      <div
+        className="px-3 pt-4 border-t border-white/10 space-y-1"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
         <button
           type="button"
           onClick={() => navigate("/")}
@@ -2599,11 +2610,11 @@ function DashboardInner() {
               <button
                 type="button"
                 onClick={() => { void handleSignOut(); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 border border-border transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 border border-border transition-colors cursor-pointer shrink-0"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
-                Sign out
+                <span className="hidden sm:inline">Sign out</span>
               </button>
             </div>
           </div>
