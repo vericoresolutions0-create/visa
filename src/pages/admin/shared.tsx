@@ -30,9 +30,10 @@ import {
   Brain,
   Mail,
   DollarSign,
+  Siren,
 } from "lucide-react";
 
-export type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback" | "email-delivery" | "vendor-watch";
+export type Tab = "overview" | "users" | "agents" | "setup" | "country-watch" | "data-freshness" | "telegram-bot" | "whatsapp-bot" | "wall-of-fame" | "community" | "wait-times" | "partners" | "leads" | "messages" | "employers" | "audit-log" | "blog" | "marketplace-leads" | "credit-mgmt" | "security-log" | "corridor-intelligence" | "checklist-flags" | "approvals" | "creators" | "health" | "agent-reports" | "embassy-monitor" | "risk-mitigations" | "ai-usage" | "ai-feedback" | "email-delivery" | "vendor-watch" | "alerts-center";
 
 export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: "overview",             icon: BarChart3,     label: "Overview" },
@@ -67,6 +68,7 @@ export const NAV_ITEMS: { id: Tab; icon: React.ElementType; label: string }[] = 
   { id: "ai-feedback",          icon: Brain,         label: "AI Feedback" },
   { id: "email-delivery",       icon: Mail,          label: "Email Delivery" },
   { id: "vendor-watch",         icon: DollarSign,    label: "Vendor Watch" },
+  { id: "alerts-center",        icon: Siren,         label: "Alerts Center" },
 ];
 
 // Groups the 32 flat tabs above into 8 departments, ordered by how likely
@@ -80,7 +82,7 @@ export type DepartmentId = "front-desk" | "trust-safety" | "people-ops" | "growt
 
 export const DEPARTMENTS: { id: DepartmentId; code: string; label: string; tabs: Tab[] }[] = [
   { id: "front-desk", code: "FD", label: "Front Desk", tabs: ["overview", "health", "vendor-watch"] },
-  { id: "trust-safety", code: "TS", label: "Trust & Safety", tabs: ["security-log", "risk-mitigations", "checklist-flags", "approvals", "audit-log"] },
+  { id: "trust-safety", code: "TS", label: "Trust & Safety", tabs: ["alerts-center", "security-log", "risk-mitigations", "checklist-flags", "approvals", "audit-log"] },
   { id: "people-ops", code: "PO", label: "People Ops", tabs: ["users", "agents", "employers", "agent-reports"] },
   { id: "growth-partnerships", code: "GP", label: "Growth & Partnerships", tabs: ["partners", "leads", "marketplace-leads", "credit-mgmt", "creators"] },
   { id: "content-community", code: "CC", label: "Content & Community", tabs: ["blog", "wall-of-fame", "community", "corridor-intelligence"] },
@@ -93,7 +95,7 @@ export const DEPARTMENTS: { id: DepartmentId; code: string; label: string; tabs:
 // badge rather than a fabricated number. Extend this as more panels grow a
 // real "pending" concept (this starts with the two that already have one:
 // unverified agents and orgs awaiting review).
-export type SidebarBadges = { employers?: number; agents?: number };
+export type SidebarBadges = { employers?: number; agents?: number; "alerts-center"?: number };
 
 // Single nav-item list shared by the desktop aside and the mobile overlay —
 // they differ only in their outer grid/flex wrapper (kept separate in

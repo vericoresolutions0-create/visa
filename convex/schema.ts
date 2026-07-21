@@ -849,6 +849,28 @@ export default defineSchema({
     .index("by_created", ["createdAt"])
     .index("by_resolved_created", ["resolvedAt", "createdAt"]),
 
+  // Added 2026-07-21. Same idea as email_delivery_failures, generalised:
+  // instead of a silent console.error being the only record that something
+  // went wrong, a durable row exists an admin can actually see. Repeat
+  // failures of the exact same error from the exact same function collapse
+  // into one row with a rising occurrenceCount (via by_function_message,
+  // filtered to unresolved) rather than flooding the table — a fresh
+  // occurrence after resolution starts a new row, since "same bug, still
+  // happening" and "same bug, happened again after I thought I fixed it"
+  // are meaningfully different states for the person reading this table.
+  backend_exceptions: defineTable({
+    functionName: v.string(),
+    errorMessage: v.string(),
+    occurrenceCount: v.number(),
+    firstSeenAt: v.string(),
+    lastSeenAt: v.string(),
+    resolvedAt: v.optional(v.string()),
+    resolvedByAdminId: v.optional(v.id("users")),
+  })
+    .index("by_function_message", ["functionName", "errorMessage"])
+    .index("by_resolved_lastSeen", ["resolvedAt", "lastSeenAt"])
+    .index("by_lastSeen", ["lastSeenAt"]),
+
   // Real-time in-app notifications for paid users (pro/expert) and active agents.
   // Created by cron dispatchers (document expiry, trip deadline, reminder due)
   // and the lead sentinel (marketplace_lead_alert for agents with stale leads).

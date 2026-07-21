@@ -64,6 +64,7 @@ import type * as embassyMonitor from "../embassyMonitor.js";
 import type * as employerCohort from "../employerCohort.js";
 import type * as employerInvites from "../employerInvites.js";
 import type * as euRenewalChecklist from "../euRenewalChecklist.js";
+import type * as exceptionLog from "../exceptionLog.js";
 import type * as fileTokens from "../fileTokens.js";
 import type * as fileValidation from "../fileValidation.js";
 import type * as household from "../household.js";
@@ -168,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   employerCohort: typeof employerCohort;
   employerInvites: typeof employerInvites;
   euRenewalChecklist: typeof euRenewalChecklist;
+  exceptionLog: typeof exceptionLog;
   fileTokens: typeof fileTokens;
   fileValidation: typeof fileValidation;
   household: typeof household;

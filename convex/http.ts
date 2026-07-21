@@ -4,6 +4,7 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { buildReplyForMessage, deriveWebhookSecret } from "./telegramBot.ts";
 import { verifyTwilioSignature } from "./whatsappBot.ts";
+import { captureException } from "./exceptionLog.ts";
 
 const http = httpRouter();
 
@@ -184,9 +185,9 @@ http.route({
         }
 
         if (!metadata.userId || !metadata.product || !metadata.plan || !metadata.billingCycle) {
-          console.error(
-            `stripe webhook checkout.session.completed: incomplete metadata (userId=${metadata.userId}, product=${metadata.product}, plan=${metadata.plan}, billingCycle=${metadata.billingCycle}) for session=${session.id}, event=${event.id} — plan not activated, needs manual review.`,
-          );
+          const msg = `incomplete metadata (userId=${metadata.userId}, product=${metadata.product}, plan=${metadata.plan}, billingCycle=${metadata.billingCycle}) — plan not activated, needs manual review.`;
+          console.error(`stripe webhook checkout.session.completed: ${msg} session=${session.id}, event=${event.id}`);
+          await captureException(ctx, "stripe.webhook.checkout.session.completed", msg);
           break;
         }
 
@@ -280,10 +281,14 @@ http.route({
               reason: "disputed",
             });
           } else {
-            console.error(`charge.dispute.created: failed to fetch charge ${chargeId} for event ${event.id}`);
+            const msg = `failed to fetch charge ${chargeId} for event ${event.id}`;
+            console.error(`charge.dispute.created: ${msg}`);
+            await captureException(ctx, "stripe.webhook.charge.dispute.created", msg);
           }
         } else if (!stripeSecretKey) {
-          console.error(`charge.dispute.created: STRIPE_SECRET_KEY not set, cannot resolve charge ${chargeId} for event ${event.id}`);
+          const msg = `STRIPE_SECRET_KEY not set, cannot resolve charge ${chargeId} for event ${event.id}`;
+          console.error(`charge.dispute.created: ${msg}`);
+          await captureException(ctx, "stripe.webhook.charge.dispute.created", msg);
         }
         break;
       }
@@ -354,9 +359,9 @@ http.route({
         // was set at checkout-init time (paystack.ts) to the canonical USD
         // price for this plan/cycle.
         if (!metadata.amountCents) {
-          console.error(
-            `paystack webhook charge.success: missing amountCents metadata for reference=${event.data?.reference}, userId=${metadata.userId} — skipping plan activation, needs manual review.`,
-          );
+          const msg = `missing amountCents metadata for reference=${event.data?.reference}, userId=${metadata.userId} — skipping plan activation, needs manual review.`;
+          console.error(`paystack webhook charge.success: ${msg}`);
+          await captureException(ctx, "paystack.webhook.charge.success", msg);
         } else {
           await ctx.runMutation(internal.billing.applyOneTimePlanPayment, {
             userId: metadata.userId,
@@ -367,9 +372,9 @@ http.route({
           });
         }
       } else {
-        console.error(
-          `paystack webhook charge.success: missing required metadata (userId/plan/billingCycle) for reference=${event.data?.reference} — skipping, needs manual review.`,
-        );
+        const msg = `missing required metadata (userId/plan/billingCycle) for reference=${event.data?.reference} — skipping, needs manual review.`;
+        console.error(`paystack webhook charge.success: ${msg}`);
+        await captureException(ctx, "paystack.webhook.charge.success", msg);
       }
     }
 

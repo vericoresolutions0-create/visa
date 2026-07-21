@@ -43,6 +43,7 @@ import { AIUsagePanel } from "./panels/AIUsagePanel.tsx";
 import { AiFeedbackPanel } from "./panels/AiFeedbackPanel.tsx";
 import { EmailDeliveryPanel } from "./panels/EmailDeliveryPanel.tsx";
 import { VendorWatchPanel } from "./panels/VendorWatchPanel.tsx";
+import { AlertsCenterPanel } from "./panels/AlertsCenterPanel.tsx";
 import { CorridorIntelligencePanel } from "./panels/CorridorIntelligencePanel.tsx";
 import { ChecklistFlagsPanel } from "./panels/ChecklistFlagsPanel.tsx";
 import { ApprovalsAdminPanel } from "./panels/ApprovalsAdminPanel.tsx";
@@ -96,9 +97,11 @@ function AdminInner() {
   // one is actually backed by data. orgs is the same query EmployersAdminPanel
   // uses, so Convex shares the subscription rather than duplicating it.
   const orgs = useQuery(api.adminOrgs.listOrganizations, {});
+  const exceptions = useQuery(api.exceptionLog.listExceptions, {});
   const sidebarBadges: SidebarBadges = {
     employers: orgs?.filter((o) => o.approvalStatus === "pending").length ?? 0,
     agents: agents?.filter((a) => !a.verified).length ?? 0,
+    "alerts-center": exceptions?.unresolved.length ?? 0,
   };
 
   const handlePlanChange = async (userId: Doc<"users">["_id"], plan: "free" | "pro" | "expert") => {
@@ -565,6 +568,7 @@ function AdminInner() {
           {tab === "ai-feedback" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AiFeedbackPanel /></div>}
           {tab === "email-delivery" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><EmailDeliveryPanel /></div>}
           {tab === "vendor-watch" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><VendorWatchPanel /></div>}
+          {tab === "alerts-center" && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"><AlertsCenterPanel /></div>}
 
         </PanelErrorBoundary>
         </main>
