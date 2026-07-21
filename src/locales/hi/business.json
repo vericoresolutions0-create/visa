@@ -127,5 +127,17 @@
   "onboarding.create_failed": "संगठन बनाने में विफल। कृपया पुनः प्रयास करें।",
   "onboarding.signin_title": "जारी रखने के लिए साइन इन करें",
   "onboarding.signin_body": "अपनी कंपनी का नियोक्ता डैशबोर्ड सेट करने के लिए साइन इन करें या खाता बनाएं।",
-  "onboarding.signin_cta": "जारी रखने के लिए साइन इन करें"
+  "onboarding.signin_cta": "जारी रखने के लिए साइन इन करें",
+  "onboarding.pending.title": "आपके संगठन की समीक्षा की जा रही है",
+  "onboarding.pending.body": "हमारी टीम का कोई सदस्य हर नए संगठन को लाइव होने से पहले जांचता है। स्वीकृति मिलते ही आपको एक ईमेल मिलेगा — इस पेज को खुला रखने की ज़रूरत नहीं है।",
+  "onboarding.pending.org_label": "संगठन",
+  "onboarding.pending.type_label": "प्रकार",
+  "onboarding.pending.submitted_label": "सबमिट किया गया",
+  "onboarding.pending.status_label": "स्थिति",
+  "onboarding.pending.status_value": "समीक्षा लंबित",
+  "onboarding.pending.step_submitted": "संगठन का विवरण सबमिट किया गया",
+  "onboarding.pending.step_review": "हम पुष्टि करते हैं कि यह एक वास्तविक संगठन है",
+  "onboarding.pending.step_access": "आपको पूर्ण पहुंच मिलती है और आप अपनी टीम को आमंत्रित कर सकते हैं",
+  "onboarding.rejected.title": "यह आवेदन स्वीकृत नहीं हुआ",
+  "onboarding.rejected.body": "अगर आपको लगता है कि यह एक गलती है, तो हमने आपको भेजी गई पुष्टिकरण ईमेल का जवाब दें और हम इसे दोबारा देखेंगे।"
 }

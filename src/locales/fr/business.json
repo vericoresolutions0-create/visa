@@ -127,5 +127,17 @@
   "onboarding.create_failed": "Échec de la création de l'organisation. Veuillez réessayer.",
   "onboarding.signin_title": "Connectez-vous pour continuer",
   "onboarding.signin_body": "Connectez-vous ou créez un compte pour configurer le tableau de bord employeur de votre entreprise.",
-  "onboarding.signin_cta": "Connectez-vous pour continuer"
+  "onboarding.signin_cta": "Connectez-vous pour continuer",
+  "onboarding.pending.title": "Votre organisation est en cours de vérification",
+  "onboarding.pending.body": "Un membre de notre équipe vérifie chaque nouvelle organisation avant sa mise en ligne. Vous recevrez un e-mail dès son approbation — inutile de garder cette page ouverte.",
+  "onboarding.pending.org_label": "Organisation",
+  "onboarding.pending.type_label": "Type",
+  "onboarding.pending.submitted_label": "Envoyée le",
+  "onboarding.pending.status_label": "Statut",
+  "onboarding.pending.status_value": "En attente de vérification",
+  "onboarding.pending.step_submitted": "Informations de l'organisation envoyées",
+  "onboarding.pending.step_review": "Nous confirmons qu'il s'agit d'une organisation authentique",
+  "onboarding.pending.step_access": "Vous obtenez un accès complet et pouvez inviter votre équipe",
+  "onboarding.rejected.title": "Cette demande n'a pas été approuvée",
+  "onboarding.rejected.body": "Si vous pensez qu'il s'agit d'une erreur, répondez à l'e-mail de confirmation que nous vous avons envoyé et nous réexaminerons votre dossier."
 }

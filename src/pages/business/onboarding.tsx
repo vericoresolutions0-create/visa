@@ -11,9 +11,82 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
-import { Globe, Building2, GraduationCap, Scale, LogIn, ChevronRight, ArrowLeft } from "lucide-react";
+import { Globe, Building2, GraduationCap, Scale, LogIn, ChevronRight, ArrowLeft, Clock, Check, AlertCircle } from "lucide-react";
 
 type OrgType = "employer" | "university" | "law_firm";
+
+const TYPE_LABEL_KEY: Record<string, string> = {
+  employer: "onboarding.type_employer",
+  university: "onboarding.type_university",
+  law_firm: "onboarding.type_law_firm",
+};
+
+function PendingReviewCard({ org }: { org: { name: string; type?: string | null; createdAt: string } }) {
+  const { t } = useTranslation("business");
+  const typeLabel = t(TYPE_LABEL_KEY[org.type ?? "employer"] ?? TYPE_LABEL_KEY.employer);
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
+        <Clock className="w-6 h-6 text-amber-600" />
+      </div>
+      <h1 className="font-serif text-2xl font-semibold text-primary mb-2">{t("onboarding.pending.title")}</h1>
+      <p className="text-sm text-muted-foreground mb-6">{t("onboarding.pending.body")}</p>
+
+      <div className="text-left bg-muted/30 rounded-xl p-4 mb-6 space-y-2">
+        <div className="flex items-center justify-between text-xs border-b border-border/60 pb-2">
+          <span className="text-muted-foreground font-semibold">{t("onboarding.pending.org_label")}</span>
+          <span className="font-bold text-foreground">{org.name}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs border-b border-border/60 pb-2">
+          <span className="text-muted-foreground font-semibold">{t("onboarding.pending.type_label")}</span>
+          <span className="font-bold text-foreground">{typeLabel}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs border-b border-border/60 pb-2">
+          <span className="text-muted-foreground font-semibold">{t("onboarding.pending.submitted_label")}</span>
+          <span className="font-bold text-foreground">{new Date(org.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground font-semibold">{t("onboarding.pending.status_label")}</span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            {t("onboarding.pending.status_value")}
+          </span>
+        </div>
+      </div>
+
+      <ul className="text-left space-y-2">
+        <li className="flex items-start gap-2.5 text-xs">
+          <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+            <Check className="w-2.5 h-2.5 text-white" />
+          </span>
+          <span className="text-foreground">{t("onboarding.pending.step_submitted")}</span>
+        </li>
+        <li className="flex items-start gap-2.5 text-xs">
+          <span className="w-4 h-4 rounded-full border border-border shrink-0 mt-0.5" />
+          <span className="text-muted-foreground">{t("onboarding.pending.step_review")}</span>
+        </li>
+        <li className="flex items-start gap-2.5 text-xs">
+          <span className="w-4 h-4 rounded-full border border-border shrink-0 mt-0.5" />
+          <span className="text-muted-foreground">{t("onboarding.pending.step_access")}</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function RejectedCard() {
+  const { t } = useTranslation("business");
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-5">
+        <AlertCircle className="w-6 h-6 text-red-600" />
+      </div>
+      <h1 className="font-serif text-2xl font-semibold text-primary mb-2">{t("onboarding.rejected.title")}</h1>
+      <p className="text-sm text-muted-foreground">{t("onboarding.rejected.body")}</p>
+    </div>
+  );
+}
 
 const ORG_TYPE_OPTIONS: { value: OrgType; icon: typeof Building2; labelKey: string; descKey: string }[] = [
   { value: "employer", icon: Building2, labelKey: "onboarding.type_employer", descKey: "onboarding.type_employer_desc" },
@@ -31,7 +104,7 @@ function CreateOrgForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (myOrg) navigate("/business/dashboard", { replace: true });
+    if (myOrg && myOrg.approvalStatus === "approved") navigate("/business/dashboard", { replace: true });
   }, [myOrg, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +126,12 @@ function CreateOrgForm() {
   };
 
   if (myOrg === undefined) {
+    return <Skeleton className="h-64 w-full rounded-2xl" />;
+  }
+  if (myOrg) {
+    if (myOrg.approvalStatus === "pending") return <PendingReviewCard org={myOrg} />;
+    if (myOrg.approvalStatus === "rejected") return <RejectedCard />;
+    // approvalStatus === "approved" — the effect above is already redirecting.
     return <Skeleton className="h-64 w-full rounded-2xl" />;
   }
 

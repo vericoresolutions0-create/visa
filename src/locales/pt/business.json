@@ -127,5 +127,17 @@
   "onboarding.create_failed": "Falha ao criar a organização. Por favor, tente novamente.",
   "onboarding.signin_title": "Faça login para continuar",
   "onboarding.signin_body": "Faça login ou crie uma conta para configurar o painel de empregador da sua empresa.",
-  "onboarding.signin_cta": "Faça login para continuar"
+  "onboarding.signin_cta": "Faça login para continuar",
+  "onboarding.pending.title": "Sua organização está sendo analisada",
+  "onboarding.pending.body": "Alguém da nossa equipe verifica cada nova organização antes de ativá-la. Você receberá um email assim que for aprovada — não precisa manter esta página aberta.",
+  "onboarding.pending.org_label": "Organização",
+  "onboarding.pending.type_label": "Tipo",
+  "onboarding.pending.submitted_label": "Enviada em",
+  "onboarding.pending.status_label": "Status",
+  "onboarding.pending.status_value": "Em análise",
+  "onboarding.pending.step_submitted": "Dados da organização enviados",
+  "onboarding.pending.step_review": "Confirmamos que é uma organização real",
+  "onboarding.pending.step_access": "Você ganha acesso completo e pode convidar sua equipe",
+  "onboarding.rejected.title": "Esta solicitação não foi aprovada",
+  "onboarding.rejected.body": "Se você acha que isso é um engano, responda ao email de confirmação que enviamos e vamos analisar novamente."
 }

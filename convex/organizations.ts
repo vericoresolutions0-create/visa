@@ -15,6 +15,18 @@ export async function getMyOrgAdminMembershipOrThrow(ctx: QueryCtx | MutationCtx
   if (!membership || membership.orgRole !== "org_admin") {
     throw new ConvexError({ code: "FORBIDDEN", message: "You don't have an employer account for this action" });
   }
+  // Households skip review entirely. A missing approvalStatus on an older
+  // business org means "created before this gate existed" — grandfathered
+  // in as approved, never retroactively locked out.
+  const organization = await ctx.db.get(membership.organizationId);
+  if (organization && organization.type !== "household") {
+    if (organization.approvalStatus === "pending") {
+      throw new ConvexError({ code: "ORG_PENDING", message: "Your organisation is still awaiting review. You'll get an email as soon as it's approved." });
+    }
+    if (organization.approvalStatus === "rejected") {
+      throw new ConvexError({ code: "ORG_REJECTED", message: "This organisation's application wasn't approved. Reply to your confirmation email if you think this is a mistake." });
+    }
+  }
   return { organizationId: membership.organizationId, user, membership };
 }
 
@@ -57,6 +69,11 @@ export async function createOrganizationImpl(
     type: args.type,
     createdByUserId: user._id,
     createdAt: new Date().toISOString(),
+    // Real B2B orgs start pending and go through a human review before
+    // they can do anything (see getMyOrgAdminMembershipOrThrow). Households
+    // are a personal-use feature riding the same table/invite machinery,
+    // not a business account, so they skip review entirely.
+    ...(args.type !== "household" ? { approvalStatus: "pending" as const } : {}),
   });
   await ctx.db.insert("org_members", {
     organizationId,
@@ -87,7 +104,17 @@ export const getMyOrganization = query({
     if (!membership) return null;
     const org = await ctx.db.get(membership.organizationId);
     if (!org) return null;
-    return { _id: org._id, name: org.name, type: org.type, orgRole: membership.orgRole };
+    return {
+      _id: org._id,
+      name: org.name,
+      type: org.type,
+      orgRole: membership.orgRole,
+      createdAt: org.createdAt,
+      // Households and pre-review orgs both normalize to "approved" here —
+      // see the schema comment on approvalStatus for why a missing value
+      // means grandfathered-in rather than pending.
+      approvalStatus: org.type === "household" ? "approved" : (org.approvalStatus ?? "approved"),
+    };
   },
 });
 

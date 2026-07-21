@@ -419,7 +419,10 @@ function DashboardInner() {
   const { t } = useTranslation("business");
   const navigate = useNavigate();
   const myOrg = useQuery(api.organizations.getMyOrganization);
-  const cohort = useQuery(api.employerCohort.listMyCohort);
+  // listMyCohort is gated server-side on the org being approved (see
+  // getMyOrgAdminMembershipOrThrow) — calling it before myOrg has resolved
+  // to "approved" would throw and crash the page, so it's skipped until then.
+  const cohort = useQuery(api.employerCohort.listMyCohort, myOrg?.approvalStatus === "approved" ? {} : "skip");
   const resendInvite = useMutation(api.employerCohort.resendInvite);
   const revokeInvite = useMutation(api.employerCohort.revokeInvite);
   const setPipelineStage = useMutation(api.employerCohort.setPipelineStage);
@@ -436,16 +439,22 @@ function DashboardInner() {
   useEffect(() => {
     if (myOrg === null) navigate("/business/onboarding", { replace: true });
     else if (myOrg && myOrg.type === "household") navigate("/dashboard/household", { replace: true });
+    // Pending/rejected orgs have nothing to see here — the onboarding page
+    // owns their status screen so there's exactly one place that shows it.
+    else if (myOrg && myOrg.approvalStatus !== "approved") navigate("/business/onboarding", { replace: true });
   }, [myOrg, navigate]);
 
-  if (myOrg === undefined || cohort === undefined) {
+  // Anything other than "a real org, approved, cohort loaded" renders this
+  // same loading skeleton — myOrg being null/household/non-approved all
+  // mean the effect above is about to navigate away, so there's nothing
+  // meaningful to show in the meantime.
+  if (myOrg === undefined || !myOrg || myOrg.type === "household" || myOrg.approvalStatus !== "approved" || cohort === undefined) {
     return (
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
       </div>
     );
   }
-  if (!myOrg) return null;
 
   const orgCtx = getOrgCtx(myOrg.type);
 

@@ -709,6 +709,11 @@ export default defineSchema({
     // "employer" (org?.type ?? "employer") rather than requiring a
     // production data migration before this schema can deploy.
     type: v.optional(v.union(v.literal("employer"), v.literal("household"), v.literal("university"), v.literal("law_firm"))),
+    // Manual-review gate for real B2B orgs (households are never gated —
+    // see every read site's `type !== "household"` check). Missing means
+    // "created before this field existed" and is treated as approved, not
+    // retroactively locked out — same reasoning as `type` above.
+    approvalStatus: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"))),
     createdByUserId: v.id("users"),
     createdAt: v.string(),
   })

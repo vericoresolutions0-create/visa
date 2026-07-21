@@ -127,5 +127,17 @@
   "onboarding.create_failed": "فشل إنشاء المؤسسة. يرجى المحاولة مرة أخرى.",
   "onboarding.signin_title": "سجّل الدخول للمتابعة",
   "onboarding.signin_body": "سجّل الدخول أو أنشئ حساباً لإعداد لوحة تحكم صاحب العمل لشركتك.",
-  "onboarding.signin_cta": "سجّل الدخول للمتابعة"
+  "onboarding.signin_cta": "سجّل الدخول للمتابعة",
+  "onboarding.pending.title": "مؤسستك قيد المراجعة",
+  "onboarding.pending.body": "يقوم أحد أعضاء فريقنا بمراجعة كل مؤسسة جديدة قبل تفعيلها. ستصلك رسالة بريد إلكتروني فور الموافقة عليها — لا داعي لإبقاء هذه الصفحة مفتوحة.",
+  "onboarding.pending.org_label": "المؤسسة",
+  "onboarding.pending.type_label": "النوع",
+  "onboarding.pending.submitted_label": "تاريخ الإرسال",
+  "onboarding.pending.status_label": "الحالة",
+  "onboarding.pending.status_value": "قيد المراجعة",
+  "onboarding.pending.step_submitted": "تم إرسال بيانات المؤسسة",
+  "onboarding.pending.step_review": "نتحقق من أنها مؤسسة حقيقية",
+  "onboarding.pending.step_access": "ستحصل على الوصول الكامل ويمكنك دعوة فريقك",
+  "onboarding.rejected.title": "لم تتم الموافقة على هذا الطلب",
+  "onboarding.rejected.body": "إذا كنت تعتقد أن هذا خطأ، يُرجى الرد على رسالة التأكيد التي أرسلناها إليك وسنعيد النظر في الطلب."
 }

@@ -127,5 +127,17 @@
   "onboarding.create_failed": "Error al crear la organización. Por favor, inténtelo de nuevo.",
   "onboarding.signin_title": "Inicia sesión para continuar",
   "onboarding.signin_body": "Inicie sesión o cree una cuenta para configurar el panel de empleador de su empresa.",
-  "onboarding.signin_cta": "Inicia sesión para continuar"
+  "onboarding.signin_cta": "Inicia sesión para continuar",
+  "onboarding.pending.title": "Tu organización está siendo revisada",
+  "onboarding.pending.body": "Alguien de nuestro equipo revisa cada nueva organización antes de activarla. Recibirás un correo en cuanto sea aprobada — no hace falta que dejes esta página abierta.",
+  "onboarding.pending.org_label": "Organización",
+  "onboarding.pending.type_label": "Tipo",
+  "onboarding.pending.submitted_label": "Enviada el",
+  "onboarding.pending.status_label": "Estado",
+  "onboarding.pending.status_value": "Pendiente de revisión",
+  "onboarding.pending.step_submitted": "Datos de la organización enviados",
+  "onboarding.pending.step_review": "Confirmamos que es una organización real",
+  "onboarding.pending.step_access": "Obtienes acceso completo y puedes invitar a tu equipo",
+  "onboarding.rejected.title": "Esta solicitud no fue aprobada",
+  "onboarding.rejected.body": "Si crees que se trata de un error, responde al correo de confirmación que te enviamos y lo revisaremos de nuevo."
 }

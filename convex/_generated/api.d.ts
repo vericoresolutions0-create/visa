@@ -53,6 +53,7 @@ import type * as emails_emailChange from "../emails/emailChange.js";
 import type * as emails_emailFailures from "../emails/emailFailures.js";
 import type * as emails_employerInvite from "../emails/employerInvite.js";
 import type * as emails_householdInvite from "../emails/householdInvite.js";
+import type * as emails_orgApprovalDecision from "../emails/orgApprovalDecision.js";
 import type * as emails_policyUpdate from "../emails/policyUpdate.js";
 import type * as emails_reminder from "../emails/reminder.js";
 import type * as emails_sendEmail from "../emails/sendEmail.js";
@@ -156,6 +157,7 @@ declare const fullApi: ApiFromModules<{
   "emails/emailFailures": typeof emails_emailFailures;
   "emails/employerInvite": typeof emails_employerInvite;
   "emails/householdInvite": typeof emails_householdInvite;
+  "emails/orgApprovalDecision": typeof emails_orgApprovalDecision;
   "emails/policyUpdate": typeof emails_policyUpdate;
   "emails/reminder": typeof emails_reminder;
   "emails/sendEmail": typeof emails_sendEmail;
