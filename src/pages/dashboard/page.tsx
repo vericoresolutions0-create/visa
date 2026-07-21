@@ -625,6 +625,13 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
     api.users.getCurrentUser,
     isDemoAuthenticated ? "skip" : {},
   );
+  // Same identity, two possible hats — reuses the exact query agents/dashboard.tsx
+  // already calls for its own profile, so a real registered agent (not a
+  // fabricated guess) is the only one who ever sees the switcher below.
+  const myAgentProfile = useQuery(
+    api.agents.getMyProfile,
+    isDemoAuthenticated ? "skip" : {},
+  );
   const checklists = useQuery(
     api.checklists.getSavedChecklists,
     isDemoAuthenticated ? "skip" : {},
@@ -752,11 +759,22 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 {dashboardUser?.email}
               </p>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 flex flex-col items-end gap-2">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-primary-foreground shadow-sm">
                 <Star className="w-3 h-3 shrink-0 text-accent" />
                 {planLabel}
               </div>
+              {myAgentProfile && (
+                <button
+                  onClick={() => navigate("/agents/dashboard")}
+                  onMouseEnter={() => { void import("../agents/dashboard.tsx"); }}
+                  onTouchStart={() => { void import("../agents/dashboard.tsx"); }}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#0f2040] px-3 py-1.5 text-[11px] font-bold whitespace-nowrap text-white shadow-sm hover:bg-[#16294f] transition-colors cursor-pointer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#d4a726] shrink-0" />
+                  Switch to Agent Portal
+                </button>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3 mt-6">

@@ -58,6 +58,7 @@ import {
   Star,
   TrendingUp,
   UploadCloud,
+  UserCircle,
   UserPlus,
   Users,
   X,
@@ -2448,14 +2449,25 @@ function Sidebar({
         })}
       </nav>
 
-      {/* Footer — real safe-area padding so Sign out clears the home
-          indicator / thumb-reach zone on notched phones, not just guessed
-          spacing. Matters most in installed-PWA standalone mode, where
+      {/* Footer — generous safe-area clearance (well beyond the bare
+          minimum) so Sign out sits comfortably clear of the home
+          indicator / bottom edge for real thumbs, not just technically
+          un-clipped. Matters most in installed-PWA standalone mode, where
           there's no browser chrome absorbing that space for you. */}
       <div
         className="px-3 pt-4 border-t border-white/10 space-y-1"
-        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem))" }}
       >
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          onMouseEnter={() => { void import("../dashboard/page.tsx"); }}
+          onTouchStart={() => { void import("../dashboard/page.tsx"); }}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#d4a726]/10 text-[#d4a726] hover:bg-[#d4a726]/15 transition-colors cursor-pointer"
+        >
+          <UserCircle className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium">Switch to My Applicant Account</span>
+        </button>
         <button
           type="button"
           onClick={() => navigate("/")}
