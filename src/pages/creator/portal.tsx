@@ -263,8 +263,8 @@ export default function CreatorPortalPage() {
               },
               {
                 step: "4",
-                title: "Monthly payouts, £50 minimum",
-                body: "We pay via PayPal or bank transfer, after the subscriber's payment clears. Request a payout when your balance hits £50.",
+                title: `Monthly payouts, £${minimumGBP} minimum`,
+                body: `We pay via PayPal or bank transfer, after the subscriber's payment clears. Request a payout when your balance hits £${minimumGBP}.`,
               },
             ].map(({ step, title, body }) => (
               <div key={step} className="flex gap-4 py-3 border-b border-slate-50 last:border-0">
