@@ -20,6 +20,12 @@ export default defineSchema({
       v.union(v.literal("free"), v.literal("pro"), v.literal("expert")),
     ),
     trialStartedAt: v.optional(v.string()),
+    // The dashboard's "Trip Timeline" countdown/milestone card — one general
+    // upcoming-appointment date, not tied to a specific saved checklist (a
+    // user may have several). Was localStorage-only under a single global
+    // key until 2026-07-21, which meant it didn't survive a device switch
+    // and leaked between accounts on a shared computer.
+    tripTargetDate: v.optional(v.string()),
     billingCycle: v.optional(
       v.union(v.literal("monthly"), v.literal("yearly")),
     ),

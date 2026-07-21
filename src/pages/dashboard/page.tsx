@@ -188,7 +188,6 @@ const DEMO_REMINDERS = [
 ] satisfies Doc<"reminders">[];
 
 // ─── Trip Timeline ─────────────────────────────────────────────────────────────
-const TRIP_TIMELINE_KEY = "vc_trip_date";
 
 function approvalBand(p: number): { label: string; color: string } {
   if (p >= 70) return { label: "Application looks strong", color: "text-green-600 dark:text-green-400" };
@@ -205,28 +204,42 @@ function getDaysUntil(dateStr: string): number {
 }
 
 function TripTimeline() {
-  const stored =
-    typeof window !== "undefined"
-      ? localStorage.getItem(TRIP_TIMELINE_KEY)
-      : null;
-  const [appointmentDate, setAppointmentDate] = useState<string>(stored ?? "");
+  const { isDemoAuthenticated } = useDemoAuth();
+  const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
+  const setTripTargetDate = useMutation(api.users.setTripTargetDate);
+  // Demo mode never touches the real mutation — a local-only stand-in, same
+  // isolation pattern as DEMO_CHECKLISTS/DEMO_REMINDERS elsewhere on this page.
+  const [demoDate, setDemoDate] = useState("");
+
+  const isLoading = !isDemoAuthenticated && user === undefined;
+  const appointmentDate = isDemoAuthenticated ? demoDate : (user?.tripTargetDate ?? "");
   const [editing, setEditing] = useState(false);
-  const [inputDate, setInputDate] = useState(stored ?? "");
+  const [inputDate, setInputDate] = useState(appointmentDate);
 
   const save = () => {
     if (!inputDate) return;
-    localStorage.setItem(TRIP_TIMELINE_KEY, inputDate);
-    setAppointmentDate(inputDate);
+    if (isDemoAuthenticated) {
+      setDemoDate(inputDate);
+    } else {
+      void setTripTargetDate({ date: inputDate });
+    }
     setEditing(false);
     toast.success("Trip date saved. Your countdown is ready.");
   };
 
   const clear = () => {
-    localStorage.removeItem(TRIP_TIMELINE_KEY);
-    setAppointmentDate("");
+    if (isDemoAuthenticated) {
+      setDemoDate("");
+    } else {
+      void setTripTargetDate({ date: undefined });
+    }
     setInputDate("");
     setEditing(false);
   };
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
 
   const days = appointmentDate ? getDaysUntil(appointmentDate) : null;
 

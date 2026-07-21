@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { api } from "@/convex/_generated/api.js";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -362,8 +363,12 @@ export default function FindAgentPage() {
 
   const [demoLeads, setDemoLeads] = useState<MarketplaceLead[]>([]);
 
-  const realLeads =
-    useQuery(api.marketplace.getMySubmittedLeads, isDemoAuthenticated ? "skip" : {}) ?? [];
+  const realLeadsQuery = useQuery(api.marketplace.getMySubmittedLeads, isDemoAuthenticated ? "skip" : {});
+  // Distinct from "no leads" — collapsing undefined (still loading) into []
+  // used to briefly show the "Post a Request" CTA to someone who already has
+  // an open lead, for the one render before the query resolved.
+  const isLoadingLeads = !isDemoAuthenticated && realLeadsQuery === undefined;
+  const realLeads = realLeadsQuery ?? [];
   const closeLead = useMutation(api.marketplace.closeLead);
 
   const myLeads = isDemoAuthenticated ? demoLeads : realLeads;

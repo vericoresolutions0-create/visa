@@ -740,6 +740,19 @@ export const getCurrentUser = query({
   },
 });
 
+// Backs the dashboard's Trip Timeline card. date omitted/undefined clears it
+// (matches the card's "clear" button) rather than needing a separate mutation.
+export const setTripTargetDate = mutation({
+  args: { date: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    if (args.date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+      throw new ConvexError({ code: "INVALID_INPUT", message: "Invalid date." });
+    }
+    await ctx.db.patch(user._id, { tripTargetDate: args.date });
+  },
+});
+
 export const startTrial = mutation({
   args: { plan: v.union(v.literal("pro"), v.literal("expert")) },
   handler: async (ctx, args) => {

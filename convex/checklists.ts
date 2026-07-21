@@ -157,6 +157,13 @@ export const updateTripDetails = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getUserOrThrow(ctx);
+    // Multi-Trip Manager (editing trip name/status/notes) is Pro+ — the UI
+    // already disables this via a <fieldset>, but that's cosmetic without
+    // this check: a free-plan user calling the mutation directly bypassed
+    // the paywall entirely.
+    if (user.plan !== "pro" && user.plan !== "expert") {
+      throw new ConvexError({ code: "PLAN_REQUIRED", message: "Editing trip details requires the Pro plan or above." });
+    }
     const doc = await ctx.db.get(args.id);
     if (!doc) throw new ConvexError({ code: "NOT_FOUND", message: "Trip not found" });
     if (doc.userId !== user._id) {

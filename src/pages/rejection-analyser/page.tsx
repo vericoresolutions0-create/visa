@@ -19,15 +19,16 @@ import {
   RotateCcw, Upload, X, LayoutDashboard, Settings, LogOut, Award,
   Clock, Calendar, BookOpen, Zap, AlertTriangle, Target, Scale,
 } from "lucide-react";
-import { VISA_TYPES, type VisaType } from "@/lib/visa-data.ts";
+import { VISA_TYPES, AVAILABLE_DESTINATIONS, type VisaType } from "@/lib/visa-data.ts";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
 
-const REJECTION_DESTINATIONS = [
-  "United Kingdom", "United States", "Canada", "Germany", "France", "Netherlands",
-  "Australia", "Ireland", "Italy", "Spain", "Poland", "Portugal", "Belgium", "Sweden",
-  "Norway", "Switzerland", "Austria", "Denmark", "Finland", "Czech Republic", "New Zealand",
-].map((name) => ({ name, flag: DESTINATION_FLAGS[name] }));
+// Reuses the platform's real supported-destination list (visa-data.ts) —
+// this used to be its own separately hand-typed 21-country list that had
+// drifted from AVAILABLE_DESTINATIONS: missing Japan, South Korea, UAE,
+// Singapore and South Africa (all of which have real checklist coverage
+// elsewhere on the platform), and included Czech Republic, which doesn't.
+const REJECTION_DESTINATIONS = AVAILABLE_DESTINATIONS.map((name) => ({ name, flag: DESTINATION_FLAGS[name] }));
 
 const LOADING_STEPS = [
   "Reading your refusal letter...",
