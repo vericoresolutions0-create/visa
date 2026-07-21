@@ -1,9 +1,10 @@
 import { useCallback, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NavigationDepthContext } from "@/hooks/use-navigation-depth.tsx";
 
 export function useSmartBack(defaultPath = "/") {
   const navigate = useNavigate();
+  const location = useLocation();
   const { depth, previousPath } = useContext(NavigationDepthContext);
 
   return useCallback(() => {
@@ -12,7 +13,11 @@ export function useSmartBack(defaultPath = "/") {
       navigate(-1);
       return;
     }
-    if (previousPath) {
+    // Guard against a stale/self-referential previousPath (e.g. one that
+    // collapsed to the current page): navigating to where you already are
+    // is a silent no-op that reads as a broken button, so fall through to
+    // the page's own default instead.
+    if (previousPath && previousPath !== location.pathname) {
       // After an iOS PWA reload, in-memory depth is 0 but sessionStorage
       // still knows where the user came from. Navigate there without adding
       // a new history entry so the user doesn't get into a back-loop.
@@ -20,5 +25,5 @@ export function useSmartBack(defaultPath = "/") {
       return;
     }
     navigate(defaultPath, { replace: true });
-  }, [depth, previousPath, defaultPath, navigate]);
+  }, [depth, previousPath, defaultPath, navigate, location.pathname]);
 }

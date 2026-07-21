@@ -44,6 +44,13 @@ export function NavigationDepthProvider({ children }: { children: ReactNode }) {
   const depthRef = useRef(0);
   const stackRef = useRef<string[]>(loadStack());
   const prevPathnameRef = useRef<string | null>(null);
+  // React Router reports the very first location of a fresh JS session as
+  // navigationType "POP", even though nothing was actually "gone back to"
+  // (a hard reload, or a top-level redirect bounce like Google OAuth,
+  // produces this same synthetic POP). Treating that as a real pop used to
+  // silently discard one legitimate entry from the persisted stack before
+  // the page even finished loading.
+  const isFirstRunRef = useRef(true);
 
   const [navState, setNavState] = useState<NavState>(() => ({
     depth: 0,
@@ -51,6 +58,12 @@ export function NavigationDepthProvider({ children }: { children: ReactNode }) {
   }));
 
   useEffect(() => {
+    if (isFirstRunRef.current) {
+      isFirstRunRef.current = false;
+      prevPathnameRef.current = location.pathname;
+      return;
+    }
+
     const stack = [...stackRef.current];
 
     if (navType === "PUSH") {
@@ -63,10 +76,12 @@ export function NavigationDepthProvider({ children }: { children: ReactNode }) {
       depthRef.current = Math.max(0, depthRef.current - 1);
       stack.pop();
     }
-    // REPLACE: depth unchanged, stack top updated to current path.
-    if (navType === "REPLACE" && stack.length > 0) {
-      stack[stack.length - 1] = location.pathname;
-    }
+    // REPLACE swaps the current entry in place — it doesn't change what's
+    // beneath it in navigable history, so the "go back to" stack is left
+    // untouched. (Previously this overwrote the stack's top with the new
+    // CURRENT path, which is the same slot read back out as previousPath —
+    // that made the back button's fallback target equal to the page you're
+    // already on, so clicking it did nothing.)
 
     stackRef.current = stack;
     saveStack(stack);
