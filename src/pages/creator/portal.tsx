@@ -67,8 +67,12 @@ export default function CreatorPortalPage() {
     }
   };
 
+  // Read the real server-side minimum (same field the influencer portal
+  // already uses) instead of a hardcoded £50 — if the backend minimum ever
+  // changes, this stays correct instead of silently going stale.
+  const minimumGBP = stats ? stats.minimumPayoutCents / 100 : 50;
   const pendingGBP = stats ? stats.pendingCents / 100 : 0;
-  const aboveMinimum = pendingGBP >= 50;
+  const aboveMinimum = pendingGBP >= minimumGBP;
 
   if (stats === undefined) {
     return (
@@ -177,7 +181,7 @@ export default function CreatorPortalPage() {
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">Pending Payout</div>
             {!aboveMinimum && (
               <div className="text-[11px] text-slate-400 mt-0.5">
-                £{(50 - pendingGBP).toFixed(2)} more to reach the £50 minimum
+                £{(minimumGBP - pendingGBP).toFixed(2)} more to reach the £{minimumGBP} minimum
               </div>
             )}
             {aboveMinimum && (

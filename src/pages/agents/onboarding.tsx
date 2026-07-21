@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { api } from "@/convex/_generated/api.js";
@@ -28,6 +29,7 @@ export default function AgentOnboardingPage() {
   const navigate = useNavigate();
   const goBack = useSmartBack("/agents");
   const myProfile = useQuery(api.agents.getMyProfile, {});
+  const isLoadingProfile = myProfile === undefined;
   const hasProfile = myProfile !== undefined && myProfile !== null;
   const isVerified = myProfile?.verified ?? false;
 
@@ -95,16 +97,25 @@ export default function AgentOnboardingPage() {
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="rounded-3xl border border-border bg-gradient-to-br from-primary/8 via-card to-accent/8 p-6 md:p-8 shadow-sm space-y-5">
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-accent font-semibold mb-2"><CheckCircle2 className="w-4 h-4" /> {t("onboarding.verification_status")}</div>
-              <h2 className="font-serif text-2xl font-semibold text-primary mb-1">
-                {!hasProfile ? t("onboarding.no_profile") : isVerified ? t("onboarding.verified_live") : t("onboarding.pending_review")}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {!hasProfile
-                  ? t("onboarding.no_profile_body")
-                  : isVerified
-                    ? t("onboarding.verified_body")
-                    : t("onboarding.pending_body")}
-              </p>
+              {isLoadingProfile ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-7 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ) : (
+                <>
+                  <h2 className="font-serif text-2xl font-semibold text-primary mb-1">
+                    {!hasProfile ? t("onboarding.no_profile") : isVerified ? t("onboarding.verified_live") : t("onboarding.pending_review")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {!hasProfile
+                      ? t("onboarding.no_profile_body")
+                      : isVerified
+                        ? t("onboarding.verified_body")
+                        : t("onboarding.pending_body")}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">

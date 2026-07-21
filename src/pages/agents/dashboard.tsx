@@ -332,6 +332,12 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
   const [visaRoute, setVisaRoute] = useState(`${intake.destination} ${intake.visaType}`);
 
   const data: CaseIntelligenceData = useQuery(api.caseReadiness.getIntakeReadiness, { intakeId: intake._id });
+  // Every tab's "empty" branch below checks a falsy value (!r, .length === 0,
+  // etc.) — while data is still undefined (loading), those checks are also
+  // true, so re-opening a client that already has a score/fixes/fraud
+  // signals used to flash "no checks yet" before the real data replaced it.
+  // This guard shows a skeleton instead for exactly that one render.
+  const isLoadingData = data === undefined;
   const computeReadiness = useMutation(api.caseReadiness.computeReadiness);
   const resolveFixItem = useMutation(api.caseReadiness.resolveFixItem);
   const unresolveFixItem = useMutation(api.caseReadiness.unresolveFixItem);
@@ -470,7 +476,14 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
 
       {/* Tab content */}
       <div className="p-4">
-
+        {isLoadingData ? (
+          <div className="space-y-3 py-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+          </div>
+        ) : (
+        <>
         {/* ── Readiness ── */}
         {tab === "readiness" && (
           <div className="space-y-4">
@@ -794,7 +807,8 @@ function CaseIntelligencePanel({ intake }: { intake: Intake }) {
             )}
           </div>
         )}
-
+        </>
+        )}
       </div>
     </div>
   );
@@ -1286,7 +1300,14 @@ function ClientsSection({
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-2xl font-semibold text-primary">My Clients</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{intakes.length} {intakes.length === 1 ? "client" : "clients"} total</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {intakes.length} {intakes.length === 1 ? "client" : "clients"} total
+            {/* listMyIntakes caps at 200 active clients (convex/clientIntakes.ts) —
+                flag it instead of silently presenting a capped list as everything. */}
+            {intakes.length >= 200 && (
+              <span className="ml-1.5 text-[10px] font-semibold text-amber-600">(showing your 200 most recent — contact us if you need more)</span>
+            )}
+          </p>
         </div>
         <Button size="lg" className="cursor-pointer gap-2" onClick={() => { setActivePrefill(undefined); setShowForm(true); setJustCreatedToken(null); }}>
           <UserPlus className="w-5 h-5" /> {t("clients.add")}

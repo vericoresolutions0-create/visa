@@ -10,6 +10,14 @@ function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
+// listMyIntakes caps at this many active clients (see .take below). Kept as
+// a named constant so it's easy to find — src/pages/agents/dashboard.tsx's
+// client-count display compares against this same number (duplicated there
+// as a literal, since frontend code can't import from convex/*.ts source)
+// to show a truncation notice instead of silently presenting a capped list
+// as "all clients" once an agent scales past this many active ones.
+const MAX_INTAKES = 200;
+
 // ─── Agent: create a new client intake + shareable upload link ────────────────
 export const createIntake = mutation({
   args: {
@@ -67,7 +75,7 @@ export const listMyIntakes = query({
       .query("client_intakes")
       .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
       .order("desc")
-      .take(200)).filter((i) => !i.archived);
+      .take(MAX_INTAKES)).filter((i) => !i.archived);
 
     return await Promise.all(
       intakes.map(async (intake) => {

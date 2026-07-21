@@ -5,6 +5,7 @@ import { Authenticated, Unauthenticated, AuthLoading, useAction, useMutation, us
 import { toast } from "sonner";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { api } from "@/convex/_generated/api.js";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
@@ -487,7 +488,13 @@ function MarketplaceLeadsContent() {
   const [unlocking, setUnlocking] = useState<Id<"marketplace_leads"> | null>(null);
   const [showTopUp, setShowTopUp] = useState(false);
 
-  const creditBalance = useQuery(api.marketplace.getMyCreditBalance) ?? 0;
+  // Raw query results kept distinct from their `?? 0`/`?? []` fallbacks below
+  // — collapsing "still loading" into "confirmed zero/empty" used to show a
+  // real agent's actual balance/leads as 0/none for a beat on every visit.
+  const creditBalanceRaw = useQuery(api.marketplace.getMyCreditBalance);
+  const isLoadingBalance = creditBalanceRaw === undefined;
+  const creditBalance = creditBalanceRaw ?? 0;
+  const openLeadCount = useQuery(api.marketplace.getOpenLeadCount, {});
   const { results: leads, status: leadsStatus, loadMore: loadMoreLeads } = usePaginatedQuery(
     api.marketplace.getMarketplaceLeads,
     {
@@ -496,8 +503,12 @@ function MarketplaceLeadsContent() {
     },
     { initialNumItems: 20 },
   );
-  const unlockedLeads = useQuery(api.marketplace.getMyUnlockedLeads) ?? [];
-  const creditHistory = useQuery(api.marketplace.getMyCreditHistory) ?? [];
+  const unlockedLeadsRaw = useQuery(api.marketplace.getMyUnlockedLeads);
+  const isLoadingUnlocked = unlockedLeadsRaw === undefined;
+  const unlockedLeads = unlockedLeadsRaw ?? [];
+  const creditHistoryRaw = useQuery(api.marketplace.getMyCreditHistory);
+  const isLoadingHistory = creditHistoryRaw === undefined;
+  const creditHistory = creditHistoryRaw ?? [];
   const unlockLead = useMutation(api.marketplace.unlockLead);
 
   const handleUnlock = async (leadId: Id<"marketplace_leads">) => {
@@ -566,17 +577,20 @@ function MarketplaceLeadsContent() {
             {[
               {
                 icon: <Globe className="w-4 h-4 text-accent" />,
-                value: leads.length,
+                // Real platform-wide open count, not the current page's
+                // loaded length — that undercounted (and changed confusingly
+                // on "Load more") since only 20 leads load at a time.
+                value: openLeadCount ?? "—",
                 label: "Open leads",
               },
               {
                 icon: <LockOpen className="w-4 h-4 text-emerald-500" />,
-                value: unlockedCount,
+                value: isLoadingUnlocked ? "—" : unlockedCount,
                 label: "Unlocked",
               },
               {
                 icon: <Coins className="w-4 h-4 text-amber-500" />,
-                value: creditBalance,
+                value: isLoadingBalance ? "—" : creditBalance,
                 label: "Credits remaining",
               },
             ].map((s) => (
@@ -713,7 +727,11 @@ function MarketplaceLeadsContent() {
               </div>
             </div>
 
-            {leads.length === 0 ? (
+            {leadsStatus === "LoadingFirstPage" || isLoadingBalance ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+              </div>
+            ) : leads.length === 0 ? (
               <div className="py-16 text-center">
                 <Sparkles className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">No open leads right now</p>
@@ -757,7 +775,11 @@ function MarketplaceLeadsContent() {
         {/* Unlocked leads tab */}
         {tab === "unlocked" && (
           <div>
-            {unlockedLeads.length === 0 ? (
+            {isLoadingUnlocked ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+              </div>
+            ) : unlockedLeads.length === 0 ? (
               <div className="py-16 text-center">
                 <LockOpen className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">No unlocked leads yet</p>
@@ -802,7 +824,13 @@ function MarketplaceLeadsContent() {
                 Top up credits
               </button>
             </div>
-            <CreditHistoryTab history={creditHistory} />
+            {isLoadingHistory ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+              </div>
+            ) : (
+              <CreditHistoryTab history={creditHistory} />
+            )}
           </div>
         )}
 

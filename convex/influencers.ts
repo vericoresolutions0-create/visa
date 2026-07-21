@@ -260,6 +260,24 @@ export const logCommission = internalMutation({
       .unique();
     if (!inf || !inf.active) return;
 
+    // Block self-referral: an influencer paying under their own code (e.g. a
+    // second personal account) should never earn commission on their own money.
+    if (user.email && user.email.toLowerCase() === inf.email.toLowerCase()) {
+      return;
+    }
+
+    // Enforce the attribution window server-side. trackSignup is the only
+    // writer of influencerCode/influencerTrackedAt, always setting both
+    // together, so influencerTrackedAt is always present whenever
+    // influencerCode is — a user tracked outside this influencer's
+    // configured window (checked at payment time, not signup time) never
+    // gets attributed, no matter what the client believes.
+    if (user.influencerTrackedAt) {
+      const trackedAtMs = new Date(user.influencerTrackedAt).getTime();
+      const windowMs = inf.attributionWindowDays * 24 * 60 * 60 * 1000;
+      if (Date.now() - trackedAtMs > windowMs) return;
+    }
+
     // Only commission the first paid month — if they already have a commission
     // row, this is a renewal, not a first payment.
     const existing = await ctx.db

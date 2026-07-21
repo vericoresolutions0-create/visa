@@ -28,7 +28,10 @@ export default function BusinessLandingPage() {
   const myOrg = useQuery(api.organizations.getMyOrganization);
   const { isDemoAuthenticated } = useDemoAuth();
   const currentUser = useQuery(api.users.getCurrentUser);
-  const isAnonymous = !isDemoAuthenticated && currentUser === null;
+  // currentUser === undefined is "still loading", not "signed out" — treating
+  // it as anonymous popped the visitor-save-prompt card into the page for a
+  // beat on every load, shifting everything below it down.
+  const isAnonymous = !isDemoAuthenticated && currentUser !== undefined && currentUser === null;
 
   const ORG_TYPES = [
     {
@@ -66,7 +69,11 @@ export default function BusinessLandingPage() {
     { step: "03", title: t("steps.2.title"), desc: t("steps.2.desc") },
   ];
 
-  const ctaTarget = myOrg ? "/business/dashboard" : "/business/onboarding";
+  // A pending/rejected org's admin has nothing to see on /business/dashboard
+  // — it just bounces them straight back to /business/onboarding (see
+  // dashboard.tsx's redirect effect). Routing there directly here avoids
+  // that avoidable extra hop.
+  const ctaTarget = myOrg && myOrg.approvalStatus === "approved" ? "/business/dashboard" : "/business/onboarding";
 
   const submitContact = useMutation(api.contact.submit);
   const [bizName, setBizName] = useState("");
