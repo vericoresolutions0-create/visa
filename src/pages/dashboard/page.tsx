@@ -49,6 +49,96 @@ import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 
 const DEST_FLAGS = DESTINATION_FLAGS;
 
+// Warms a Quick Action's route chunk the moment a user's pointer/finger
+// lands on the tile — by the time they actually click, the page code is
+// already downloaded, so the transition feels instant instead of waiting
+// for the lazy import to resolve. Each entry points at the exact same
+// module App.tsx's own lazy() already targets, so this reuses the same
+// chunk (and the same Vite/browser module cache) rather than fetching
+// anything twice.
+const QUICK_ACTION_PREFETCH: Record<string, () => Promise<unknown>> = {
+  "/checklist": () => import("../checklist/page.tsx"),
+  "/dashboard/immigration-status": () => import("./immigration-status/page.tsx"),
+  "/dashboard/european-tracker": () => import("./european-tracker/page.tsx"),
+  "/dashboard/notifications": () => import("./notifications/page.tsx"),
+  "/dashboard/vault": () => import("./vault/page.tsx"),
+  "/dashboard/country-watch": () => import("./country-watch/page.tsx"),
+  "/dashboard/household": () => import("./household/page.tsx"),
+  "/rejection-analyser": () => import("../rejection-analyser/page.tsx"),
+  "/risk-score": () => import("../risk-score/page.tsx"),
+  "/wall-of-fame": () => import("../wall-of-fame/page.tsx"),
+  "/wait-times": () => import("../wait-times/page.tsx"),
+  "/passport-photo": () => import("../passport-photo/page.tsx"),
+  "/dashboard/find-agent": () => import("./find-agent/page.tsx"),
+};
+const prefetchedPaths = new Set<string>();
+function prefetchQuickAction(path: string) {
+  if (prefetchedPaths.has(path)) return;
+  prefetchedPaths.add(path);
+  QUICK_ACTION_PREFETCH[path]?.().catch(() => {
+    // Best-effort — a failed prefetch just means the real click-time
+    // import does the work instead, same as if this never ran.
+    prefetchedPaths.delete(path);
+  });
+}
+
+type QuickAction = { icon: string; label: string; path: string };
+// The 7 tools people reach for most, always visible — nothing valuable
+// hides behind a click by default.
+const ESSENTIAL_ACTIONS: QuickAction[] = [
+  { icon: "📋", label: "New Checklist", path: "/checklist" },
+  { icon: "🌍", label: "Immigration Status", path: "/dashboard/immigration-status" },
+  { icon: "🗄️", label: "Document Vault", path: "/dashboard/vault" },
+  { icon: "🔔", label: "Notifications", path: "/dashboard/notifications" },
+  { icon: "📍", label: "European Tracker", path: "/dashboard/european-tracker" },
+  { icon: "👁️", label: "Country Watch", path: "/dashboard/country-watch" },
+  { icon: "🤝", label: "Find an Agent", path: "/dashboard/find-agent" },
+];
+// The rest, grouped rather than dumped back as a flat continuation — a
+// reveal only feels good when there's real structure underneath it.
+const MORE_ACTION_GROUPS: { label: string; actions: QuickAction[] }[] = [
+  {
+    label: "Plan ahead",
+    actions: [
+      { icon: "🏠", label: "Family & Household", path: "/dashboard/household" },
+      { icon: "⏱️", label: "Wait Times", path: "/wait-times" },
+    ],
+  },
+  {
+    label: "Get extra help",
+    actions: [
+      { icon: "⚠️", label: "Rejection Analyser", path: "/rejection-analyser" },
+      { icon: "📊", label: "Risk Score", path: "/risk-score" },
+      { icon: "📸", label: "Photo Checker", path: "/passport-photo" },
+      { icon: "🏆", label: "Wall of Fame", path: "/wall-of-fame" },
+    ],
+  },
+];
+
+function QuickActionTile({ action, onNavigate, delayMs }: {
+  action: QuickAction; onNavigate: (path: string) => void; delayMs?: number;
+}) {
+  return (
+    <button
+      onClick={() => onNavigate(action.path)}
+      onMouseEnter={() => prefetchQuickAction(action.path)}
+      onTouchStart={() => prefetchQuickAction(action.path)}
+      className={cn(
+        "flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card hover:border-primary/35 hover:-translate-y-0.5 hover:bg-primary/5 transition-all cursor-pointer shadow-sm",
+        delayMs !== undefined && "animate-in fade-in zoom-in-95 duration-300 fill-mode-backwards",
+      )}
+      style={delayMs !== undefined ? { animationDelay: `${delayMs}ms` } : undefined}
+    >
+      <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-lg">
+        {action.icon}
+      </div>
+      <span className="text-xs font-medium text-foreground text-center leading-tight">
+        {action.label}
+      </span>
+    </button>
+  );
+}
+
 const DEMO_USER_ID = "demo_user" as Id<"users">;
 const DEMO_CHECKLISTS = [
   {
@@ -557,6 +647,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
   // is never a first-timer since DEMO_CHECKLISTS always has entries, which
   // is correct: demo is a "look at everything" tour, not a real first visit.
   const [spotlightDismissed, setSpotlightDismissed] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const deleteChecklist = useMutation(api.checklists.deleteChecklist);
   const deleteReminder = useMutation(api.reminders.deleteReminder);
   const [demoChecklists, setDemoChecklists] =
@@ -766,6 +857,8 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
               size="lg"
               className="bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer font-semibold px-7"
               onClick={() => navigate("/checklist")}
+              onMouseEnter={() => prefetchQuickAction("/checklist")}
+              onTouchStart={() => prefetchQuickAction("/checklist")}
             >
               Build my checklist <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
@@ -782,35 +875,49 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
               Quick Actions
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { icon: "📋", label: "New Checklist", path: "/checklist" },
-                { icon: "🌍", label: "Immigration Status", path: "/dashboard/immigration-status" },
-                { icon: "📍", label: "European Tracker", path: "/dashboard/european-tracker" },
-                { icon: "🔔", label: "Notifications", path: "/dashboard/notifications" },
-                { icon: "🗄️", label: "Document Vault", path: "/dashboard/vault" },
-                { icon: "👁️", label: "Country Watch", path: "/dashboard/country-watch" },
-                { icon: "🏠", label: "Family & Household", path: "/dashboard/household" },
-                { icon: "⚠️", label: "Rejection Analyser", path: "/rejection-analyser" },
-                { icon: "📊", label: "Risk Score", path: "/risk-score" },
-                { icon: "🏆", label: "Wall of Fame", path: "/wall-of-fame" },
-                { icon: "⏱️", label: "Wait Times", path: "/wait-times" },
-                { icon: "📸", label: "Photo Checker", path: "/passport-photo" },
-                { icon: "🤝", label: "Find an Agent", path: "/dashboard/find-agent" },
-              ].map((a) => (
+              {ESSENTIAL_ACTIONS.map((a) => (
+                <QuickActionTile key={a.label} action={a} onNavigate={navigate} />
+              ))}
+              {!showMoreActions && (
                 <button
-                  key={a.label}
-                  onClick={() => navigate(a.path)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card hover:border-primary/35 hover:-translate-y-0.5 hover:bg-primary/5 transition-all cursor-pointer shadow-sm"
+                  onClick={() => setShowMoreActions(true)}
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-dashed border-accent/50 bg-accent/8 hover:bg-accent/14 hover:-translate-y-0.5 transition-all cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-lg">
-                    {a.icon}
-                  </div>
-                  <span className="text-xs font-medium text-foreground text-center leading-tight">
-                    {a.label}
+                  <span className="text-lg">✨</span>
+                  <span className="text-xs font-bold text-foreground text-center leading-tight">
+                    {MORE_ACTION_GROUPS.reduce((n, g) => n + g.actions.length, 0)} more
                   </span>
                 </button>
-              ))}
+              )}
             </div>
+
+            {showMoreActions && (
+              <div className="mt-4">
+                {MORE_ACTION_GROUPS.map((group, gi) => (
+                  <div key={group.label} className="mb-4 last:mb-0">
+                    <p className="text-[10.5px] font-bold uppercase tracking-widest text-accent mb-2.5">
+                      {group.label}
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {group.actions.map((a, ai) => (
+                        <QuickActionTile
+                          key={a.label}
+                          action={a}
+                          onNavigate={navigate}
+                          delayMs={(gi * 4 + ai) * 40}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowMoreActions(false)}
+                  className="block mx-auto mt-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Show less ↑
+                </button>
+              </div>
+            )}
           </div>
         )
       )}

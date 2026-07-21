@@ -982,7 +982,7 @@ export default function ImmigrationStatusPage() {
       {/* Top bar */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <button onClick={goBack} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer">
+          <button onClick={goBack} aria-label="Back" className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-pointer shrink-0">
             <ArrowLeft className="w-4 h-4 text-slate-600" />
           </button>
           <div>
