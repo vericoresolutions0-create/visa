@@ -27,11 +27,9 @@ import {
   Bell,
   FileText,
   Shield,
-  Users,
   AlertCircle,
   AlertTriangle,
   ChevronRight,
-  Camera,
   TrendingUp,
   LogIn,
   Star,
@@ -42,9 +40,6 @@ import {
   ArchiveRestore,
   StickyNote,
   Sparkles,
-  Award,
-  Home,
-  MapPin,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
@@ -557,6 +552,11 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
     isDemoAuthenticated ? "skip" : {},
   );
   const [zone3Tab, setZone3Tab] = useState<"vault" | "reminders">("vault");
+  // The "have they done the one core thing yet" signal — reuses the
+  // checklists query already fetched above, no new backend call. Demo mode
+  // is never a first-timer since DEMO_CHECKLISTS always has entries, which
+  // is correct: demo is a "look at everything" tour, not a real first visit.
+  const [spotlightDismissed, setSpotlightDismissed] = useState(false);
   const deleteChecklist = useMutation(api.checklists.deleteChecklist);
   const deleteReminder = useMutation(api.reminders.deleteReminder);
   const [demoChecklists, setDemoChecklists] =
@@ -621,6 +621,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
   const visibleReminders = isDemoAuthenticated
     ? demoReminders
     : (reminders ?? []);
+  const isFirstTimer = visibleChecklists.length === 0 && !spotlightDismissed;
   const tripsByUrgency = [...visibleChecklists]
     .filter((cl) => !cl.archived)
     .sort((a, b) => {
@@ -746,95 +747,72 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
 
       <DashboardPageLinks current={view} />
 
-      {/* Quick actions */}
+      {/* Quick actions — a first-timer with no saved checklist yet gets one
+          clear job instead of all 13 tiles competing for attention; nothing
+          is removed, "see everything" reveals the exact same grid below. */}
       {showOverview && (
-        <div>
-          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              {
-                icon: <Plus className="w-4 h-4" />,
-                label: "New Checklist",
-                path: "/checklist",
-              },
-              {
-                icon: <Globe className="w-4 h-4" />,
-                label: "Immigration Status",
-                path: "/dashboard/immigration-status",
-              },
-              {
-                icon: <MapPin className="w-4 h-4" />,
-                label: "European Tracker",
-                path: "/dashboard/european-tracker",
-              },
-              {
-                icon: <Bell className="w-4 h-4" />,
-                label: "Notifications",
-                path: "/dashboard/notifications",
-              },
-              {
-                icon: <StickyNote className="w-4 h-4" />,
-                label: "Document Vault",
-                path: "/dashboard/vault",
-              },
-              {
-                icon: <Bell className="w-4 h-4" />,
-                label: "Country Watch",
-                path: "/dashboard/country-watch",
-              },
-              {
-                icon: <Home className="w-4 h-4" />,
-                label: "Family & Household",
-                path: "/dashboard/household",
-              },
-              {
-                icon: <AlertCircle className="w-4 h-4" />,
-                label: "Rejection Analyser",
-                path: "/rejection-analyser",
-              },
-              {
-                icon: <TrendingUp className="w-4 h-4" />,
-                label: "Risk Score",
-                path: "/risk-score",
-              },
-              {
-                icon: <Award className="w-4 h-4" />,
-                label: "Wall of Fame",
-                path: "/wall-of-fame",
-              },
-              {
-                icon: <Clock className="w-4 h-4" />,
-                label: "Wait Times",
-                path: "/wait-times",
-              },
-              {
-                icon: <Camera className="w-4 h-4" />,
-                label: "Photo Checker",
-                path: "/passport-photo",
-              },
-              {
-                icon: <Users className="w-4 h-4" />,
-                label: "Find an Agent",
-                path: "/dashboard/find-agent",
-              },
-            ].map((a) => (
-              <button
-                key={a.label}
-                onClick={() => navigate(a.path)}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card hover:border-primary/35 hover:-translate-y-0.5 hover:bg-primary/5 transition-all cursor-pointer shadow-sm"
-              >
-                <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-primary">
-                  {a.icon}
-                </div>
-                <span className="text-xs font-medium text-foreground text-center leading-tight">
-                  {a.label}
-                </span>
-              </button>
-            ))}
+        isFirstTimer ? (
+          <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/90 p-7 sm:p-8 text-center text-primary-foreground shadow-xl shadow-primary/10">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold mb-4">
+              ✨ Let's get started
+            </span>
+            <h2 className="font-serif text-xl sm:text-2xl font-semibold mb-2 leading-snug">
+              Find out exactly what documents you need
+            </h2>
+            <p className="text-primary-foreground/70 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+              Answer two quick questions and get your personal visa checklist — takes about a minute.
+            </p>
+            <Button
+              size="lg"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer font-semibold px-7"
+              onClick={() => navigate("/checklist")}
+            >
+              Build my checklist <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+            <button
+              onClick={() => setSpotlightDismissed(true)}
+              className="block mx-auto mt-4 text-[11.5px] font-semibold text-primary-foreground/55 hover:text-primary-foreground/80 underline underline-offset-2 cursor-pointer"
+            >
+              or see everything VisaClear offers
+            </button>
           </div>
-        </div>
+        ) : (
+          <div>
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: "📋", label: "New Checklist", path: "/checklist" },
+                { icon: "🌍", label: "Immigration Status", path: "/dashboard/immigration-status" },
+                { icon: "📍", label: "European Tracker", path: "/dashboard/european-tracker" },
+                { icon: "🔔", label: "Notifications", path: "/dashboard/notifications" },
+                { icon: "🗄️", label: "Document Vault", path: "/dashboard/vault" },
+                { icon: "👁️", label: "Country Watch", path: "/dashboard/country-watch" },
+                { icon: "🏠", label: "Family & Household", path: "/dashboard/household" },
+                { icon: "⚠️", label: "Rejection Analyser", path: "/rejection-analyser" },
+                { icon: "📊", label: "Risk Score", path: "/risk-score" },
+                { icon: "🏆", label: "Wall of Fame", path: "/wall-of-fame" },
+                { icon: "⏱️", label: "Wait Times", path: "/wait-times" },
+                { icon: "📸", label: "Photo Checker", path: "/passport-photo" },
+                { icon: "🤝", label: "Find an Agent", path: "/dashboard/find-agent" },
+              ].map((a) => (
+                <button
+                  key={a.label}
+                  onClick={() => navigate(a.path)}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-border bg-card hover:border-primary/35 hover:-translate-y-0.5 hover:bg-primary/5 transition-all cursor-pointer shadow-sm"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-lg">
+                    {a.icon}
+                  </div>
+                  <span className="text-xs font-medium text-foreground text-center leading-tight">
+                    {a.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
       )}
 
       {/* Zone 2 — My Trips, ordered by urgency, horizontal scroll */}

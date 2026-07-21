@@ -2037,6 +2037,10 @@ function OverviewSection({
   const totalUrgent = actions.filter(a => a.urgent).length;
   const allClear = actions.length === 0 && newUploads === 0;
   const firstName = agentName?.split(" ")[0];
+  // Never had a single client, not just "currently caught up" — an agent
+  // who's cleared their queue and one who's never had a queue both hit
+  // allClear, but they need different messaging: "well done" vs. "start here".
+  const isFirstTimer = intakes.length === 0 && contactRequests.length === 0;
 
   return (
     <div className="space-y-6">
@@ -2051,7 +2055,9 @@ function OverviewSection({
             {greetingWord()}{firstName ? `, ${firstName}` : ""}.
           </h2>
           <p className="text-white/80 text-base mt-1">
-            {allClear
+            {isFirstTimer
+              ? "Let's get your first client — browse leads in the marketplace."
+              : allClear
               ? "Everything is under control — no actions needed right now."
               : totalUrgent > 0
               ? `${totalUrgent} matter${totalUrgent > 1 ? "s" : ""} need your attention today.`
@@ -2193,11 +2199,30 @@ function OverviewSection({
         </div>
 
         {actions.length === 0 ? (
-          <div className="text-center py-8">
-            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
-            <p className="font-semibold text-base text-foreground">All caught up</p>
-            <p className="text-sm text-muted-foreground mt-1">No actions needed right now.</p>
-          </div>
+          isFirstTimer ? (
+            <div className="rounded-2xl bg-gradient-to-br from-[#0f2040] to-[#16294f] p-7 text-center text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold mb-4">
+                🤝 Let's get started
+              </span>
+              <h4 className="font-serif text-xl font-semibold mb-2 leading-snug">Find your first client</h4>
+              <p className="text-white/70 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+                Real applicants are looking for help right now. Browse the marketplace and unlock a lead to reach out.
+              </p>
+              <button
+                type="button"
+                onClick={() => { window.location.href = "/agents/marketplace-leads"; }}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#d4a726] text-[#0f2040] text-sm font-bold hover:bg-[#d4a726]/90 transition-colors cursor-pointer"
+              >
+                Browse the Lead Marketplace <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+              <p className="font-semibold text-base text-foreground">All caught up</p>
+              <p className="text-sm text-muted-foreground mt-1">No actions needed right now.</p>
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             {actions.map((action) => {
