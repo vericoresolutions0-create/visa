@@ -14,8 +14,8 @@ import { Globe, ArrowLeft, Shield, Users, FileText, BarChart3, CheckCircle2, Tra
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import { toast } from "sonner";
 import type { Doc } from "@/convex/_generated/dataModel.js";
-import { NAV_ITEMS, PanelErrorBoundary, StatCard } from "./shared.tsx";
-import type { Tab } from "./shared.tsx";
+import { NAV_ITEMS, PanelErrorBoundary, StatCard, AdminSidebarNav } from "./shared.tsx";
+import type { Tab, SidebarBadges } from "./shared.tsx";
 import { RiskMitigationsPanel } from "./panels/RiskMitigationsPanel.tsx";
 import { AgentReviewModerationPanel } from "./panels/AgentReviewModerationPanel.tsx";
 import { AgentReportsPanel } from "./panels/AgentReportsPanel.tsx";
@@ -92,6 +92,15 @@ function AdminInner() {
   const caseIntelStats = useQuery(api.caseReadiness.getAdminCaseIntelligenceStats, {});
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
+  // Real sidebar badge counts only — a department shows a number only where
+  // one is actually backed by data. orgs is the same query EmployersAdminPanel
+  // uses, so Convex shares the subscription rather than duplicating it.
+  const orgs = useQuery(api.adminOrgs.listOrganizations, {});
+  const sidebarBadges: SidebarBadges = {
+    employers: orgs?.filter((o) => o.approvalStatus === "pending").length ?? 0,
+    agents: agents?.filter((a) => !a.verified).length ?? 0,
+  };
+
   const handlePlanChange = async (userId: Doc<"users">["_id"], plan: "free" | "pro" | "expert") => {
     try {
       await updatePlan({ userId, plan });
@@ -146,24 +155,7 @@ function AdminInner() {
         </button>
       </div>
       <div className="overflow-y-auto py-3">
-        {NAV_ITEMS.map((item) => {
-          const active = tab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => { setTab(item.id); setSidebarOpen(false); }}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all cursor-pointer text-left",
-                active
-                  ? "bg-white/10 text-white border-r-2 border-[#b8a06a]"
-                  : "text-white/50 hover:text-white hover:bg-white/5 border-r-2 border-transparent"
-              )}
-            >
-              <item.icon className={cn("w-4 h-4 shrink-0", active ? "text-[#b8a06a]" : "")} />
-              {item.label}
-            </button>
-          );
-        })}
+        <AdminSidebarNav tab={tab} onSelect={setTab} badges={sidebarBadges} />
       </div>
       <div className="px-4 pt-4 pb-4 border-t border-white/10 flex flex-col gap-2" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         <button
@@ -210,24 +202,7 @@ function AdminInner() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto py-3">
-              {NAV_ITEMS.map((item) => {
-                const active = tab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { setTab(item.id); setSidebarOpen(false); }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all cursor-pointer text-left",
-                      active
-                        ? "bg-white/10 text-white border-r-2 border-[#b8a06a]"
-                        : "text-white/50 hover:text-white hover:bg-white/5 border-r-2 border-transparent"
-                    )}
-                  >
-                    <item.icon className={cn("w-4 h-4 shrink-0", active ? "text-[#b8a06a]" : "")} />
-                    {item.label}
-                  </button>
-                );
-              })}
+              <AdminSidebarNav tab={tab} onSelect={(next) => { setTab(next); setSidebarOpen(false); }} badges={sidebarBadges} />
             </div>
             <div className="px-4 pt-4 border-t border-white/10 flex flex-col gap-2 shrink-0" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
               <button
