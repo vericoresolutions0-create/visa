@@ -82,6 +82,7 @@ const BlogArticlePage = lazy(() => import("./pages/blog/article.tsx"));
 const GoogleLoginPage = lazy(() => import("./pages/google-login/page.tsx"));
 const MenuPage = lazy(() => import("./pages/menu/page.tsx"));
 const CommunityPage = lazy(() => import("./pages/community/page.tsx"));
+const CommunityPostPage = lazy(() => import("./pages/community/post.tsx"));
 const ApprovalsPage = lazy(() => import("./pages/approvals/page.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const VisaHubPage = lazy(() => import("./pages/visa/index.tsx"));
@@ -271,6 +272,7 @@ function AppRoutes() {
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:id" element={<BlogArticlePage />} />
           <Route path="/community" element={<CommunityPage />} />
+          <Route path="/community/:postId" element={<CommunityPostPage />} />
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/influencer/:token" element={<InfluencerPortalPage />} />
           <Route path="/dashboard/immigration-status" element={<ImmigrationStatusPage />} />

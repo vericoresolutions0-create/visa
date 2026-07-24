@@ -655,12 +655,52 @@ export default defineSchema({
     createdAt: v.string(),
     moderatedAt: v.optional(v.string()),
     moderatedByUserId: v.optional(v.id("users")),
+    // Denormalized counters (Community Hub Phase 2) — kept incrementally by
+    // submitReply/toggleReaction rather than aggregated per page render, same
+    // pattern already used for platform-wide stats (platformStats.ts).
+    // Optional: every row that predates Phase 2 has none, treated as 0 at
+    // read time (`?? 0`), no backfill migration required.
+    replyCount: v.optional(v.number()),
+    helpfulCount: v.optional(v.number()),
+    relatableCount: v.optional(v.number()),
   })
     .index("by_status", ["status"])
     .index("by_status_category", ["status", "category"])
     .index("by_user", ["userId"])
     .index("by_country", ["country"])
     .index("by_featured_status", ["featured", "status"]),
+
+  // Community Hub Phase 2 — threaded replies on an approved post. Unlike
+  // posts, replies don't go through a pending-review gate (auto-visible on
+  // submission, same scam-content scan as posts) — pre-moderating every
+  // reply would kill the real-time feel of a conversation thread; the same
+  // flag-to-auto-hide-at-3 mechanic from posts covers the abuse case
+  // reactively instead. userId is never returned to any client query —
+  // exactly like posts, only a per-thread anonymous handle derived from it.
+  community_replies: defineTable({
+    postId: v.id("community_posts"),
+    userId: v.id("users"),
+    body: v.string(),
+    country: v.string(),
+    status: v.union(v.literal("visible"), v.literal("hidden")),
+    flagCount: v.number(),
+    flaggedByUserIds: v.array(v.id("users")),
+    createdAt: v.string(),
+  })
+    .index("by_post", ["postId"])
+    .index("by_user", ["userId"]),
+
+  // One row per (post, user, reaction type) — a user can react Helpful
+  // and/or Relatable independently; re-tapping the same type removes it
+  // (toggle), never creates a duplicate.
+  community_post_reactions: defineTable({
+    postId: v.id("community_posts"),
+    userId: v.id("users"),
+    type: v.union(v.literal("helpful"), v.literal("relatable")),
+    createdAt: v.string(),
+  })
+    .index("by_post", ["postId"])
+    .index("by_post_user_type", ["postId", "userId", "type"]),
 
   // Admin-authored blog articles stored in Convex so they can be created,
   // edited, published, and unpublished from the admin panel without a code
@@ -943,6 +983,7 @@ export default defineSchema({
       v.literal("document_expiry"),
       v.literal("trip_deadline"),
       v.literal("visa_status_expiring"),
+      v.literal("community_reply_received"),
       v.literal("marketplace_lead_alert"),
       v.literal("client_document_uploaded"),
       v.literal("agent_trial_expiring"),

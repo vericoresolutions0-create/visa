@@ -35,7 +35,7 @@ import { DESTINATION_FLAGS } from "@/lib/destination-flags.ts";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import type { Id } from "@/convex/_generated/dataModel.js";
 
-type Category = "experience" | "question" | "tip" | "complaint";
+export type Category = "experience" | "question" | "tip" | "complaint";
 type Post = {
   _id: Id<"community_posts">;
   title: string;
@@ -44,9 +44,12 @@ type Post = {
   country: string;
   featured: boolean;
   createdAt: string;
+  replyCount: number;
+  helpfulCount: number;
+  relatableCount: number;
 };
 
-const CATEGORY_CONFIG: Record<Category, { label: string; Icon: typeof Plane; color: string }> = {
+export const CATEGORY_CONFIG: Record<Category, { label: string; Icon: typeof Plane; color: string }> = {
   experience: { label: "Experience", Icon: Plane, color: "text-blue-600 bg-blue-50 border-blue-200" },
   question:   { label: "Question",   Icon: HelpCircle, color: "text-purple-600 bg-purple-50 border-purple-200" },
   tip:        { label: "Tip",        Icon: Lightbulb, color: "text-amber-600 bg-amber-50 border-amber-200" },
@@ -61,7 +64,7 @@ const FILTER_CATEGORIES: { value: Category | "all"; label: string }[] = [
   { value: "complaint", label: "Complaints" },
 ];
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
@@ -72,6 +75,7 @@ function timeAgo(iso: string): string {
 }
 
 function PostCard({ post, onFlag }: { post: Post; onFlag: (id: Id<"community_posts">) => void }) {
+  const navigate = useNavigate();
   const translateCountry = useCountryName();
   const cfg = CATEGORY_CONFIG[post.category];
   const Icon = cfg.Icon;
@@ -80,7 +84,8 @@ function PostCard({ post, onFlag }: { post: Post; onFlag: (id: Id<"community_pos
     <motion.article
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3"
+      className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3 cursor-pointer hover:border-accent/40 transition-colors"
+      onClick={() => navigate(`/community/${post._id}`)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -94,7 +99,7 @@ function PostCard({ post, onFlag }: { post: Post; onFlag: (id: Id<"community_pos
         </div>
         <button
           type="button"
-          onClick={() => onFlag(post._id)}
+          onClick={(e) => { e.stopPropagation(); onFlag(post._id); }}
           className="text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer shrink-0 p-1"
           title="Flag this post"
         >
@@ -103,13 +108,24 @@ function PostCard({ post, onFlag }: { post: Post; onFlag: (id: Id<"community_pos
       </div>
 
       <h3 className="font-semibold text-sm text-primary leading-snug">{post.title}</h3>
-      <p className="text-sm text-foreground leading-relaxed">{post.body}</p>
+      <p className="text-sm text-foreground leading-relaxed line-clamp-4">{post.body}</p>
 
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-auto pt-1 border-t border-border/60">
         <Clock className="w-3 h-3" />
         {timeAgo(post.createdAt)}
         <span className="text-muted-foreground/40 mx-1">·</span>
         Anonymous
+        <span className="text-muted-foreground/40 mx-1">·</span>
+        <MessageSquare className="w-3 h-3" />
+        {post.replyCount}
+        {(post.helpfulCount > 0 || post.relatableCount > 0) && (
+          <>
+            <span className="text-muted-foreground/40 mx-1">·</span>
+            {post.helpfulCount > 0 && <span>👍 {post.helpfulCount}</span>}
+            {post.helpfulCount > 0 && post.relatableCount > 0 && " "}
+            {post.relatableCount > 0 && <span>❤️ {post.relatableCount}</span>}
+          </>
+        )}
       </div>
     </motion.article>
   );

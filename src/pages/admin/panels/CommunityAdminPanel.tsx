@@ -9,9 +9,23 @@ import type { Id } from "@/convex/_generated/dataModel.js";
 
 export function CommunityAdminPanel() {
   const posts = useQuery(api.community.listPostsForModeration, {});
+  const flaggedReplies = useQuery(api.community.listFlaggedReplies, {});
   const moderate = useMutation(api.community.moderatePost);
   const toggleFeatured = useMutation(api.community.toggleFeatured);
+  const moderateReply = useMutation(api.community.moderateReply);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const handleModerateReply = async (replyId: string, decision: "restore" | "remove") => {
+    setProcessingId(replyId);
+    try {
+      await moderateReply({ replyId: replyId as Id<"community_replies">, decision });
+      toast.success(decision === "restore" ? "Reply restored." : "Reply removed.");
+    } catch {
+      toast.error("Failed to moderate reply.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const handleModerate = async (postId: string, decision: "approved" | "rejected", featured?: boolean) => {
     setProcessingId(postId);
@@ -128,6 +142,46 @@ export function CommunityAdminPanel() {
                   <button
                     disabled={processingId === post._id}
                     onClick={() => { void handleModerate(post._id, "rejected"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {flaggedReplies && flaggedReplies.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-1">
+            Flagged Replies ({flaggedReplies.length})
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            These replies were hidden automatically after receiving 3 or more flags from users.
+          </p>
+          <div className="space-y-3">
+            {flaggedReplies.map((reply) => (
+              <div key={reply._id} className="bg-card border border-orange-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                    {reply.country} · {reply.flagCount} flags
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(reply.createdAt).toLocaleString("en-GB")}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{reply.body}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    disabled={processingId === reply._id}
+                    onClick={() => { void handleModerateReply(reply._id, "restore"); }}
+                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Restore
+                  </button>
+                  <button
+                    disabled={processingId === reply._id}
+                    onClick={() => { void handleModerateReply(reply._id, "remove"); }}
                     className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
                   >
                     <XCircle className="w-3.5 h-3.5" /> Remove
