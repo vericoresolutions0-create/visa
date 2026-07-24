@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Bell, BellRing, FileWarning, Calendar, Clock, UploadCloud, X, CheckCheck, AlertTriangle, DollarSign } from "lucide-react";
+import { Bell, BellRing, FileWarning, Calendar, Clock, UploadCloud, X, CheckCheck, AlertTriangle, DollarSign, Star } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { useNavigate } from "react-router-dom";
 import type { Doc } from "@/convex/_generated/dataModel.js";
@@ -33,6 +33,8 @@ function notificationIcon(type: Notification["type"]) {
     return <DollarSign className="w-4 h-4 text-green-600 shrink-0" />;
   if (type === "agent_payout_status")
     return <DollarSign className="w-4 h-4 text-blue-500 shrink-0" />;
+  if (type === "agent_review_received")
+    return <Star className="w-4 h-4 text-accent shrink-0" />;
   return <Clock className="w-4 h-4 text-accent shrink-0" />;
 }
 

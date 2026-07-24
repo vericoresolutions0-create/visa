@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { requireAdmin } from "./admin.ts";
 
@@ -67,6 +68,21 @@ export const submitReview = mutation({
       comment: args.comment?.trim(),
       createdAt: new Date().toISOString(),
       status: "pending",
+    });
+
+    // Previously no notification hook existed anywhere in this file — an
+    // agent had no way to know a review had come in until it was approved
+    // and appeared on their public profile, if they happened to check.
+    // Deliberately doesn't name the reviewer, matching the same
+    // ID-enumeration-conscious pattern listApproved already applies to
+    // reviewerUserId when returning reviews publicly.
+    const stars = "★".repeat(args.starRating) + "☆".repeat(5 - args.starRating);
+    await ctx.runMutation(internal.notifications.createAgentNotification, {
+      userId: agent.userId,
+      type: "agent_review_received",
+      title: `New review: ${stars}`,
+      body: "A client you worked with just left you a review. It'll appear on your profile once approved.",
+      linkTo: "/agents/dashboard",
     });
   },
 });
