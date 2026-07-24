@@ -12,6 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel.js";
 import {
   ArrowLeft, Globe, Bell, BellRing, FileWarning, Calendar, Clock,
   CheckCheck, Filter, Lock, ChevronRight, AlertTriangle, DollarSign, Star,
+  UserRoundCheck,
 } from "lucide-react";
 
 type Notification = Doc<"in_app_notifications">;
@@ -73,6 +74,12 @@ function notificationIcon(type: Notification["type"]) {
         <Star className="w-4 h-4 text-accent" />
       </div>
     );
+  if (type === "agent_returning_client")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
+        <UserRoundCheck className="w-4 h-4 text-green-600" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -88,6 +95,7 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "agent_commission_earned") return "Commission earned";
   if (type === "agent_payout_status") return "Payout update";
   if (type === "agent_review_received") return "New review";
+  if (type === "agent_returning_client") return "Returning client";
   return "Reminder";
 }
 

@@ -893,6 +893,7 @@ export default defineSchema({
       v.literal("agent_commission_earned"),
       v.literal("agent_payout_status"),
       v.literal("agent_review_received"),
+      v.literal("agent_returning_client"),
     ),
     title: v.string(),
     body: v.string(),

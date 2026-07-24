@@ -40,6 +40,7 @@ import {
   ArchiveRestore,
   StickyNote,
   Sparkles,
+  UserRoundCheck,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
@@ -677,6 +678,37 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
   const [reminderModal, setReminderModal] = useState<{
     checklistId?: Doc<"saved_checklists">["_id"];
   } | null>(null);
+  const pastAgents = useQuery(api.marketplace.getMyPastAgents, isDemoAuthenticated ? "skip" : {});
+  const reconnectWithAgent = useMutation(api.marketplace.reconnectWithAgent);
+  const [reconnectModalOpen, setReconnectModalOpen] = useState(false);
+  const [reconnectDestination, setReconnectDestination] = useState("");
+  const [reconnectVisaType, setReconnectVisaType] = useState("");
+  const [reconnectSubmitting, setReconnectSubmitting] = useState(false);
+  const mostRecentPastAgent = pastAgents?.[0] ?? null;
+
+  const handleReconnectSubmit = async () => {
+    if (!mostRecentPastAgent) return;
+    if (!reconnectDestination.trim() || !reconnectVisaType.trim()) {
+      toast.error("Destination and visa type are required.");
+      return;
+    }
+    setReconnectSubmitting(true);
+    try {
+      await reconnectWithAgent({
+        agentUserId: mostRecentPastAgent.agentUserId as Doc<"users">["_id"],
+        destination: reconnectDestination.trim(),
+        visaType: reconnectVisaType.trim(),
+      });
+      toast.success(`New case started with ${mostRecentPastAgent.fullName}.`);
+      setReconnectModalOpen(false);
+      setReconnectDestination("");
+      setReconnectVisaType("");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Couldn't start a new case. Please try again.");
+    } finally {
+      setReconnectSubmitting(false);
+    }
+  };
 
   const handleDeleteChecklist = async (id: Doc<"saved_checklists">["_id"]) => {
     if (isDemoAuthenticated) {
@@ -878,6 +910,100 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
       )}
 
       <DashboardPageLinks current={view} />
+
+      {/* Repeat-client reconnect — only shown when a real prior paid
+          relationship exists (proven by an actual lead unlock, not just
+          browsing). Skips the open marketplace entirely: clicking through
+          creates a case assigned directly to this agent. */}
+      {showOverview && mostRecentPastAgent && (
+        <div className="rounded-2xl border border-border bg-card p-5 flex items-start gap-4 shadow-sm">
+          <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-serif font-semibold text-base shrink-0">
+            {mostRecentPastAgent.fullName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="font-semibold text-sm text-foreground">
+                Continue with {mostRecentPastAgent.fullName}?
+              </span>
+              {mostRecentPastAgent.verified && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-green-600">
+                  <UserRoundCheck className="w-3 h-3" /> Verified
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              You've worked with them before. Ready for your next move?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" className="cursor-pointer" onClick={() => setReconnectModalOpen(true)}>
+                Start new case
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => navigate("/agents")}
+              >
+                Browse other agents instead
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reconnectModalOpen && mostRecentPastAgent && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !reconnectSubmitting && setReconnectModalOpen(false)}>
+          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-serif text-lg font-semibold text-foreground mb-1">
+              Start a new case with {mostRecentPastAgent.fullName}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              This goes straight to them — no marketplace, no cold search.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Destination</label>
+                <input
+                  type="text"
+                  value={reconnectDestination}
+                  onChange={(e) => setReconnectDestination(e.target.value)}
+                  placeholder="e.g. Canada"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  maxLength={100}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Visa type</label>
+                <input
+                  type="text"
+                  value={reconnectVisaType}
+                  onChange={(e) => setReconnectVisaType(e.target.value)}
+                  placeholder="e.g. Skilled Worker"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  maxLength={100}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <Button
+                className="flex-1 cursor-pointer"
+                disabled={reconnectSubmitting}
+                onClick={() => void handleReconnectSubmit()}
+              >
+                {reconnectSubmitting ? "Starting…" : "Start new case"}
+              </Button>
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                disabled={reconnectSubmitting}
+                onClick={() => setReconnectModalOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick actions — a first-timer with no saved checklist yet gets one
           clear job instead of all 13 tiles competing for attention; nothing

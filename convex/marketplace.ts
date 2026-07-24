@@ -196,6 +196,184 @@ export const getLeadForAlert = internalQuery({
   handler: async (ctx, args) => await ctx.db.get(args.leadId),
 });
 
+// Flat, deliberately cheap cost for reconnecting with an agent the applicant
+// has a real prior paid relationship with — cheaper than even the lowest
+// cold-lead tier (exploring, 2 credits), but not free: still a real charge,
+// a founder decision (agents should keep earning from repeat business, not
+// have the platform give it away for free and encourage taking repeat work
+// off-platform entirely).
+const REPEAT_CLIENT_UNLOCK_COST = 1;
+
+// ─── Applicant-facing: agents I've had a real prior paid relationship with ────
+// "Real" means proven by an actual unlock — an agent who paid credits to see
+// one of my leads, not just an agent I've browsed or a client_intakes row
+// (client_intakes has no reliable link back to a signed-in applicant account:
+// its claimedByUserId field exists in the schema but is never actually set
+// anywhere in the codebase today, so it can't be used as evidence of a real
+// relationship).
+export const getMyPastAgents = query({
+  args: {},
+  handler: async (ctx): Promise<Array<{
+    agentUserId: string;
+    profileId: string;
+    fullName: string;
+    country: string;
+    verified: boolean;
+    lastUnlockedAt: string;
+  }>> => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const myLeads = await ctx.db
+      .query("marketplace_leads")
+      .withIndex("by_user_and_status", (q) => q.eq("userId", user._id))
+      .take(200);
+    if (myLeads.length === 0) return [];
+
+    const unlocksByLead = await Promise.all(
+      myLeads.map((lead) =>
+        ctx.db.query("marketplace_lead_unlocks").withIndex("by_lead", (q) => q.eq("leadId", lead._id)).collect(),
+      ),
+    );
+    const allUnlocks = unlocksByLead.flat();
+    if (allUnlocks.length === 0) return [];
+
+    // Most-recent unlock per distinct agent
+    const latestByAgent = new Map<string, (typeof allUnlocks)[number]>();
+    for (const u of allUnlocks) {
+      const existing = latestByAgent.get(u.agentUserId);
+      if (!existing || u.unlockedAt > existing.unlockedAt) latestByAgent.set(u.agentUserId, u);
+    }
+
+    const results = await Promise.all(
+      Array.from(latestByAgent.values()).map(async (u) => {
+        const profile = await ctx.db
+          .query("agent_profiles")
+          .withIndex("by_user", (q) => q.eq("userId", u.agentUserId))
+          .unique();
+        if (!profile || !profile.verified) return null; // agent no longer verified — don't offer reconnect
+        return {
+          agentUserId: u.agentUserId,
+          profileId: profile._id,
+          fullName: profile.fullName,
+          country: profile.country,
+          verified: profile.verified,
+          lastUnlockedAt: u.unlockedAt,
+        };
+      }),
+    );
+
+    return results
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .sort((a, b) => (a.lastUnlockedAt < b.lastUnlockedAt ? 1 : -1));
+  },
+});
+
+// ─── Applicant-facing: reconnect directly with a past agent ───────────────────
+// Skips the open marketplace entirely — creates a real client_intakes case
+// assigned only to this specific agent (the same table/flow agents already
+// manage their real clients through, so it shows up in their existing
+// dashboard with zero new agent-side UI needed), at a steep discount off the
+// normal lead-unlock cost since this is a known relationship, not a cold
+// discovery — but still a real charge, per an explicit founder decision.
+export const reconnectWithAgent = mutation({
+  args: {
+    agentUserId: v.id("users"),
+    destination: v.string(),
+    visaType: v.string(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    assertNotSuspended(user);
+
+    if (!args.destination.trim() || args.destination.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Destination is required." });
+    if (!args.visaType.trim() || args.visaType.length > 100)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Visa type is required." });
+    if (args.notes && args.notes.length > 1000)
+      throw new ConvexError({ code: "BAD_REQUEST", message: "Notes must be under 1000 characters." });
+
+    // Verify a REAL prior relationship — this agent must have actually
+    // unlocked at least one of this applicant's own leads. Recomputed here
+    // server-side rather than trusting the frontend, same as every other
+    // money-moving check in this file.
+    const myLeads = await ctx.db
+      .query("marketplace_leads")
+      .withIndex("by_user_and_status", (q) => q.eq("userId", user._id))
+      .take(200);
+    let hasRealRelationship = false;
+    for (const lead of myLeads) {
+      const unlock = await ctx.db
+        .query("marketplace_lead_unlocks")
+        .withIndex("by_lead_and_agent", (q) => q.eq("leadId", lead._id).eq("agentUserId", args.agentUserId))
+        .unique();
+      if (unlock) { hasRealRelationship = true; break; }
+    }
+    if (!hasRealRelationship) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "You can only reconnect with an agent you've had a real prior interaction with.",
+      });
+    }
+
+    const agentProfile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", args.agentUserId))
+      .unique();
+    if (!agentProfile || !agentProfile.verified) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This agent is no longer available." });
+    }
+    if (agentProfile.leadAccessRevoked) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "This agent is not currently accepting new cases." });
+    }
+
+    const balance = agentProfile.creditBalance ?? 0;
+    if (balance < REPEAT_CLIENT_UNLOCK_COST) {
+      throw new ConvexError({
+        code: "PAYMENT_REQUIRED",
+        message: `The agent needs at least ${REPEAT_CLIENT_UNLOCK_COST} credit to accept a new case and doesn't currently have enough. Try again once they've topped up.`,
+      });
+    }
+
+    const now = new Date().toISOString();
+    const token = crypto.randomUUID().replace(/-/g, "");
+
+    await ctx.db.patch(agentProfile._id, { creditBalance: balance - REPEAT_CLIENT_UNLOCK_COST });
+
+    const intakeId = await ctx.db.insert("client_intakes", {
+      agentId: args.agentUserId,
+      token,
+      clientName: user.name ?? user.email ?? "Returning client",
+      clientEmail: user.email,
+      destination: args.destination.trim(),
+      visaType: args.visaType.trim(),
+      status: "awaiting_documents",
+      notes: args.notes?.trim() ? `Reconnected via VisaClear (returning client). ${args.notes.trim()}` : "Reconnected via VisaClear (returning client).",
+      createdAt: now,
+    });
+
+    await logSecurityEvent(ctx, {
+      actorUserId: user._id,
+      action: "repeat_client_reconnect",
+      severity: "info",
+      resourceType: "client_intakes",
+      resourceId: intakeId,
+      metadata: { agentUserId: args.agentUserId, creditsSpent: REPEAT_CLIENT_UNLOCK_COST },
+    });
+
+    await ctx.runMutation(internal.notifications.createAgentNotification, {
+      userId: args.agentUserId,
+      type: "agent_returning_client",
+      title: "A past client wants to work with you again",
+      body: `${user.name ?? "A returning client"} started a new case with you for ${args.visaType.trim()} → ${args.destination.trim()}.`,
+      linkTo: "/agents/dashboard",
+    });
+
+    return { intakeId };
+  },
+});
+
 // ─── Browse marketplace leads (agent side — contact details masked) ───────────
 // Returns leads for ALL signed-in users, not just those with profiles. Agents
 // without a profile or pending verification see the lead list but with a
