@@ -47,6 +47,7 @@ import type * as dashboardInsights from "../dashboardInsights.js";
 import type * as dataFreshness from "../dataFreshness.js";
 import type * as dataFreshnessDigest from "../dataFreshnessDigest.js";
 import type * as emailChange from "../emailChange.js";
+import type * as emails_agentBilling from "../emails/agentBilling.js";
 import type * as emails_agentTrial from "../emails/agentTrial.js";
 import type * as emails_agentWelcome from "../emails/agentWelcome.js";
 import type * as emails_clientDocumentUpload from "../emails/clientDocumentUpload.js";
@@ -154,6 +155,7 @@ declare const fullApi: ApiFromModules<{
   dataFreshness: typeof dataFreshness;
   dataFreshnessDigest: typeof dataFreshnessDigest;
   emailChange: typeof emailChange;
+  "emails/agentBilling": typeof emails_agentBilling;
   "emails/agentTrial": typeof emails_agentTrial;
   "emails/agentWelcome": typeof emails_agentWelcome;
   "emails/clientDocumentUpload": typeof emails_clientDocumentUpload;

@@ -123,6 +123,7 @@ export const createAgentNotification = internalMutation({
     type: v.union(
       v.literal("marketplace_lead_alert"),
       v.literal("agent_trial_expiring"),
+      v.literal("agent_payment_failed"),
     ),
     title: v.string(),
     body: v.string(),

@@ -362,6 +362,63 @@ export const applySubscriptionRenewal = internalMutation({
   },
 });
 
+// A renewal charge attempt failed (invoice.payment_failed) — Stripe will
+// retry automatically per its own retry schedule (nextPaymentAttempt is that
+// retry time, or null if this was the final attempt before the subscription
+// lapses). Previously nothing surfaced this to the agent at all — the first
+// they'd hear of it was the subscription silently ending. Agent-only: an
+// applicant's own subscription failure isn't in scope for this build.
+export const applyAgentPaymentFailed = internalMutation({
+  args: {
+    stripeSubscriptionId: v.string(),
+    amountCents: v.number(),
+    stripeEventId: v.string(),
+    nextPaymentAttempt: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const alreadyProcessed = await ctx.db
+      .query("processed_webhook_events")
+      .withIndex("by_provider_reference", (q) =>
+        q.eq("provider", "stripe").eq("reference", args.stripeEventId),
+      )
+      .unique();
+    if (alreadyProcessed) return;
+    await ctx.db.insert("processed_webhook_events", {
+      provider: "stripe",
+      reference: args.stripeEventId,
+      processedAt: new Date().toISOString(),
+    });
+
+    const agentUser = await ctx.db
+      .query("users")
+      .withIndex("by_agent_stripe_subscription", (q) =>
+        q.eq("agentStripeSubscriptionId", args.stripeSubscriptionId),
+      )
+      .unique();
+    if (!agentUser || !agentUser.agentPlan) return;
+
+    await ctx.runMutation(internal.notifications.createAgentNotification, {
+      userId: agentUser._id,
+      type: "agent_payment_failed",
+      title: "Payment failed",
+      body: args.nextPaymentAttempt
+        ? `Your last payment didn't go through. We'll retry automatically, but updating your card now avoids any interruption.`
+        : `Your last payment didn't go through and this was the final retry. Update your card now to keep your listing active.`,
+      linkTo: "/agents/dashboard",
+    });
+
+    if (agentUser.email) {
+      await ctx.scheduler.runAfter(0, internal.emails.agentBilling.sendAgentPaymentFailedEmail, {
+        to: agentUser.email,
+        name: agentUser.name ?? "there",
+        plan: agentUser.agentPlan as "agent_listing" | "agent_featured" | "agency_white_label",
+        amountCents: args.amountCents,
+        nextPaymentAttempt: args.nextPaymentAttempt,
+      });
+    }
+  },
+});
+
 // Subscription cancelled or lapsed (customer.subscription.deleted, or a
 // final failed-payment retry) — downgrades back to free/no agent plan
 // rather than leaving a paid plan active with no money behind it.

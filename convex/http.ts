@@ -242,6 +242,23 @@ http.route({
         });
         break;
       }
+      // A renewal charge attempt failed. Agent-only — previously nothing
+      // surfaced this at all; the first sign of trouble was the plan
+      // silently lapsing once Stripe's retries ran out.
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        if (invoice.subscription) {
+          await ctx.runMutation(internal.billing.applyAgentPaymentFailed, {
+            stripeSubscriptionId: String(invoice.subscription),
+            amountCents: Number(invoice.amount_due ?? 0),
+            stripeEventId: event.id,
+            nextPaymentAttempt: invoice.next_payment_attempt
+              ? new Date(Number(invoice.next_payment_attempt) * 1000).toISOString()
+              : null,
+          });
+        }
+        break;
+      }
       // A paid-for plan shouldn't stay active once the money is taken back.
       // The charge's own metadata (inherited from the Checkout Session)
       // reliably identifies the user for one-time payments and a

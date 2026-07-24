@@ -190,6 +190,84 @@ describe("Stripe webhook — /stripe/webhook", () => {
     const user = await t.run(async (ctx) => ctx.db.get(userId));
     expect(user?.plan).toBe("free");
   });
+
+  test("invoice.payment_failed notifies the agent and does not touch an unrelated applicant subscription", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedUser(t, {
+      email: "agent@example.com",
+      plan: undefined,
+      agentPlan: "agent_featured",
+      agentStripeSubscriptionId: "sub_agent_fail_1",
+    });
+    const payload = JSON.stringify({
+      id: "evt_payment_failed_1",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          subscription: "sub_agent_fail_1",
+          amount_due: 4900,
+          next_payment_attempt: Math.floor(Date.now() / 1000) + 3 * 86400,
+        },
+      },
+    });
+    const sig = await stripeSignatureHeader(payload, STRIPE_WEBHOOK_SECRET);
+    const res = await t.fetch("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": sig } });
+    expect(res.status).toBe(200);
+
+    const notifications = await t.run(async (ctx) =>
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", agentUserId)).collect(),
+    );
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].type).toBe("agent_payment_failed");
+    // Plan itself isn't touched by a failed attempt — only Stripe's own
+    // retries or an eventual customer.subscription.deleted end it.
+    const agentUser = await t.run(async (ctx) => ctx.db.get(agentUserId));
+    expect(agentUser?.agentPlan).toBe("agent_featured");
+  });
+
+  test("invoice.payment_failed with no next_payment_attempt (final retry) still notifies once, marked final", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t, {
+      email: "agent2@example.com",
+      plan: undefined,
+      agentPlan: "agent_listing",
+      agentStripeSubscriptionId: "sub_agent_final_fail",
+    });
+    const payload = JSON.stringify({
+      id: "evt_payment_failed_final",
+      type: "invoice.payment_failed",
+      data: { object: { subscription: "sub_agent_final_fail", amount_due: 2900, next_payment_attempt: null } },
+    });
+    const sig = await stripeSignatureHeader(payload, STRIPE_WEBHOOK_SECRET);
+    const res = await t.fetch("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": sig } });
+    expect(res.status).toBe(200);
+
+    const all = await t.run(async (ctx) => ctx.db.query("in_app_notifications").collect());
+    expect(all).toHaveLength(1);
+    expect(all[0].body).toMatch(/final retry/i);
+  });
+
+  test("invoice.payment_failed delivered twice only notifies once (Stripe retries webhooks on timeout)", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t, {
+      email: "agent3@example.com",
+      plan: undefined,
+      agentPlan: "agent_featured",
+      agentStripeSubscriptionId: "sub_agent_dup",
+    });
+    const payload = JSON.stringify({
+      id: "evt_payment_failed_dup",
+      type: "invoice.payment_failed",
+      data: { object: { subscription: "sub_agent_dup", amount_due: 4900, next_payment_attempt: null } },
+    });
+    const sig = await stripeSignatureHeader(payload, STRIPE_WEBHOOK_SECRET);
+
+    await t.fetch("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": sig } });
+    await t.fetch("/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": sig } });
+
+    const all = await t.run(async (ctx) => ctx.db.query("in_app_notifications").collect());
+    expect(all).toHaveLength(1);
+  });
 });
 
 describe("Paystack webhook — /paystack/webhook", () => {
