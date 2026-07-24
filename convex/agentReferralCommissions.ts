@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 
 // 15% of a Pro payment, 20% of an Expert payment — the founder's referral
@@ -59,6 +60,19 @@ export async function creditAgentReferralCommission(
     commissionRatePercent,
     commissionCents,
     createdAt: new Date().toISOString(),
+  });
+
+  // Single chokepoint for crediting a commission, from every payment path
+  // (checkout, renewal, one-time) — commissions previously accrued with zero
+  // notification, the agent's only way to find out was checking their own
+  // dashboard stats unprompted.
+  const amount = (commissionCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  await ctx.runMutation(internal.notifications.createAgentNotification, {
+    userId: agent._id,
+    type: "agent_commission_earned",
+    title: `Commission earned: ${amount}`,
+    body: `A client you referred just paid for ${plan === "expert" ? "Expert" : "Pro"} (${billingCycle}). You earned ${amount} (${commissionRatePercent}%).`,
+    linkTo: "/agents/dashboard",
   });
 }
 

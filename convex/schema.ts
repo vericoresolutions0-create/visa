@@ -890,6 +890,7 @@ export default defineSchema({
       v.literal("client_document_uploaded"),
       v.literal("agent_trial_expiring"),
       v.literal("agent_payment_failed"),
+      v.literal("agent_commission_earned"),
     ),
     title: v.string(),
     body: v.string(),

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import type { Doc } from "@/convex/_generated/dataModel.js";
 import {
   ArrowLeft, Globe, Bell, BellRing, FileWarning, Calendar, Clock,
-  CheckCheck, Filter, Lock, ChevronRight,
+  CheckCheck, Filter, Lock, ChevronRight, AlertTriangle, DollarSign,
 } from "lucide-react";
 
 type Notification = Doc<"in_app_notifications">;
@@ -49,6 +49,18 @@ function notificationIcon(type: Notification["type"]) {
         <FileWarning className="w-4 h-4 text-amber-500" />
       </div>
     );
+  if (type === "agent_payment_failed")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+        <AlertTriangle className="w-4 h-4 text-red-500" />
+      </div>
+    );
+  if (type === "agent_commission_earned")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
+        <DollarSign className="w-4 h-4 text-green-600" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -60,6 +72,8 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "document_expiry") return "Document expiry";
   if (type === "trip_deadline") return "Trip deadline";
   if (type === "agent_trial_expiring") return "Trial ending";
+  if (type === "agent_payment_failed") return "Payment failed";
+  if (type === "agent_commission_earned") return "Commission earned";
   return "Reminder";
 }
 
