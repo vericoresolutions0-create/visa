@@ -12,7 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel.js";
 import {
   ArrowLeft, Globe, Bell, BellRing, FileWarning, Calendar, Clock,
   CheckCheck, Filter, Lock, ChevronRight, AlertTriangle, DollarSign, Star,
-  UserRoundCheck, UserPlus, CheckCircle2, PartyPopper,
+  UserRoundCheck, UserPlus, CheckCircle2, PartyPopper, ShieldAlert,
 } from "lucide-react";
 
 type Notification = Doc<"in_app_notifications">;
@@ -42,6 +42,12 @@ function notificationIcon(type: Notification["type"]) {
     return (
       <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
         <Calendar className="w-4 h-4 text-blue-500" />
+      </div>
+    );
+  if (type === "visa_status_expiring")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+        <ShieldAlert className="w-4 h-4 text-red-500" />
       </div>
     );
   if (type === "agent_trial_expiring")
@@ -114,6 +120,7 @@ function notificationIcon(type: Notification["type"]) {
 function typeLabel(type: Notification["type"]): string {
   if (type === "document_expiry") return "Document expiry";
   if (type === "trip_deadline") return "Trip deadline";
+  if (type === "visa_status_expiring") return "Renewal warning";
   if (type === "agent_trial_expiring") return "Trial ending";
   if (type === "agent_payment_failed") return "Payment failed";
   if (type === "agent_commission_earned") return "Commission earned";

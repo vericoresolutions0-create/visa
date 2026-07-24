@@ -23,6 +23,18 @@ export const getTripsWithTravelDate = internalQuery({
   },
 });
 
+// ─── Get active visa/permit statuses expiring on a specific date ────────────
+export const getVisaStatusesExpiringOn = internalQuery({
+  args: { expiryDate: v.string() },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("visa_status")
+      .withIndex("by_expiry_date", (q) => q.eq("expiryDate", args.expiryDate))
+      .take(1000);
+    return rows.filter((r) => r.active);
+  },
+});
+
 // ─── Get user by id ───────────────────────────────────────────────────────────
 export const getUserById = internalQuery({
   args: { userId: v.id("users") },
@@ -30,3 +42,4 @@ export const getUserById = internalQuery({
     return await ctx.db.get(args.userId);
   },
 });
+

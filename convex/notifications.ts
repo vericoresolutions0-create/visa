@@ -103,6 +103,7 @@ export const createNotification = internalMutation({
       v.literal("reminder_due"),
       v.literal("document_expiry"),
       v.literal("trip_deadline"),
+      v.literal("visa_status_expiring"),
     ),
     title: v.string(),
     body: v.string(),

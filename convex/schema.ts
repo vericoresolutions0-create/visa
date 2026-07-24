@@ -942,6 +942,7 @@ export default defineSchema({
       v.literal("reminder_due"),
       v.literal("document_expiry"),
       v.literal("trip_deadline"),
+      v.literal("visa_status_expiring"),
       v.literal("marketplace_lead_alert"),
       v.literal("client_document_uploaded"),
       v.literal("agent_trial_expiring"),
@@ -1057,7 +1058,8 @@ export default defineSchema({
     englishQualificationType: v.optional(v.string()),          // e.g. "IELTS", "Degree taught in English"
   })
     .index("by_user", ["userId"])
-    .index("by_user_active", ["userId", "active"]),
+    .index("by_user_active", ["userId", "active"])
+    .index("by_expiry_date", ["expiryDate"]),
 
   // Every trip a user has logged for absence tracking. One row per trip.
   // daysAbsent is stored as a plain number so queries never re-derive dates.

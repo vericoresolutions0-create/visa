@@ -39,6 +39,17 @@ crons.cron(
   {},
 );
 
+// 6:45 AM UTC daily — warns paid users when an active visa/permit status is
+// expiring in 90, 60, 30, or 14 days. Real legal stakes (missing a renewal
+// window can mean losing status), so this starts far earlier than the
+// 30/7-day pattern used for lower-stakes vault document expiry.
+crons.cron(
+  "visa renewal warnings",
+  "45 6 * * *",
+  internal.visaRenewalDispatch.dispatchVisaRenewalWarnings,
+  {},
+);
+
 // 7:30 AM UTC daily — warns paid users when a saved trip's travel date is
 // 7, 3, or 1 day away. Silently skips free users and trips with no date.
 crons.cron(
