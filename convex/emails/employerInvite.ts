@@ -4,16 +4,7 @@ import escapeHtml from "escape-html";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { sendEmail } from "./sendEmail.ts";
-
-// Mirrors src/pages/business/dashboard.tsx's getOrgCtx — same three real
-// org types, same default. Keeps the recipient noun (a Vistula University
-// student is not an "employee") consistent between what the org admin sees
-// in their dashboard and what actually lands in the invitee's inbox.
-export function memberNoun(orgType?: string | null): string {
-  if (orgType === "university") return "students";
-  if (orgType === "law_firm") return "clients";
-  return "employees";
-}
+import { memberNoun } from "../orgHelpers.ts";
 
 export const sendEmployerInviteEmail = internalAction({
   args: { to: v.string(), orgName: v.string(), orgType: v.optional(v.string()), token: v.string() },

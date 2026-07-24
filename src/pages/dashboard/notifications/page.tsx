@@ -12,7 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel.js";
 import {
   ArrowLeft, Globe, Bell, BellRing, FileWarning, Calendar, Clock,
   CheckCheck, Filter, Lock, ChevronRight, AlertTriangle, DollarSign, Star,
-  UserRoundCheck,
+  UserRoundCheck, UserPlus, CheckCircle2,
 } from "lucide-react";
 
 type Notification = Doc<"in_app_notifications">;
@@ -80,6 +80,18 @@ function notificationIcon(type: Notification["type"]) {
         <UserRoundCheck className="w-4 h-4 text-green-600" />
       </div>
     );
+  if (type === "org_member_invite_accepted")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+        <UserPlus className="w-4 h-4 text-blue-500" />
+      </div>
+    );
+  if (type === "org_member_ready")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
+        <CheckCircle2 className="w-4 h-4 text-green-600" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -96,6 +108,8 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "agent_payout_status") return "Payout update";
   if (type === "agent_review_received") return "New review";
   if (type === "agent_returning_client") return "Returning client";
+  if (type === "org_member_invite_accepted") return "Invite accepted";
+  if (type === "org_member_ready") return "Member ready";
   return "Reminder";
 }
 
@@ -155,12 +169,13 @@ export default function NotificationsPage() {
   const { isDemoAuthenticated } = useDemoAuth();
 
   const user = useQuery(api.users.getCurrentUser, isDemoAuthenticated ? "skip" : {});
+  const myOrg = useQuery(api.organizations.getMyOrganization, isDemoAuthenticated ? "skip" : {});
   const notifications = useQuery(api.notifications.getMyNotifications, isDemoAuthenticated ? "skip" : {});
   const unreadCount = useQuery(api.notifications.getUnreadCount, isDemoAuthenticated ? "skip" : {});
   const markAllRead = useMutation(api.notifications.markAllRead);
   const markRead = useMutation(api.notifications.markRead);
 
-  const loading = !isDemoAuthenticated && (notifications === undefined || user === undefined);
+  const loading = !isDemoAuthenticated && (notifications === undefined || user === undefined || myOrg === undefined);
 
   const [filter, setFilter] = useState<FilterType>("all");
 
@@ -200,12 +215,17 @@ export default function NotificationsPage() {
   };
 
   // Plan access check — mirrors convex/notifications.ts's own gate exactly
-  // (isPaid(plan) || agentPlan). Previously this inferred "paid" from
-  // notifications.length === 0, which is indistinguishable from "genuinely
-  // paid but nothing to show yet" — a brand-new Pro subscriber with an empty
-  // inbox saw "Notifications require a Pro plan" despite already being Pro.
+  // (isPaid(plan) || agentPlan || org admin). Previously this inferred "paid"
+  // from notifications.length === 0, which is indistinguishable from
+  // "genuinely paid but nothing to show yet" — a brand-new Pro subscriber
+  // with an empty inbox saw "Notifications require a Pro plan" despite
+  // already being Pro. The org-admin clause is the same fix applied to a
+  // different gap: a business/org admin has no personal plan at all, so
+  // without it this page told a paying business owner to "upgrade to Pro"
+  // for a feature their account already had access to.
   const PAID_PLANS = ["pro", "expert"];
-  const isPaidUser = isDemoAuthenticated || Boolean(user && (PAID_PLANS.includes(user.plan ?? "free") || user.agentPlan));
+  const isOrgAdmin = myOrg?.orgRole === "org_admin";
+  const isPaidUser = isDemoAuthenticated || Boolean(user && (PAID_PLANS.includes(user.plan ?? "free") || user.agentPlan)) || isOrgAdmin;
 
   if (loading) {
     return (

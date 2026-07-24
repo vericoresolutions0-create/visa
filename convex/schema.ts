@@ -894,6 +894,8 @@ export default defineSchema({
       v.literal("agent_payout_status"),
       v.literal("agent_review_received"),
       v.literal("agent_returning_client"),
+      v.literal("org_member_invite_accepted"),
+      v.literal("org_member_ready"),
     ),
     title: v.string(),
     body: v.string(),

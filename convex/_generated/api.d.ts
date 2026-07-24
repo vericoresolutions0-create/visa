@@ -83,6 +83,7 @@ import type * as notificationDispatch from "../notificationDispatch.js";
 import type * as notificationProcessor from "../notificationProcessor.js";
 import type * as notifications from "../notifications.js";
 import type * as openaiClient from "../openaiClient.js";
+import type * as orgHelpers from "../orgHelpers.js";
 import type * as organizations from "../organizations.js";
 import type * as partners from "../partners.js";
 import type * as paystack from "../paystack.js";
@@ -192,6 +193,7 @@ declare const fullApi: ApiFromModules<{
   notificationProcessor: typeof notificationProcessor;
   notifications: typeof notifications;
   openaiClient: typeof openaiClient;
+  orgHelpers: typeof orgHelpers;
   organizations: typeof organizations;
   partners: typeof partners;
   paystack: typeof paystack;

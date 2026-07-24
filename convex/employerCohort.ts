@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel.js";
 import { internal } from "./_generated/api";
 import { getMyOrgAdminMembershipOrThrow } from "./organizations.ts";
 import { assertNotSuspended } from "./authHelpers.ts";
+import { ORG_READY_THRESHOLD } from "./orgHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -180,7 +181,7 @@ export const listEmployeeNotes = query({
 
 function bucketReadiness(progress: number): "Ready" | "Needs Attention" | "Not Started" {
   if (progress <= 0) return "Not Started";
-  if (progress >= 90) return "Ready";
+  if (progress >= ORG_READY_THRESHOLD) return "Ready";
   return "Needs Attention";
 }
 

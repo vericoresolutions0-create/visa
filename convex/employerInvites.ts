@@ -1,6 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
+import { internal } from "./_generated/api";
+import { memberNoun, ORG_READY_THRESHOLD } from "./orgHelpers.ts";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -58,9 +61,10 @@ export const acceptInvite = mutation({
       });
     }
 
+    let linkedChecklist: Doc<"saved_checklists"> | null = null;
     if (args.linkedChecklistId) {
-      const checklist = await ctx.db.get(args.linkedChecklistId);
-      if (!checklist || checklist.userId !== user._id) {
+      linkedChecklist = await ctx.db.get(args.linkedChecklistId);
+      if (!linkedChecklist || linkedChecklist.userId !== user._id) {
         throw new ConvexError({ code: "FORBIDDEN", message: "That checklist doesn't belong to your account." });
       }
     }
@@ -72,6 +76,37 @@ export const acceptInvite = mutation({
       pipelineStage: "accepted",
       respondedAt: new Date().toISOString(),
     });
+
+    const org = await ctx.db.get(link.organizationId);
+    const noun = memberNoun(org?.type);
+    const singular = noun === "students" ? "student" : noun === "clients" ? "client" : "employee";
+    await ctx.scheduler.runAfter(0, internal.notifications.createOrgAdminNotification, {
+      organizationId: link.organizationId,
+      type: "org_member_invite_accepted",
+      title: "Invite accepted",
+      body: `${user.name ?? link.invitedEmail} accepted your invite and joined as a ${singular}.`,
+      linkTo: "/business/dashboard",
+    });
+
+    // Real gap this covers: checklists.ts's saveChecklist only notifies on
+    // a *crossing* from below the Ready threshold to at/above it — but a
+    // member who already finished their checklist before accepting the
+    // invite (completed it first, then linked it here) never produces a
+    // crossing for that mutation to see, since the org relationship didn't
+    // exist yet when they crossed 90%. Caught via a real end-to-end run,
+    // not reasoned about: an employee who saved a 100%-complete checklist
+    // and then accepted the invite got the "invite accepted" notification
+    // but never the "member ready" one. Firing it here too, gated on
+    // linkedChecklist actually being ready right now, closes that gap.
+    if (linkedChecklist && linkedChecklist.progress >= ORG_READY_THRESHOLD) {
+      await ctx.scheduler.runAfter(0, internal.notifications.createOrgAdminNotification, {
+        organizationId: link.organizationId,
+        type: "org_member_ready",
+        title: "A member is ready",
+        body: `${user.name ?? link.invitedEmail} has completed their ${linkedChecklist.destination} ${linkedChecklist.visaType} checklist and is ready to relocate.`,
+        linkTo: "/business/dashboard",
+      });
+    }
   },
 });
 

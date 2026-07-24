@@ -7,6 +7,7 @@ import { getCurrentUser, getCurrentUserOrThrow as getUserOrThrow } from "./authH
 import { recordPartnerEvent } from "./partners.ts";
 import { internal } from "./_generated/api";
 import { checkUserDailyLimit } from "./rateLimits.ts";
+import { ORG_READY_THRESHOLD } from "./orgHelpers.ts";
 
 export const FREE_MONTHLY_TRIP_LIMIT = 3;
 
@@ -88,6 +89,7 @@ export const saveChecklist = mutation({
     );
 
     if (match) {
+      const wasReady = match.progress >= ORG_READY_THRESHOLD;
       await ctx.db.patch(match._id, {
         checkedItems: args.checkedItems,
         progress: args.progress,
@@ -95,6 +97,30 @@ export const saveChecklist = mutation({
         ...(args.tripName !== undefined ? { tripName: args.tripName } : {}),
         ...(args.travelDate !== undefined ? { travelDate: args.travelDate } : {}),
       });
+
+      // Real equivalent of "a document was completed" for business/org
+      // visibility: this checklist is the one thing an employer/university
+      // actually sees progress on (employerCohort.ts's bucketReadiness uses
+      // the same threshold). Only fires on the crossing, not on every save
+      // once already ready, and only for a checklist actually linked to an
+      // accepted org invite — an ordinary applicant with no org relationship
+      // never triggers a lookup here beyond this cheap indexed query.
+      if (!wasReady && args.progress >= ORG_READY_THRESHOLD) {
+        const links = await ctx.db
+          .query("org_employee_links")
+          .withIndex("by_employee_user", (q) => q.eq("employeeUserId", user._id))
+          .take(20);
+        const link = links.find((l) => l.status === "accepted" && l.linkedChecklistId === match._id);
+        if (link) {
+          await ctx.scheduler.runAfter(0, internal.notifications.createOrgAdminNotification, {
+            organizationId: link.organizationId,
+            type: "org_member_ready",
+            title: "A member is ready",
+            body: `${user.name ?? link.invitedEmail} has completed their ${args.destination} ${args.visaType} checklist and is ready to relocate.`,
+            linkTo: "/business/dashboard",
+          });
+        }
+      }
       return match._id;
     }
 

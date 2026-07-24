@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { hasActiveAgentTrial } from "./agentTrials.ts";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 const PAID_PLANS = ["pro", "expert"] as const;
 const isPaid = (plan: string | undefined) =>
@@ -17,13 +18,26 @@ const isPaid = (plan: string | undefined) =>
 // running successfully, traced to this gate.
 const isActiveAgent = (user: Doc<"users">) => !!user.agentPlan || hasActiveAgentTrial(user);
 
-// ─── Read notifications (paid users and active agents, including trial) ──────
+// Business/org accounts have no plan of their own (org features today are
+// free — see organizations.ts) so the isPaid check never covers them. Same
+// gap as the trial-agent bug above: without this, an org admin on the free
+// personal plan gets a permanently-empty bell with zero indication anything
+// is wrong, even though real notifications are being created for them.
+async function isOrgAdmin(ctx: QueryCtx, userId: Id<"users">): Promise<boolean> {
+  const membership = await ctx.db
+    .query("org_members")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return !!membership && membership.orgRole === "org_admin";
+}
+
+// ─── Read notifications (paid users, active agents incl. trial, org admins) ──
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
-    if (!isPaid(user.plan) && !isActiveAgent(user)) return [];
+    if (!isPaid(user.plan) && !isActiveAgent(user) && !(await isOrgAdmin(ctx, user._id))) return [];
     return await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -32,13 +46,13 @@ export const getMyNotifications = query({
   },
 });
 
-// ─── Unread count (paid users and active agents, including trial) ────────────
+// ─── Unread count (paid users, active agents incl. trial, org admins) ────────
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return 0;
-    if (!isPaid(user.plan) && !isActiveAgent(user)) return 0;
+    if (!isPaid(user.plan) && !isActiveAgent(user) && !(await isOrgAdmin(ctx, user._id))) return 0;
     const unread = await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user_read", (q) =>
@@ -54,7 +68,7 @@ export const markAllRead = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUserOrThrow(ctx);
-    if (!isPaid(user.plan) && !isActiveAgent(user)) return;
+    if (!isPaid(user.plan) && !isActiveAgent(user) && !(await isOrgAdmin(ctx, user._id))) return;
     const unread = await ctx.db
       .query("in_app_notifications")
       .withIndex("by_user_read", (q) =>
@@ -145,6 +159,44 @@ export const createAgentNotification = internalMutation({
       read: false,
       createdAt: new Date().toISOString(),
     });
+  },
+});
+
+// ─── Internal: notify every admin of an organisation ──────────────────────────
+// Looks the org's admins up fresh at call time rather than trusting a
+// passed-in userId, since a business account can have its admin membership
+// change. Today org_members enforces exactly one org_admin per org (see
+// organizations.ts getMyOrgAdminMembershipOrThrow), so this fires once in
+// practice — written as a fan-out over every admin found so it needs no
+// changes when multi-admin orgs ship.
+export const createOrgAdminNotification = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    type: v.union(
+      v.literal("org_member_invite_accepted"),
+      v.literal("org_member_ready"),
+    ),
+    title: v.string(),
+    body: v.string(),
+    linkTo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const members = await ctx.db
+      .query("org_members")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .take(500);
+    const admins = members.filter((m) => m.orgRole === "org_admin");
+    for (const admin of admins) {
+      await ctx.db.insert("in_app_notifications", {
+        userId: admin.userId,
+        type: args.type,
+        title: args.title,
+        body: args.body,
+        linkTo: args.linkTo,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
   },
 });
 
