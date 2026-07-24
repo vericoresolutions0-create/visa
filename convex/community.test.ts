@@ -37,6 +37,12 @@ async function runWithScheduling(fn: () => Promise<void>, t: ReturnType<typeof c
   }
 }
 
+async function seedReply(t: ReturnType<typeof convexTest>, postId: Id<"community_posts">, replierId: Id<"users">) {
+  await t.withIdentity({ subject: replierId }).mutation(api.community.submitReply, { postId, body: "A reply worth flagging maybe." });
+  const replies = await t.run(async (ctx) => ctx.db.query("community_replies").withIndex("by_post", (q) => q.eq("postId", postId)).collect());
+  return replies[0]._id;
+}
+
 describe("community.submitReply", () => {
   test("a paid user can reply to an approved post — real content, real notification to the author", async () => {
     const t = convexTest(schema, modules);
@@ -196,12 +202,6 @@ describe("community.listReplies — anonymous per-thread handle", () => {
 });
 
 describe("community.flagReply — auto-hide at 3 flags", () => {
-  async function seedReply(t: ReturnType<typeof convexTest>, postId: Id<"community_posts">, replierId: Id<"users">) {
-    await t.withIdentity({ subject: replierId }).mutation(api.community.submitReply, { postId, body: "A reply worth flagging maybe." });
-    const replies = await t.run(async (ctx) => ctx.db.query("community_replies").withIndex("by_post", (q) => q.eq("postId", postId)).collect());
-    return replies[0]._id;
-  }
-
   test("a reply is auto-hidden once it reaches 3 flags, and vanishes from listReplies", async () => {
     const t = convexTest(schema, modules);
     const authorId = await seedUser(t, "pro");
@@ -342,8 +342,7 @@ describe("community admin — reply moderation", () => {
     const authorId = await seedUser(t, "pro");
     const postId = await seedApprovedPost(t, authorId);
     const replierId = await seedUser(t, "pro");
-    await t.withIdentity({ subject: replierId }).mutation(api.community.submitReply, { postId, body: "A reply that will get flagged." });
-    const replyId = await t.run(async (ctx) => (await ctx.db.query("community_replies").withIndex("by_post", (q) => q.eq("postId", postId)).collect())[0]._id);
+    const replyId = await seedReply(t, postId, replierId);
 
     const flaggers = await Promise.all([seedUser(t, "pro"), seedUser(t, "expert"), seedUser(t, "pro")]);
     for (const flaggerId of flaggers) {
