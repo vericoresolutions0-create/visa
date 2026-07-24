@@ -570,6 +570,53 @@ function AIAssistant({
   );
 }
 
+// ─── Cross-sell after checklist completion ────────────────────────────────────
+// Build-queue item #27: retention, not an upsell — dismissible, never a
+// paywall on the second checklist (starting a new one goes through the
+// exact same free flow every checklist already does, same 3-per-month cap
+// and 6-destination lock, nothing added here). Dismiss state is keyed per
+// destination+visaType (not global) so completing a different route later
+// still shows it fresh, and works whether or not this checklist was ever
+// saved to an account.
+function CrossSellCard({ destination, visaType, onStartNew }: { destination: string; visaType: string; onStartNew: () => void }) {
+  const storageKey = `vc_crosssell_dismissed_${destination}_${visaType}`;
+  const [visible, setVisible] = useState(() => localStorage.getItem(storageKey) !== "1");
+
+  const dismiss = () => {
+    localStorage.setItem(storageKey, "1");
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3.5">
+      <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+        <Users className="w-4 h-4 text-accent" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground leading-snug">Bringing a spouse or family member too?</p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-snug hidden sm:block">
+          Start a separate checklist for them — it only takes a minute.
+        </p>
+      </div>
+      <button
+        onClick={onStartNew}
+        className="shrink-0 text-xs font-semibold text-accent-foreground bg-accent rounded-lg px-3 py-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+      >
+        Start Theirs →
+      </button>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="shrink-0 p-1 rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 type Step = "selector" | "checklist";
 
@@ -1491,6 +1538,8 @@ export default function ChecklistPage() {
                             {t("completion.desc")}
                           </p>
                         </div>
+
+                        <CrossSellCard destination={destination} visaType={visaType as string} onStartNew={() => setSearchParams({})} />
 
                         {/* Action cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
