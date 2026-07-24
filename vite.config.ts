@@ -13,8 +13,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*",
     "frame-src 'none'",
@@ -22,6 +22,8 @@ const SECURITY_HEADERS: Record<string, string> = {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self' https:",
+    "require-trusted-types-for 'script'",
+    "trusted-types default",
     "upgrade-insecure-requests",
   ].join("; "),
   "X-Frame-Options": "DENY",
@@ -29,6 +31,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+  "Cross-Origin-Opener-Policy": "same-origin",
 };
 
 // https://vite.dev/config/
@@ -79,6 +82,11 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
+    // Real stack traces in Sentry (already wired up) instead of minified
+    // gibberish — the frontend bundle has no secrets in it (those all live
+    // server-side in Convex env vars), so publicly discoverable maps are a
+    // low-risk, standard tradeoff for a client-side SPA.
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks(id) {

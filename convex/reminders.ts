@@ -3,6 +3,15 @@ import { mutation, query } from "./_generated/server";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
 
+function requirePlan(plan: string | undefined) {
+  if (plan !== "pro" && plan !== "expert") {
+    throw new ConvexError({
+      code: "FORBIDDEN",
+      message: "Reminders are a Pro feature. Upgrade at /pricing.",
+    });
+  }
+}
+
 // ─── Create reminder ─────────────────────────────────────────────────────────
 export const createReminder = mutation({
   args: {
@@ -14,6 +23,7 @@ export const createReminder = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
+    requirePlan(user.plan);
     await checkUserDailyLimit(ctx, user._id, "createReminder", 20, "You can create up to 20 reminders per day.");
 
     if (!user.email) {

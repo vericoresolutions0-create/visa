@@ -9,7 +9,7 @@ import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { canUseMultiTripManager, canUseSuccessProbabilityScore, canUseDocumentVault } from "@/lib/plan-gates.ts";
+import { canUseMultiTripManager, canUseSuccessProbabilityScore, canUseDocumentVault, canSetReminders } from "@/lib/plan-gates.ts";
 import { type VisaType } from "@/lib/visa-data.ts";
 import { getLocalizedChecklist, ensureChecklistLanguageLoaded } from "@/lib/visa-data-i18n.ts";
 import { SettleInToolkit } from "@/pages/dashboard/trips/settle-in-toolkit.tsx";
@@ -711,6 +711,16 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
     }
   };
 
+  const handleOpenReminderModal = (checklistId?: Doc<"saved_checklists">["_id"]) => {
+    if (!isDemoAuthenticated && !canSetReminders(plan)) {
+      toast.error("Reminders are a Pro feature.", {
+        action: { label: "Upgrade", onClick: () => navigate("/pricing") },
+      });
+      return;
+    }
+    setReminderModal(checklistId ? { checklistId } : {});
+  };
+
   const isLoading =
     !isDemoAuthenticated &&
     (user === undefined || checklists === undefined || reminders === undefined);
@@ -1119,7 +1129,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
               <Bell className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
               <p className="text-sm font-medium text-muted-foreground mb-1">No upcoming reminders</p>
               <p className="text-xs text-muted-foreground mb-4">Never miss a biometric appointment or document expiry.</p>
-              <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => setReminderModal({})}>
+              <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => handleOpenReminderModal()}>
                 Add Reminder
               </Button>
             </div>
@@ -1185,7 +1195,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                       </button>
                       <button
                         onClick={() =>
-                          setReminderModal({ checklistId: cl._id })
+                          handleOpenReminderModal(cl._id)
                         }
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                         title="Set reminder"
@@ -1249,7 +1259,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
               Reminders
             </h3>
             <button
-              onClick={() => setReminderModal({})}
+              onClick={() => handleOpenReminderModal()}
               className="text-xs text-primary font-medium flex items-center gap-1 hover:underline cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" /> Add
@@ -1331,7 +1341,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 size="sm"
                 variant="secondary"
                 className="cursor-pointer"
-                onClick={() => setReminderModal({})}
+                onClick={() => handleOpenReminderModal()}
               >
                 Add Reminder
               </Button>

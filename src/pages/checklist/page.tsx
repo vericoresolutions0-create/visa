@@ -36,7 +36,7 @@ import { LiveDataDisclaimer } from "@/components/live-data-disclaimer.tsx";
 import { UpgradeModal } from "@/components/upgrade-modal.tsx";
 import { PreSubmissionAuditCard } from "@/components/checklist/pre-submission-audit.tsx";
 import {
-  canDownloadPDF, canUseAI, canSetReminders,
+  canDownloadPDF, canUseAI,
   canAccessDestination, FREE_DESTINATION_LIMIT,
 } from "@/lib/plan-gates.ts";
 

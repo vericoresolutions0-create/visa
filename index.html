@@ -4,12 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Defense-in-depth CSP for any static host that doesn't apply the
-         vercel.json headers. frame-ancestors/X-Frame-Options can't be set
-         via meta tag per spec, so clickjacking protection relies on the
-         real HTTP header (vercel.json / vite.config.ts) instead. -->
+         vercel.json headers. frame-ancestors/X-Frame-Options and
+         Cross-Origin-Opener-Policy can't be set via meta tag per spec, so
+         those rely on the real HTTP header (vercel.json / vite.config.ts)
+         instead. Trusted Types CAN be set via meta tag, so it's included
+         here too — see src/lib/trusted-types.ts for the matching policy. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site; object-src 'none'; base-uri 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types default; upgrade-insecure-requests"
     />
 
     <title>VisaClear by Vericore — Precise Visa Document Checklists</title>
@@ -123,13 +125,8 @@
       }
     </script>
 
-    <!-- Fonts: only the two faces actually used (Inter + Cormorant Garamond).
-         The CSS @import in index.css fetches these; preconnect hints cut the
-         first-connection latency on mobile. The old 7-family URL that included
-         Fira Code, Geist, Geist Mono, JetBrains Mono, Montserrat, and Noto
-         Serif was loading ~5 font families the app never used. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts (Inter + Cormorant Garamond) are self-hosted via @fontsource,
+         imported in index.css — no external font host, no preconnect needed. -->
 
     <!-- Detect dark mode preference before next-themes loads to avoid a flash of unstyled content. External file avoids unsafe-inline in CSP. -->
     <script src="/theme-init.js"></script>

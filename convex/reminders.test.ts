@@ -14,7 +14,7 @@ const modules = import.meta.glob("./**/*.ts");
 describe("reminders.createReminder — checklistId ownership", () => {
   test("rejects a checklistId that belongs to another user", async () => {
     const t = convexTest(schema, modules);
-    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com" }));
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com", plan: "pro" }));
     const checklistId = await t.run(async (ctx) =>
       ctx.db.insert("saved_checklists", {
         userId: ownerId,
@@ -28,7 +28,7 @@ describe("reminders.createReminder — checklistId ownership", () => {
       }),
     );
 
-    const attackerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "attacker@example.com" }));
+    const attackerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "attacker@example.com", plan: "pro" }));
 
     await expect(
       t.withIdentity({ subject: attackerId }).mutation(api.reminders.createReminder, {
@@ -42,7 +42,7 @@ describe("reminders.createReminder — checklistId ownership", () => {
 
   test("allows a checklistId that belongs to the caller", async () => {
     const t = convexTest(schema, modules);
-    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "user@example.com" }));
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "user@example.com", plan: "pro" }));
     const checklistId = await t.run(async (ctx) =>
       ctx.db.insert("saved_checklists", {
         userId,
@@ -69,12 +69,72 @@ describe("reminders.createReminder — checklistId ownership", () => {
 
   test("allows creating a reminder with no checklistId at all", async () => {
     const t = convexTest(schema, modules);
-    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "user2@example.com" }));
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "user2@example.com", plan: "pro" }));
 
     await t.withIdentity({ subject: userId }).mutation(api.reminders.createReminder, {
       title: "Standalone reminder",
       dueDate: new Date().toISOString(),
       email: "user2@example.com",
+    });
+
+    const reminders = await t.run(async (ctx) => ctx.db.query("reminders").collect());
+    expect(reminders).toHaveLength(1);
+  });
+});
+
+describe("reminders.createReminder — plan gating (2026-07-24 fix)", () => {
+  // Regression test for a real gap found in the mall-features A-to-Z scan:
+  // canSetReminders() was defined to make reminders Pro/Expert-only, but was
+  // never actually called anywhere — free users had unrestricted reminders,
+  // both via the UI and by calling this mutation directly.
+  test("rejects a free-plan user", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "free@example.com", plan: "free" }));
+
+    await expect(
+      t.withIdentity({ subject: userId }).mutation(api.reminders.createReminder, {
+        title: "Free plan reminder",
+        dueDate: new Date().toISOString(),
+        email: "free@example.com",
+      }),
+    ).rejects.toThrow(/Pro feature/);
+  });
+
+  test("rejects a user with no plan set at all", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "noplan@example.com" }));
+
+    await expect(
+      t.withIdentity({ subject: userId }).mutation(api.reminders.createReminder, {
+        title: "No plan reminder",
+        dueDate: new Date().toISOString(),
+        email: "noplan@example.com",
+      }),
+    ).rejects.toThrow(/Pro feature/);
+  });
+
+  test("allows a pro-plan user", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "pro@example.com", plan: "pro" }));
+
+    await t.withIdentity({ subject: userId }).mutation(api.reminders.createReminder, {
+      title: "Pro plan reminder",
+      dueDate: new Date().toISOString(),
+      email: "pro@example.com",
+    });
+
+    const reminders = await t.run(async (ctx) => ctx.db.query("reminders").collect());
+    expect(reminders).toHaveLength(1);
+  });
+
+  test("allows an expert-plan user", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { email: "expert@example.com", plan: "expert" }));
+
+    await t.withIdentity({ subject: userId }).mutation(api.reminders.createReminder, {
+      title: "Expert plan reminder",
+      dueDate: new Date().toISOString(),
+      email: "expert@example.com",
     });
 
     const reminders = await t.run(async (ctx) => ctx.db.query("reminders").collect());

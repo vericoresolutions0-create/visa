@@ -1,0 +1,34 @@
+# VisaClear
+
+> VisaClear (by Vericore) gives visa applicants a precise, personalised document checklist in about 60 seconds — built specifically for applicants from Africa, Asia, and Latin America, who are disproportionately affected by avoidable visa refusals.
+
+VisaClear turns a visa applicant's origin, destination, and visa type into a concrete list of exactly which documents are required, plus tools to track readiness, catch mistakes before submission, and connect with verified immigration agents for complex cases. It is not a law firm, a government service, or a guarantee of approval — it is a document-readiness and preparation tool.
+
+## Core product
+
+- [Home](https://visaclear.app/): what VisaClear does and who it's for
+- [Checklist tool](https://visaclear.app/checklist): generate a personalised visa document checklist
+- [Rejection Analyser](https://visaclear.app/rejection-analyser): AI review of a past refusal letter to identify what likely went wrong
+- [Risk Score](https://visaclear.app/risk-score): an approval-likelihood estimate based on application details
+- [Wait Times](https://visaclear.app/wait-times): crowd-sourced visa processing time data by corridor
+- [Visa comparison](https://visaclear.app/visa/compare): compare requirements across destinations
+
+## Agents & community
+
+- [Find a verified immigration agent](https://visaclear.app/agents): marketplace of vetted agents for complex cases
+- [Wall of Fame](https://visaclear.app/wall-of-fame): real applicant approval stories
+- [Community](https://visaclear.app/community): applicant discussion and shared experience
+- [Blog](https://visaclear.app/blog): visa guidance and corridor-specific articles
+
+## Company
+
+- [About](https://visaclear.app/about): who built VisaClear and why
+- [Pricing](https://visaclear.app/pricing): free and paid plan details
+- [Security](https://visaclear.app/security): security practices and vulnerability disclosure policy
+- [Privacy Policy](https://visaclear.app/privacy)
+- [Terms of Service](https://visaclear.app/terms)
+
+## Optional
+
+- [For Employers & Universities](https://visaclear.app/business): organisation cohort-tracking tools
+- [Contact](https://visaclear.app/contact)

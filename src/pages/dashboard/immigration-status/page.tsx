@@ -6,6 +6,7 @@ import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useDemoAuth } from "@/hooks/use-demo-auth.ts";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
+import { trustedHTML } from "@/lib/trusted-types.ts";
 import { toast } from "sonner";
 
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -404,7 +405,7 @@ function printTravelHistory(
 
   const w = window.open("", "_blank");
   if (!w) { toast.error("Allow pop-ups to generate the PDF."); return; }
-  w.document.write(html);
+  w.document.write(trustedHTML(html));
   w.document.close();
 }
 

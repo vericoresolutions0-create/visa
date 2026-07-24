@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import { initSentry } from "@/lib/sentry.ts";
+// Must run before the first React render — registers the Trusted Types
+// 'default' policy the CSP requires. See src/lib/trusted-types.ts.
+import "@/lib/trusted-types.ts";
 
 // Only initialise Sentry (error reporting + performance monitoring) when the
 // user has explicitly accepted cookies. Essential cookies (session state,

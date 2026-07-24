@@ -1,4 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Self-hosted fonts (@fontsource) — replaces a Google Fonts CSS @import that
+   was the single biggest render-blocking cost on the site: the browser had
+   to fetch this file, parse it, THEN discover and fetch fonts.googleapis.com,
+   THEN fonts.gstatic.com, serially, before any text could paint (measured
+   1,540ms on mobile / 260ms on desktop via real PageSpeed Insights runs).
+   Self-hosting collapses that chain to same-origin requests Vite can bundle,
+   hash, and cache-forever like any other asset. Same weights/styles as the
+   original @import (Inter 300–700, Cormorant Garamond 400–700 + 400/600
+   italic) — latin + latin-ext subsets cover en/fr/es/pt; ar/hi already fall
+   back to system fonts today since neither face ships Arabic/Devanagari
+   glyphs, so subsetting doesn't change anything for those locales. */
+@import "@fontsource/inter/latin-300.css";
+@import "@fontsource/inter/latin-ext-300.css";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-ext-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-ext-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-ext-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/inter/latin-ext-700.css";
+@import "@fontsource/cormorant-garamond/latin-400.css";
+@import "@fontsource/cormorant-garamond/latin-ext-400.css";
+@import "@fontsource/cormorant-garamond/latin-400-italic.css";
+@import "@fontsource/cormorant-garamond/latin-ext-400-italic.css";
+@import "@fontsource/cormorant-garamond/latin-500.css";
+@import "@fontsource/cormorant-garamond/latin-ext-500.css";
+@import "@fontsource/cormorant-garamond/latin-600.css";
+@import "@fontsource/cormorant-garamond/latin-ext-600.css";
+@import "@fontsource/cormorant-garamond/latin-600-italic.css";
+@import "@fontsource/cormorant-garamond/latin-ext-600-italic.css";
+@import "@fontsource/cormorant-garamond/latin-700.css";
+@import "@fontsource/cormorant-garamond/latin-ext-700.css";
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -29,6 +61,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -70,6 +103,12 @@
   /* Accent — warm gold */
   --accent: oklch(0.72 0.13 80);
   --accent-foreground: oklch(0.18 0.025 255);
+  /* Same gold hue, darkened for small text on light backgrounds — the
+     regular --accent fails WCAG AA (measured 2.3-2.5:1) as text color at
+     eyebrow/badge sizes; this passes 4.5:1+ against background, card, and
+     secondary. Only needed in light mode — on dark backgrounds the regular
+     --accent already has plenty of contrast. */
+  --accent-text: oklch(0.52 0.13 80);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.87 0.015 85);
   --input: oklch(0.90 0.012 85);
@@ -104,6 +143,8 @@
   --muted-foreground: oklch(0.62 0.02 255);
   --accent: oklch(0.72 0.13 80);
   --accent-foreground: oklch(0.16 0.04 255);
+  /* Regular accent already has strong contrast against dark backgrounds. */
+  --accent-text: oklch(0.72 0.13 80);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
@@ -153,14 +194,14 @@
   /* Section eyebrow labels — the small uppercase labels above headings.
      Minimum 12px across all viewports; readable on every screen size. */
   .eyebrow {
-    @apply text-xs font-bold uppercase tracking-[0.14em] text-accent;
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-accent-text;
     /* 12px is the hard floor — below this letters merge on retina mobile */
     font-size: max(0.75rem, 12px);
   }
 
   /* Tier / plan badge chips inside cards */
   .plan-badge {
-    @apply inline-flex items-center text-[11px] font-bold uppercase tracking-[0.12em] text-accent;
+    @apply inline-flex items-center text-[11px] font-bold uppercase tracking-[0.12em] text-accent-text;
     font-size: max(0.6875rem, 11px);
   }
 }

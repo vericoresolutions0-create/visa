@@ -216,6 +216,7 @@ export default function Index() {
         ))}
       </nav>
 
+      <main>
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         {/* Decorative background */}
@@ -597,6 +598,7 @@ export default function Index() {
           </Button>
         </motion.div>
       </section>
+      </main>
 
       {/* ── Footer ── */}
       <footer className="border-t border-border bg-card">

@@ -68,7 +68,7 @@ export default function CookieBanner() {
             {/* Expandable details */}
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 text-xs text-accent hover:underline cursor-pointer mb-3"
+              className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer mb-3"
             >
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               {expanded ? "Hide details" : "What cookies do we use?"}
