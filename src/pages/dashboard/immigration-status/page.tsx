@@ -317,18 +317,18 @@ function printTravelHistory(
 <title>Travel History — VisaClear</title>
 <style>
   body { font-family: -apple-system, Arial, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 24px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #1A56DB; }
-  .header h1 { font-size: 18px; font-weight: 800; color: #1A56DB; margin: 0 0 2px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #0A193C; }
+  .header h1 { font-size: 18px; font-weight: 800; color: #0A193C; margin: 0 0 2px; }
   .header p { font-size: 11px; color: #64748B; margin: 0; }
   .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
   .meta-box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 10px 12px; }
   .meta-box label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94A3B8; display: block; margin-bottom: 3px; }
   .meta-box span { font-size: 13px; font-weight: 700; color: #0F172A; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th { background: #1A56DB; color: white; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 8px 10px; text-align: left; }
+  th { background: #0A193C; color: white; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 8px 10px; text-align: left; }
   td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; font-size: 11px; color: #334155; vertical-align: top; }
   tr:nth-child(even) td { background: #FAFBFC; }
-  .total { background: #EBF2FF !important; font-weight: 700; color: #1A56DB !important; }
+  .total { background: #F5F0E4 !important; font-weight: 700; color: #0A193C !important; }
   .footer { margin-top: 24px; font-size: 10px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 12px; }
   .note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 10px 12px; font-size: 11px; color: #78350F; margin-top: 16px; }
   @media print { body { padding: 0; } .no-print { display: none; } }
@@ -341,7 +341,7 @@ function printTravelHistory(
     <p>Prepared for: <strong>${esc(userName)}</strong> &nbsp;·&nbsp; Generated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
   </div>
   <div style="text-align:right;font-size:11px;color:#64748B">
-    <div style="font-weight:700;color:#1A56DB;font-size:13px">VisaClear</div>
+    <div style="font-weight:700;color:#0A193C;font-size:13px">VisaClear</div>
     <div>by Vericore Ltd</div>
   </div>
 </div>
@@ -385,9 +385,9 @@ function printTravelHistory(
   <tbody>
     ${rows}
     <tr>
-      <td colspan="3" style="font-weight:700;background:#EBF2FF;color:#1A56DB">Total</td>
-      <td style="font-weight:800;background:#EBF2FF;color:#1A56DB;text-align:center">${totalDays}</td>
-      <td colspan="2" style="background:#EBF2FF"></td>
+      <td colspan="3" style="font-weight:700;background:#F5F0E4;color:#0A193C">Total</td>
+      <td style="font-weight:800;background:#F5F0E4;color:#0A193C;text-align:center">${totalDays}</td>
+      <td colspan="2" style="background:#F5F0E4"></td>
     </tr>
   </tbody>
 </table>

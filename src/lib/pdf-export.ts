@@ -62,44 +62,77 @@ export async function downloadChecklistPDF(
   doc.setTextColor(160, 175, 200);
   doc.text(`Applicant Origin: ${origin}  |  Generated: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}`, margin, 39);
 
-  // ── Summary strip ─────────────────────────────────────────────────────────
+  // ── Quick stats strip ────────────────────────────────────────────────────
+  // Only ever holds short, fixed-format values ("9 items", "7 mandatory") —
+  // Processing Time and Visa Fee moved to their own full-width blocks below,
+  // since real-world values for those run past 200 characters (e.g. South
+  // Africa's family-visa fee text) and a 4-column strip can't show that
+  // safely at any font size.
   doc.setFillColor(...CREAM);
-  doc.rect(0, 42, pageW, 26, "F");
+  doc.rect(0, 42, pageW, 22, "F");
 
-  const summaryItems = [
-    { label: "Processing Time", value: checklist.processingTime },
-    { label: "Visa Fee", value: checklist.fee },
+  const quickStats = [
     { label: "Documents", value: `${checklist.items.length} items` },
     { label: "Required", value: `${checklist.items.filter(i => i.required).length} mandatory` },
   ];
-
-  // Increase header band height to 52 to give summary strip more room
-  const colW = contentW / (summaryItems.length || 1);
-  summaryItems.forEach((s, i) => {
-    const x = margin + i * colW + colW / 2;
-    // Wrap long values (e.g. fee with extra text) across 2 lines if needed
-    const valueLines = doc.splitTextToSize(s.value, colW - 4);
+  const statColW = contentW / quickStats.length;
+  quickStats.forEach((s, i) => {
+    const x = margin + i * statColW + statColW / 2;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
+    doc.setFontSize(11);
     doc.setTextColor(...NAVY);
-    // Print first line at y=51, second at y=55.5 if wraps
-    doc.text(valueLines[0] as string, x, 51, { align: "center" });
-    if (valueLines.length > 1) {
-      doc.text(valueLines[1] as string, x, 55.5, { align: "center" });
-    }
+    doc.text(s.value, x, 54.5, { align: "center" });
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
+    doc.setFontSize(7);
     doc.setTextColor(100, 100, 120);
-    doc.text(s.label, x, valueLines.length > 1 ? 60 : 57, { align: "center" });
+    doc.text(s.label, x, 60, { align: "center" });
   });
 
+  // ── Key facts: Processing Time / Visa Fee ───────────────────────────────
+  // Full-width, height computed from the real wrapped line count so the
+  // complete value always renders — never truncated, never overlapping
+  // whatever comes next. The font used to measure (splitTextToSize) and the
+  // font used to render must be set identically and in that order every
+  // time; setting them out of order was the cause of the text-overlap bug
+  // this replaced (measured with a leftover smaller font from the previous
+  // section, then rendered wider than the measured width, running text off
+  // the page and into whatever followed).
+  let y = 68;
+  const keyFacts = [
+    { label: "PROCESSING TIME", value: checklist.processingTime },
+    { label: "VISA FEE", value: checklist.fee },
+  ];
+  for (const fact of keyFacts) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const lines = doc.splitTextToSize(fact.value, contentW - 12);
+    const boxH = lines.length * 4.3 + 10;
+    doc.setFillColor(...LIGHT_GRAY);
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.1);
+    doc.roundedRect(margin, y, contentW, boxH, 2, 2, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...NAVY);
+    doc.text(fact.label, margin + 5, y + 5.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(50, 55, 75);
+    doc.text(lines, margin + 5, y + 10.5);
+    y += boxH + 4;
+  }
+  y += 2;
+
   // ── Approval Tip ─────────────────────────────────────────────────────────
-  let y = 76;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const tipLines = doc.splitTextToSize(`Approval Tip: ${checklist.successTip}`, contentW - 12);
+  const tipH = tipLines.length * 4.5 + 8;
   doc.setFillColor(240, 245, 255);
   doc.setDrawColor(...NAVY);
   doc.setLineWidth(0.1);
-  const tipLines = doc.splitTextToSize(`Approval Tip: ${checklist.successTip}`, contentW - 12);
-  const tipH = tipLines.length * 4.5 + 8;
   doc.roundedRect(margin, y, contentW, tipH, 2, 2, "FD");
 
   doc.setFont("helvetica", "bold");
@@ -276,71 +309,96 @@ export async function downloadBankLetterPDF(
   doc.setFontSize(10);
   doc.setTextColor(30, 30, 50);
 
-  const letterLines = [
-    `Date: ${today}`,
-    "",
-    "To Whom It May Concern,",
-    `Embassy / Consulate of ${destination}`,
-    "",
-    "Re: Financial Standing Confirmation for Visa Application",
-    "",
-    `I am writing to confirm that [APPLICANT FULL NAME], holder of passport number [PASSPORT NUMBER],`,
-    `is a verified account holder at [BANK NAME] and has maintained a steady financial history`,
-    `with our institution.`,
-    "",
-    `As of ${today}, the applicant holds an account balance of [AMOUNT IN LOCAL CURRENCY]`,
-    `(approximately [EQUIVALENT IN USD/EUR]), which has been consistently maintained over`,
-    `the past 6 months, demonstrating financial stability and sufficient funds to cover`,
-    `travel, accommodation, and living expenses for the duration of the intended trip.`,
-    "",
-    `The estimated costs for the ${visaType} visa to ${destination} are as follows:`,
-    `  • Visa Application Fee: ${fee}`,
-    `  • Estimated Processing Time: ${processingTime}`,
-    `  • Estimated Travel & Stay Budget: [INSERT AMOUNT]`,
-    "",
-    `We confirm that [APPLICANT FULL NAME] has sufficient funds and strong financial ties`,
-    `to their country of origin, indicating a strong intent to return after their visit.`,
-    "",
-    `Should you require any additional verification, please do not hesitate to contact`,
-    `us at the address or telephone number below.`,
-    "",
-    "Yours faithfully,",
-    "",
-    "",
-    "[AUTHORISED SIGNATORY NAME]",
-    "[TITLE / POSITION]",
-    "[BANK NAME]",
-    "[BRANCH ADDRESS]",
-    "[PHONE NUMBER]",
-    "[EMAIL ADDRESS]",
-    "",
-    "Official Stamp: ___________________________",
+  // `bullet: true` lines carry real, unbounded-length data (fee/processing
+  // time straight from visa-data.ts — some run past 200 characters) and get
+  // wrapped for real below. Every other line is short, static template text
+  // that already fits the page as authored, so it prints as-is.
+  const letterLines: { text: string; bullet?: boolean; bold?: boolean }[] = [
+    { text: `Date: ${today}` },
+    { text: "" },
+    { text: "To Whom It May Concern," },
+    { text: `Embassy / Consulate of ${destination}` },
+    { text: "" },
+    { text: "Re: Financial Standing Confirmation for Visa Application", bold: true },
+    { text: "" },
+    { text: `I am writing to confirm that [APPLICANT FULL NAME], holder of passport number [PASSPORT NUMBER],` },
+    { text: `is a verified account holder at [BANK NAME] and has maintained a steady financial history` },
+    { text: `with our institution.` },
+    { text: "" },
+    { text: `As of ${today}, the applicant holds an account balance of [AMOUNT IN LOCAL CURRENCY]` },
+    { text: `(approximately [EQUIVALENT IN USD/EUR]), which has been consistently maintained over` },
+    { text: `the past 6 months, demonstrating financial stability and sufficient funds to cover` },
+    { text: `travel, accommodation, and living expenses for the duration of the intended trip.` },
+    { text: "" },
+    { text: `The estimated costs for the ${visaType} visa to ${destination} are as follows:` },
+    { text: `Visa Application Fee: ${fee}`, bullet: true },
+    { text: `Estimated Processing Time: ${processingTime}`, bullet: true },
+    { text: `Estimated Travel & Stay Budget: [INSERT AMOUNT]`, bullet: true },
+    { text: "" },
+    { text: `We confirm that [APPLICANT FULL NAME] has sufficient funds and strong financial ties` },
+    { text: `to their country of origin, indicating a strong intent to return after their visit.` },
+    { text: "" },
+    { text: `Should you require any additional verification, please do not hesitate to contact` },
+    { text: `us at the address or telephone number below.` },
+    { text: "" },
+    { text: "Yours faithfully," },
+    { text: "" },
+    { text: "" },
+    { text: "[AUTHORISED SIGNATORY NAME]", bold: true },
+    { text: "[TITLE / POSITION]" },
+    { text: "[BANK NAME]" },
+    { text: "[BRANCH ADDRESS]" },
+    { text: "[PHONE NUMBER]" },
+    { text: "[EMAIL ADDRESS]" },
+    { text: "" },
+    { text: "Official Stamp: ___________________________" },
   ];
 
-  doc.setFontSize(9.5);
+  const bulletX = margin + 4;
+  const bulletTextX = bulletX + 3.5;
   for (const line of letterLines) {
+    if (line.bullet) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const wrapped = doc.splitTextToSize(line.text, pageW - margin - bulletTextX);
+      wrapped.forEach((sub: string, i: number) => {
+        if (y > pageH - 20) {
+          doc.addPage();
+          y = 25;
+        }
+        if (i === 0) doc.text("•", bulletX, y);
+        doc.text(sub, bulletTextX, y);
+        y += 5.5;
+      });
+      continue;
+    }
     if (y > pageH - 20) {
       doc.addPage();
       y = 25;
     }
-    if (line.startsWith("Re:") || line.startsWith("[AUTHORISED")) {
-      doc.setFont("helvetica", "bold");
-    } else {
-      doc.setFont("helvetica", "normal");
-    }
-    doc.text(line, margin, y);
-    y += line === "" ? 4 : 5.5;
+    doc.setFont("helvetica", line.bold ? "bold" : "normal");
+    doc.setFontSize(9.5);
+    doc.text(line.text, margin, y);
+    y += line.text === "" ? 4 : 5.5;
   }
 
-  // Footer
-  doc.setFillColor(...NAVY);
-  doc.rect(0, pageH - 10, pageW, 10, "F");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(160, 175, 200);
-  doc.text("VisaClear by Vericore  |  This is a sample template, not a legal document.", margin, pageH - 4);
-  doc.setTextColor(...GOLD);
-  doc.text("visaclear.app", pageW - margin, pageH - 4, { align: "right" });
+  // Footer on every page — drawn after the content loop so it reflects the
+  // real final page count, and applied via setPage per page rather than
+  // once at whatever page happened to be current when this code ran (that
+  // was the previous bug: a letter long enough to spill onto page 2 left
+  // page 1, the actual content page, with no VisaClear footer at all).
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFillColor(...NAVY);
+    doc.rect(0, pageH - 10, pageW, 10, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(160, 175, 200);
+    doc.text("VisaClear by Vericore  |  This is a sample template, not a legal document.", margin, pageH - 4);
+    doc.setTextColor(...GOLD);
+    doc.text("visaclear.app", pageW - margin, pageH - 4, { align: "right" });
+  }
 
   doc.save(`VisaClear_Bank_Letter_Template_${destination.replace(/\s+/g, "_")}.pdf`);
 }
