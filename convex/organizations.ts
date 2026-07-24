@@ -1,7 +1,9 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
+import { ORG_MEMBER_CAP, daysSince } from "./orgHelpers.ts";
 
 // One user, one org membership for v1 — keeps isolation reasoning simple.
 // Multi-org membership (an HR consultant managing several client companies)
@@ -130,5 +132,73 @@ export const renameOrganization = mutation({
       });
     }
     await ctx.db.patch(organizationId, { name: args.name.trim() });
+  },
+});
+
+// ─── Invite-your-next-hire nudge (orgNudgeDispatch.ts, weekly cron) ─────────
+// One row per admin of an org that's gone quiet on inviting: no invite sent
+// (of any status — even a declined one still counts as recent admin
+// activity) in 30+ days, re-armed 30 days after the last nudge so this never
+// fires weekly forever on an org that's simply done growing. Never household
+// orgs — "invite your next hire" makes no sense for a family tracking their
+// own relocation. Never a full cohort — no point nudging someone to invite
+// when they're already at the cap.
+export const internalListOrgsNeedingInviteNudge = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const orgs = await ctx.db.query("organizations").take(2000);
+    const targets: {
+      organizationId: Id<"organizations">;
+      orgName: string;
+      orgType: string | undefined;
+      adminUserId: Id<"users">;
+      adminEmail: string;
+      adminName: string | undefined;
+    }[] = [];
+
+    for (const org of orgs) {
+      if (org.type === "household") continue;
+      if (org.approvalStatus && org.approvalStatus !== "approved") continue;
+
+      const links = await ctx.db
+        .query("org_employee_links")
+        .withIndex("by_org", (q) => q.eq("organizationId", org._id))
+        .take(ORG_MEMBER_CAP + 1);
+      const activeCount = links.filter((l) => l.status === "pending" || l.status === "accepted").length;
+      if (activeCount >= ORG_MEMBER_CAP) continue;
+
+      const mostRecentInviteAt = links.reduce<string | null>(
+        (latest, l) => (!latest || l.createdAt > latest ? l.createdAt : latest),
+        null,
+      );
+      const baseline = mostRecentInviteAt ?? org.createdAt;
+      if (daysSince(baseline) < 30) continue;
+      if (org.lastInviteNudgeSentAt && daysSince(org.lastInviteNudgeSentAt) < 30) continue;
+
+      const admins = await ctx.db
+        .query("org_members")
+        .withIndex("by_org", (q) => q.eq("organizationId", org._id))
+        .take(50);
+      for (const admin of admins.filter((m) => m.orgRole === "org_admin")) {
+        const adminUser = await ctx.db.get(admin.userId);
+        if (!adminUser?.email) continue;
+        targets.push({
+          organizationId: org._id,
+          orgName: org.name,
+          orgType: org.type,
+          adminUserId: admin.userId,
+          adminEmail: adminUser.email,
+          adminName: adminUser.name,
+        });
+      }
+    }
+    return targets;
+  },
+});
+
+export const internalMarkInviteNudgeSent = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.organizationId, { lastInviteNudgeSentAt: new Date().toISOString() });
   },
 });

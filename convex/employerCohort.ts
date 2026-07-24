@@ -5,7 +5,7 @@ import type { Id } from "./_generated/dataModel.js";
 import { internal } from "./_generated/api";
 import { getMyOrgAdminMembershipOrThrow } from "./organizations.ts";
 import { assertNotSuspended } from "./authHelpers.ts";
-import { ORG_READY_THRESHOLD } from "./orgHelpers.ts";
+import { ORG_READY_THRESHOLD, ORG_MEMBER_CAP } from "./orgHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -45,8 +45,8 @@ export const inviteEmployee = mutation({
     const allOrgLinks = await ctx.db
       .query("org_employee_links")
       .withIndex("by_org_email", (q) => q.eq("organizationId", organizationId))
-      .take(501);
-    if (allOrgLinks.filter((l) => l.status === "pending" || l.status === "accepted").length >= 500) {
+      .take(ORG_MEMBER_CAP + 1);
+    if (allOrgLinks.filter((l) => l.status === "pending" || l.status === "accepted").length >= ORG_MEMBER_CAP) {
       throw new ConvexError({ code: "BAD_REQUEST", message: "Organisation has reached the maximum of 500 members." });
     }
 

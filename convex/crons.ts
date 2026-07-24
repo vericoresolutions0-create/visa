@@ -91,6 +91,18 @@ crons.interval(
   {},
 );
 
+// Thursday 8:00 AM UTC weekly — nudges org admins who haven't invited anyone
+// (of any status) in 30+ days to invite their next hire/student/client.
+// Re-armed 30 days after the last nudge so a quiet org isn't pinged weekly
+// forever. Never fires for household orgs or an org already at the
+// 500-member cap.
+crons.cron(
+  "org invite nudge",
+  "0 8 * * 4",
+  internal.orgNudgeDispatch.dispatchOrgInviteNudges,
+  {},
+);
+
 // Wednesday 9:00 AM UTC weekly — fetches each monitored embassy page, hashes
 // its text content, and flags it for admin review when the content changed.
 // Government visa pages don't update daily so weekly is the right cadence;

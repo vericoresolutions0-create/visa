@@ -41,6 +41,8 @@ function notificationIcon(type: Notification["type"]) {
     return <UserPlus className="w-4 h-4 text-blue-500 shrink-0" />;
   if (type === "org_member_ready")
     return <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />;
+  if (type === "org_invite_reminder")
+    return <UserPlus className="w-4 h-4 text-amber-500 shrink-0" />;
   return <Clock className="w-4 h-4 text-accent shrink-0" />;
 }
 

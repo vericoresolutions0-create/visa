@@ -722,6 +722,12 @@ export default defineSchema({
     approvalStatus: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"))),
     createdByUserId: v.id("users"),
     createdAt: v.string(),
+    // Last time the weekly "invite your next hire" nudge fired for this org
+    // (orgNudgeDispatch.ts). Unset means never nudged — every real B2B org
+    // is eligible on its first qualifying week. Prevents renudging every
+    // single week once an org has gone quiet; re-armed 30 days after the
+    // last nudge, same cadence as the eligibility check itself.
+    lastInviteNudgeSentAt: v.optional(v.string()),
   })
     .index("by_creator", ["createdByUserId"])
     .index("by_type", ["type"]),
@@ -896,6 +902,7 @@ export default defineSchema({
       v.literal("agent_returning_client"),
       v.literal("org_member_invite_accepted"),
       v.literal("org_member_ready"),
+      v.literal("org_invite_reminder"),
     ),
     title: v.string(),
     body: v.string(),

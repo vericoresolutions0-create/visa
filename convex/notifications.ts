@@ -175,6 +175,7 @@ export const createOrgAdminNotification = internalMutation({
     type: v.union(
       v.literal("org_member_invite_accepted"),
       v.literal("org_member_ready"),
+      v.literal("org_invite_reminder"),
     ),
     title: v.string(),
     body: v.string(),

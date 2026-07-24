@@ -18,3 +18,12 @@ export function memberNoun(orgType?: string | null): string {
 // crossing so the in-app notification always matches what the dashboard
 // itself would already show.
 export const ORG_READY_THRESHOLD = 90;
+
+// The real hard cap enforced in employerCohort.ts inviteEmployee — shared so
+// orgNudgeDispatch.ts's "you have room to invite more" nudge can never
+// suggest inviting someone to an org that's actually already full.
+export const ORG_MEMBER_CAP = 500;
+
+export function daysSince(iso: string): number {
+  return (Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000);
+}

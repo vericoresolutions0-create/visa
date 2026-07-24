@@ -92,6 +92,12 @@ function notificationIcon(type: Notification["type"]) {
         <CheckCircle2 className="w-4 h-4 text-green-600" />
       </div>
     );
+  if (type === "org_invite_reminder")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+        <UserPlus className="w-4 h-4 text-amber-500" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -110,6 +116,7 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "agent_returning_client") return "Returning client";
   if (type === "org_member_invite_accepted") return "Invite accepted";
   if (type === "org_member_ready") return "Member ready";
+  if (type === "org_invite_reminder") return "Invite reminder";
   return "Reminder";
 }
 
