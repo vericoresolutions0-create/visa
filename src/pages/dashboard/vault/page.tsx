@@ -298,13 +298,23 @@ export default function DocumentVaultPage() {
     // happens after an `await` gets silently blocked, no error, nothing
     // visibly wrong, the tab just never opens. Opening a blank tab right
     // now and redirecting it once the real URL is ready keeps it tied to
-    // the original tap.
-    const preopened = window.open("", "_blank", "noopener,noreferrer");
+    // the original tap. Deliberately no `noopener` here — per MDN, that
+    // flag makes window.open() return null instead of a usable window
+    // reference, which would make the redirect below silently impossible
+    // (the tab opens, but nothing can ever tell it where to go).
+    const preopened = window.open("", "_blank", "noreferrer");
     const freshUrl = await resolveRealDocumentUrl(doc._id);
-    if (freshUrl && preopened) {
+    if (!freshUrl) {
+      preopened?.close();
+      return;
+    }
+    if (preopened) {
       preopened.location.href = freshUrl;
     } else {
-      preopened?.close();
+      // Popup was blocked outright (any reason) — fall back to navigating
+      // this same tab, so the user still reaches their document instead of
+      // nothing visibly happening.
+      window.location.href = freshUrl;
     }
   };
 
@@ -318,8 +328,10 @@ export default function DocumentVaultPage() {
     // Same Safari-popup-blocking issue as handlePreview above — for the iOS
     // path specifically (the one that calls window.open at all), the tab
     // has to be opened synchronously, before the await below, or it gets
-    // silently blocked with no visible error.
-    const preopened = isIos && !isBlobAlready ? window.open("", "_blank", "noopener,noreferrer") : null;
+    // silently blocked with no visible error. No `noopener` here either —
+    // same reason as handlePreview: it makes window.open() return null,
+    // which would make the redirect below a silent no-op.
+    const preopened = isIos && !isBlobAlready ? window.open("", "_blank", "noreferrer") : null;
 
     const url = isBlobAlready ? doc.url : await resolveRealDocumentUrl(doc._id);
     if (!isRealUrl(url)) {
@@ -340,8 +352,11 @@ export default function DocumentVaultPage() {
     // iOS Safari doesn't support programmatic blob downloads for remote URLs —
     // open directly so the native PDF/image viewer handles it.
     if (isIos) {
-      if (preopened) preopened.location.href = url;
-      else window.open(url, "_blank", "noopener,noreferrer");
+      if (preopened) {
+        preopened.location.href = url;
+      } else if (!window.open(url, "_blank", "noreferrer")) {
+        window.location.href = url;
+      }
       return;
     }
     try {

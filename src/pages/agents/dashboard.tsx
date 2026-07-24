@@ -832,10 +832,23 @@ function ClientCard({ intake, readinessEntry }: { intake: Intake; readinessEntry
   const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
   const getDocumentUrl = useMutation(api.clientIntakes.getClientDocumentDownloadUrl);
   const handleOpenDocument = async (documentId: Id<"client_documents">) => {
+    // Safari (especially iOS PWAs) silently blocks window.open() once it's
+    // called after an await — no error, the tab just never appears. Opening
+    // a blank tab synchronously and redirecting it once the real URL is
+    // ready keeps it tied to the original tap. No `noopener` on the
+    // pre-open specifically: that flag makes window.open() return null
+    // instead of a usable reference, which would make the redirect a
+    // silent no-op.
+    const preopened = window.open("", "_blank", "noreferrer");
     try {
       const url = await getDocumentUrl({ documentId });
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (preopened) {
+        preopened.location.href = url;
+      } else if (!window.open(url, "_blank", "noreferrer")) {
+        window.location.href = url;
+      }
     } catch {
+      preopened?.close();
       toast.error("Couldn't open that document. Please try again.");
     }
   };
@@ -1041,10 +1054,23 @@ function ClientRow({ intake, isLast, readinessEntry }: { intake: Intake; isLast:
   const archiveIntake = useMutation(api.clientIntakes.archiveIntake);
   const getDocumentUrl = useMutation(api.clientIntakes.getClientDocumentDownloadUrl);
   const handleOpenDocument = async (documentId: Id<"client_documents">) => {
+    // Safari (especially iOS PWAs) silently blocks window.open() once it's
+    // called after an await — no error, the tab just never appears. Opening
+    // a blank tab synchronously and redirecting it once the real URL is
+    // ready keeps it tied to the original tap. No `noopener` on the
+    // pre-open specifically: that flag makes window.open() return null
+    // instead of a usable reference, which would make the redirect a
+    // silent no-op.
+    const preopened = window.open("", "_blank", "noreferrer");
     try {
       const url = await getDocumentUrl({ documentId });
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (preopened) {
+        preopened.location.href = url;
+      } else if (!window.open(url, "_blank", "noreferrer")) {
+        window.location.href = url;
+      }
     } catch {
+      preopened?.close();
       toast.error("Couldn't open that document. Please try again.");
     }
   };

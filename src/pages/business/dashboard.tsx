@@ -561,10 +561,20 @@ function DashboardInner() {
 
   const handleDownloadHistoryEntry = async (historyId: Id<"compliance_export_history">) => {
     setDownloadingHistoryId(historyId);
+    // Safari (especially iOS PWAs) silently blocks window.open() once it's
+    // called after an await — no error, the tab just never appears. Opening
+    // a blank tab synchronously and redirecting it once the real URL is
+    // ready keeps it tied to the original tap.
+    const preopened = window.open("", "_blank", "noreferrer");
     try {
       const url = await getExportDownloadUrl({ historyId });
-      window.open(url, "_blank");
+      if (preopened) {
+        preopened.location.href = url;
+      } else if (!window.open(url, "_blank", "noreferrer")) {
+        window.location.href = url;
+      }
     } catch (err) {
+      preopened?.close();
       toast.error(convexErrMsg(err) ?? "Could not open this export. Please try again.");
     } finally {
       setDownloadingHistoryId(null);
