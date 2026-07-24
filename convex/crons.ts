@@ -103,6 +103,19 @@ crons.cron(
   {},
 );
 
+// Friday 8:00 AM UTC weekly — a real weekly re-engagement digest for paid
+// applicants (admins already get an equivalent freshness digest). Combines
+// documents expiring within 60 days, embassy page changes in the past week
+// for the user's own open-checklist destinations, and checklists sitting
+// untouched 14+ days below 100%. Skips sending entirely when none of the
+// three have anything real to report — no filler "nothing new!" email.
+crons.cron(
+  "applicant weekly digest",
+  "0 8 * * 5",
+  internal.applicantDigestDispatch.sendApplicantDigest,
+  {},
+);
+
 // Wednesday 9:00 AM UTC weekly — fetches each monitored embassy page, hashes
 // its text content, and flags it for admin review when the content changed.
 // Government visa pages don't update daily so weekly is the right cadence;
