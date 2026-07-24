@@ -588,34 +588,37 @@ function DashboardPageLinks({ current }: { current: DashboardView }) {
     });
   };
 
+  // Matches ESSENTIAL_ACTIONS' emoji convention above (Quick Actions) rather
+  // than Lucide icons, for visual consistency between the two tile grids on
+  // this same page.
   const pages = [
     {
       id: "overview",
-      icon: <Shield className="w-4 h-4" />,
+      icon: "🏠",
       label: "Dashboard Home",
       path: "/dashboard",
     },
     {
       id: "checklists",
-      icon: <FileText className="w-4 h-4" />,
+      icon: "📄",
       label: "Saved Checklists",
       path: "/dashboard/checklists",
     },
     {
       id: "timeline",
-      icon: <Calendar className="w-4 h-4" />,
+      icon: "📅",
       label: "Trip Timeline",
       path: "/dashboard/timeline",
     },
     {
       id: "reminders",
-      icon: <Bell className="w-4 h-4" />,
+      icon: "🔔",
       label: "Reminders",
       path: "/dashboard/reminders",
     },
     {
       id: "settings",
-      icon: <Settings className="w-4 h-4" />,
+      icon: "⚙️",
       label: "Profile Settings",
       path: "/settings/profile",
     },
@@ -628,8 +631,8 @@ function DashboardPageLinks({ current }: { current: DashboardView }) {
         className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-primary/3 transition-all cursor-pointer"
       >
         <span className="flex items-center gap-2.5">
-          <span className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center text-primary shrink-0">
-            <Shield className="w-3.5 h-3.5" />
+          <span className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center text-sm shrink-0">
+            🗂️
           </span>
           <span className="text-sm font-semibold text-primary">Dashboard Pages</span>
         </span>
@@ -661,7 +664,7 @@ function DashboardPageLinks({ current }: { current: DashboardView }) {
                 : "border-border hover:border-primary/30 hover:bg-primary/3 text-foreground",
             )}
           >
-            <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-primary">
+            <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center text-lg">
               {page.icon}
             </div>
             <span className="text-xs font-medium text-center leading-tight">

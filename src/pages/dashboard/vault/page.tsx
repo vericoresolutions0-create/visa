@@ -292,8 +292,20 @@ export default function DocumentVaultPage() {
       window.open(doc.url, "_blank", "noopener,noreferrer");
       return;
     }
+    // Safari (especially iOS, and especially as an installed PWA) only
+    // treats window.open() as a legitimate response to the tap if it's
+    // called synchronously, in the same tick as the click — one that
+    // happens after an `await` gets silently blocked, no error, nothing
+    // visibly wrong, the tab just never opens. Opening a blank tab right
+    // now and redirecting it once the real URL is ready keeps it tied to
+    // the original tap.
+    const preopened = window.open("", "_blank", "noopener,noreferrer");
     const freshUrl = await resolveRealDocumentUrl(doc._id);
-    if (freshUrl) window.open(freshUrl, "_blank", "noopener,noreferrer");
+    if (freshUrl && preopened) {
+      preopened.location.href = freshUrl;
+    } else {
+      preopened?.close();
+    }
   };
 
   const handleDownload = async (doc: { _id: Id<"vault_documents">; url: string | null }, fileName: string) => {
@@ -301,8 +313,19 @@ export default function DocumentVaultPage() {
       toast.info("This is a sample demo document — upload your own files to download them.");
       return;
     }
-    const url = doc.url && doc.url.startsWith("blob:") ? doc.url : await resolveRealDocumentUrl(doc._id);
-    if (!isRealUrl(url)) return;
+    const isBlobAlready = Boolean(doc.url && doc.url.startsWith("blob:"));
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    // Same Safari-popup-blocking issue as handlePreview above — for the iOS
+    // path specifically (the one that calls window.open at all), the tab
+    // has to be opened synchronously, before the await below, or it gets
+    // silently blocked with no visible error.
+    const preopened = isIos && !isBlobAlready ? window.open("", "_blank", "noopener,noreferrer") : null;
+
+    const url = isBlobAlready ? doc.url : await resolveRealDocumentUrl(doc._id);
+    if (!isRealUrl(url)) {
+      preopened?.close();
+      return;
+    }
     // Blob URLs (user-uploaded files in demo mode) can be downloaded directly
     // without fetching — they're already in memory.
     if (url.startsWith("blob:")) {
@@ -316,8 +339,9 @@ export default function DocumentVaultPage() {
     }
     // iOS Safari doesn't support programmatic blob downloads for remote URLs —
     // open directly so the native PDF/image viewer handles it.
-    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-      window.open(url, "_blank", "noopener,noreferrer");
+    if (isIos) {
+      if (preopened) preopened.location.href = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
       return;
     }
     try {
