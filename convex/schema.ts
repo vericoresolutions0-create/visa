@@ -888,6 +888,7 @@ export default defineSchema({
       v.literal("trip_deadline"),
       v.literal("marketplace_lead_alert"),
       v.literal("client_document_uploaded"),
+      v.literal("agent_trial_expiring"),
     ),
     title: v.string(),
     body: v.string(),

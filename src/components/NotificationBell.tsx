@@ -25,6 +25,8 @@ function notificationIcon(type: Notification["type"]) {
     return <Calendar className="w-4 h-4 text-blue-500 shrink-0" />;
   if (type === "client_document_uploaded")
     return <UploadCloud className="w-4 h-4 text-green-500 shrink-0" />;
+  if (type === "agent_trial_expiring")
+    return <FileWarning className="w-4 h-4 text-amber-500 shrink-0" />;
   return <Clock className="w-4 h-4 text-accent shrink-0" />;
 }
 

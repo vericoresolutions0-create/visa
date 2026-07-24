@@ -43,6 +43,12 @@ function notificationIcon(type: Notification["type"]) {
         <Calendar className="w-4 h-4 text-blue-500" />
       </div>
     );
+  if (type === "agent_trial_expiring")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+        <FileWarning className="w-4 h-4 text-amber-500" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -53,6 +59,7 @@ function notificationIcon(type: Notification["type"]) {
 function typeLabel(type: Notification["type"]): string {
   if (type === "document_expiry") return "Document expiry";
   if (type === "trip_deadline") return "Trip deadline";
+  if (type === "agent_trial_expiring") return "Trial ending";
   return "Reminder";
 }
 

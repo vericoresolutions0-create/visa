@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { hasActiveAgentTrial } from "./agentTrials.ts";
 
 const STALE_LEAD_HOURS = 48;
 const MAX_LEADS_PER_RUN = 10;
@@ -80,8 +81,10 @@ export const checkStaleLeads = internalMutation({
 
       for (const profile of candidates) {
         const user = await ctx.db.get(profile.userId);
-        // Only notify users who still exist and have an active agent plan
-        if (!user?.agentPlan) continue;
+        // Only notify users who still exist and are an active agent — paid
+        // or on an unexpired trial (agentPlan alone misses trial-only agents,
+        // the normal state for a brand-new agent's entire trial period).
+        if (!user || (!user.agentPlan && !hasActiveAgentTrial(user))) continue;
 
         await ctx.db.insert("in_app_notifications", {
           userId: profile.userId,

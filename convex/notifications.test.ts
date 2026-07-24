@@ -38,6 +38,45 @@ async function seedUserWithUnread(
   return userId;
 }
 
+describe("notifications visibility for trial-only agents (2026-07-24 fix)", () => {
+  test("a trial-only agent (agentTrialPlan set, no paid agentPlan) can see and count their own notifications", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        email: "trial-agent@example.com",
+        agentTrialPlan: "agent_listing",
+        agentTrialExpiresAt: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+      }),
+    );
+    await t.run(async (ctx) =>
+      ctx.db.insert("in_app_notifications", {
+        userId,
+        type: "agent_trial_expiring",
+        title: "Trial ending in 3 days",
+        body: "Body",
+        read: false,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+
+    expect(await t.withIdentity({ subject: userId }).query(api.notifications.getUnreadCount, {})).toBe(1);
+    expect(await t.withIdentity({ subject: userId }).query(api.notifications.getMyNotifications, {})).toHaveLength(1);
+  });
+
+  test("an agent whose trial already expired (and has no paid plan) sees nothing, same as before any trial existed", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert("users", {
+        email: "expired-trial-agent@example.com",
+        agentTrialPlan: "agent_listing",
+        agentTrialExpiresAt: new Date(Date.now() - 1 * 86_400_000).toISOString(),
+      }),
+    );
+
+    expect(await t.withIdentity({ subject: userId }).query(api.notifications.getUnreadCount, {})).toBe(0);
+  });
+});
+
 describe("notifications.markAllRead", () => {
   test("an agent (agentPlan set, no consumer plan) can actually clear their unread notifications", async () => {
     const t = convexTest(schema, modules);

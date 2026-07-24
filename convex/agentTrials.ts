@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 import { getCurrentUser } from "./authHelpers.ts";
 import type { Doc } from "./_generated/dataModel";
@@ -185,6 +185,34 @@ export const adminListTrials = query({
         };
       })
       .sort((a, b) => a.daysLeft - b.daysLeft);
+  },
+});
+
+// ─── Internal: list all active (unexpired) trials, for the expiry-warning
+// dispatcher ────────────────────────────────────────────────────────────────
+// Same shape as adminListTrials but without the admin auth requirement — the
+// daily cron has no user identity to authenticate as.
+export const internalListActiveTrials = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = new Date().toISOString();
+
+    const [listing, featured, whiteLabel] = await Promise.all([
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_listing")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agent_featured")).take(500),
+      ctx.db.query("users").withIndex("by_agent_trial_plan", (q) => q.eq("agentTrialPlan", "agency_white_label")).take(500),
+    ]);
+
+    return [...listing, ...featured, ...whiteLabel]
+      .filter((u) => u.agentTrialExpiresAt && u.agentTrialExpiresAt > now)
+      .map((u) => ({
+        userId: u._id,
+        email: u.email ?? null,
+        name: u.name ?? null,
+        plan: u.agentTrialPlan as "agent_listing" | "agent_featured" | "agency_white_label",
+        expiresAt: u.agentTrialExpiresAt!,
+        daysLeft: Math.ceil((new Date(u.agentTrialExpiresAt!).getTime() - Date.now()) / 86_400_000),
+      }));
   },
 });
 

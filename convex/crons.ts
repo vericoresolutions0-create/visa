@@ -66,6 +66,17 @@ crons.cron(
   {},
 );
 
+// 8:30 AM UTC daily — warns agents on an active trial when it's ending in 7,
+// 3, or 1 day(s), via email + in-app notification. Previously the only
+// warning was a passive dashboard banner, invisible to an agent who doesn't
+// log in during their final week.
+crons.cron(
+  "agent trial expiry warnings",
+  "30 8 * * *",
+  internal.agentTrialDispatch.dispatchAgentTrialExpiryWarnings,
+  {},
+);
+
 // Every 4 hours — finds agent trials whose expiry timestamp has passed,
 // clears the trial fields on users, and resets agent_profiles.tier back to
 // the real paid plan so the marketplace reflects the correct tier. Was
