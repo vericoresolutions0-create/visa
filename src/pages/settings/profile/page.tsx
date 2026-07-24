@@ -54,6 +54,13 @@ function ProfileSettingsInner() {
     api.referralRewards.getMyReferralRewardStatus,
     isDemoAuthenticated ? "skip" : {},
   );
+  // Payout Setup is for agents cashing out referral commissions — reuses the
+  // exact query agents/dashboard.tsx already calls for its own profile, so a
+  // real registered agent (not a fabricated guess) is who sees the section.
+  const myAgentProfile = useQuery(
+    api.agents.getMyProfile,
+    isDemoAuthenticated ? "skip" : {},
+  );
   const redeemReferralReward = useMutation(api.referralRewards.redeemReferralReward);
   const [redeemingReward, setRedeemingReward] = useState(false);
   const [demoReferralStats, setDemoReferralStats] = useState({
@@ -526,11 +533,13 @@ function ProfileSettingsInner() {
         </div>
       </section>
 
+      {(isDemoAuthenticated || myAgentProfile) && (
       <section className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-1">
           <Wallet className="w-5 h-5 text-primary" />
           <h2 className="font-semibold text-primary">{t("payout.title")}</h2>
         </div>
+        <p className="text-xs text-muted-foreground mb-4">{t("payout.hint")}</p>
 
         <div className="grid grid-cols-3 gap-2 mb-5">
           {[
@@ -666,6 +675,7 @@ function ProfileSettingsInner() {
           </Button>
         </div>
       </section>
+      )}
 
       {!isDemoAuthenticated && (
         <section className="bg-muted/40 border border-border rounded-xl p-6">

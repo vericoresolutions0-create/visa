@@ -36,6 +36,7 @@
   "payment.none": "No payment method saved.",
   "payment.update": "Update payment",
   "payout.title": "Payout setup",
+  "payout.hint": "Where we send your referral commission payouts — visible to agents only.",
   "payout.bank": "Bank",
   "payout.mobile": "Mobile",
   "payout.paypal": "PayPal",

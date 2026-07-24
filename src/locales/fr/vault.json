@@ -13,6 +13,7 @@
   "add.expiry": "Date d'expiration (optionnel)",
   "add.label": "Libellé",
   "add.label_placeholder": "ex. « Passeport UK » ou « Relevé mars »",
+  "add.auto_label": "Document {{category}} — {{date}}",
   "add.uploading": "Téléversement…",
   "add.upload_cta": "Choisir un fichier (JPG, PNG ou PDF, jusqu'à 50 Mo)",
   "cat.identity": "Identité",

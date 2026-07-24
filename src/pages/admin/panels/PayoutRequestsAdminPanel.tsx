@@ -6,6 +6,18 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel.js";
+import type { Doc } from "@/convex/_generated/dataModel.js";
+
+function formatPayoutDestination(payoutSetup: Doc<"users">["payoutSetup"] | null | undefined): string | null {
+  if (!payoutSetup) return null;
+  if (payoutSetup.method === "bank") {
+    return `Bank — ${payoutSetup.bankName ?? "?"}, acct ending ${payoutSetup.accountNumberLast4 ?? "????"} · ${payoutSetup.accountName} · ${payoutSetup.country}`;
+  }
+  if (payoutSetup.method === "mobile_money") {
+    return `Mobile money — ${payoutSetup.mobileMoneyProvider ?? "?"}, ending ${payoutSetup.mobileMoneyLast4 ?? "????"} · ${payoutSetup.accountName} · ${payoutSetup.country}`;
+  }
+  return `PayPal — ${payoutSetup.paypalEmail ?? "?"}`;
+}
 
 export function PayoutRequestsAdminPanel() {
   const requests = useQuery(api.admin.listPayoutRequests, {});
@@ -63,6 +75,15 @@ export function PayoutRequestsAdminPanel() {
                   {new Date(req.requestedAt).toLocaleString("en-GB")}
                 </span>
               </div>
+              {formatPayoutDestination(req.payoutSetup) ? (
+                <p className="text-xs font-semibold text-[#0f2040] mb-2 leading-relaxed bg-white/60 rounded-lg px-3 py-2">
+                  {formatPayoutDestination(req.payoutSetup)}
+                </p>
+              ) : (
+                <p className="text-xs font-semibold text-red-700 mb-2 leading-relaxed bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  No payout method on file — contact the agent before marking paid.
+                </p>
+              )}
               {req.notes && (
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed bg-white/60 rounded-lg px-3 py-2">
                   {req.notes}
@@ -78,9 +99,10 @@ export function PayoutRequestsAdminPanel() {
                 />
                 <div className="flex gap-2 shrink-0">
                   <button
-                    disabled={processingId === req._id}
+                    disabled={processingId === req._id || !formatPayoutDestination(req.payoutSetup)}
                     onClick={() => { void handleProcess(req._id, "paid"); }}
-                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+                    title={formatPayoutDestination(req.payoutSetup) ? undefined : "No payout method on file for this agent"}
+                    className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
                   </button>

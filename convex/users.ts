@@ -162,6 +162,16 @@ export const updatePayoutSetup = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     assertNotSuspended(user);
+    const agentProfile = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!agentProfile) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Payout setup is only available for registered agents — it's where we send your referral commission payouts.",
+      });
+    }
     if (!args.accountName.trim() || args.accountName.length > 200)
       throw new ConvexError({ code: "INVALID_PAYOUT", message: "Account name is required and must be under 200 characters." });
     if (!args.country.trim() || args.country.length > 100)

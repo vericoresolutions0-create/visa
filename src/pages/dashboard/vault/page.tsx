@@ -69,6 +69,10 @@ const DEMO_VAULT_REMINDERS: Doc<"reminders">[] = [
 type CategoryValue = "identity" | "financial" | "employment" | "travel" | "education" | "photo" | "legal" | "medical" | "other";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+// Some upload paths (notably iOS's photo picker for screenshots, edited, or
+// iCloud-synced photos) hand the browser a synthetic filename like this
+// instead of the real one — never usable as a document label.
+const UUID_LIKE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",   // non-standard but reported by some Windows/older systems
@@ -80,7 +84,7 @@ const ALLOWED_MIME_TYPES = [
 ];
 
 export default function DocumentVaultPage() {
-  const { t } = useTranslation("vault");
+  const { t, i18n } = useTranslation("vault");
   useSeo({ title: "Document Vault — VisaClear Pro", description: "Your permanent, organized store for every visa document." });
   const navigate = useNavigate();
   const goBack = useSmartBack("/dashboard");
@@ -151,8 +155,20 @@ export default function DocumentVaultPage() {
     navigate("/");
   };
 
-  const deriveLabel = (file: File) =>
-    label.trim() || file.name.replace(/\.[^.]+$/, "");
+  // Falls back to "Category document — date" whenever the browser gave us
+  // nothing usable, instead of ever showing a blank or synthetic-UUID name.
+  const autoLabelForUpload = () => {
+    const categoryLabel = CATEGORIES.find((c) => c.value === category)?.label ?? t("cat.other");
+    const dateLabel = new Date().toLocaleDateString(i18n.language, { month: "short", day: "numeric" });
+    return t("add.auto_label", { category: categoryLabel, date: dateLabel });
+  };
+
+  const deriveLabel = (file: File) => {
+    if (label.trim()) return label.trim();
+    const stripped = file.name.replace(/\.[^.]+$/, "").trim();
+    if (!stripped || UUID_LIKE_NAME.test(stripped)) return autoLabelForUpload();
+    return stripped;
+  };
 
   const handleFilesSelected = async (files: FileList) => {
     const fileArray = Array.from(files);

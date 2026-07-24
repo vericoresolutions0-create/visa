@@ -13,6 +13,7 @@
   "add.expiry": "تاريخ الانتهاء (اختياري)",
   "add.label": "التسمية",
   "add.label_placeholder": "مثال: «جواز السفر البريطاني» أو «كشف حساب مارس»",
+  "add.auto_label": "مستند {{category}} — {{date}}",
   "add.uploading": "جارٍ الرفع…",
   "add.upload_cta": "اختر ملفاً (JPG أو PNG أو PDF، حتى 50 ميغابايت)",
   "cat.identity": "الهوية",

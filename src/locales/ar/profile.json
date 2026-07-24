@@ -36,6 +36,7 @@
   "payment.none": "لم يتم حفظ أي طريقة دفع.",
   "payment.update": "تحديث الدفع",
   "payout.title": "إعداد الاستلام",
+  "payout.hint": "إلى أين نرسل عمولات الإحالة الخاصة بك — تظهر للوكلاء فقط.",
   "payout.bank": "بنك",
   "payout.mobile": "موبايل",
   "payout.paypal": "PayPal",

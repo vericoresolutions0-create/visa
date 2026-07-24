@@ -4,7 +4,7 @@
 // conversations. Covers the new backend surface added on top of the
 // existing (untested until now) Phase 1 posts module: replies, reactions,
 // the per-thread anonymous handle, and the admin reply-moderation path.
-import { convexTest } from "convex-test";
+import { convexTest, TestConvex } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -12,11 +12,19 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
-async function seedUser(t: ReturnType<typeof convexTest>, plan: string, country = "Nigeria") {
+// `ReturnType<typeof convexTest>` (used elsewhere in this codebase) loses the
+// app's actual schema when the generic function reference isn't instantiated
+// with it — harmless for helpers that only call ctx.db.insert(), but this
+// file's helpers also call .withIndex(), which needs the real DataModel to
+// know about app-defined indexes rather than falling back to system-only
+// ones. TestConvex<typeof schema> keeps that type intact.
+type T = TestConvex<typeof schema>;
+
+async function seedUser(t: T, plan: "free" | "pro" | "expert", country = "Nigeria") {
   return await t.run(async (ctx) => ctx.db.insert("users", { email: `user-${Math.random()}@example.com`, plan, country }));
 }
 
-async function seedApprovedPost(t: ReturnType<typeof convexTest>, authorId: Id<"users">) {
+async function seedApprovedPost(t: T, authorId: Id<"users">) {
   return await t.run(async (ctx) =>
     ctx.db.insert("community_posts", {
       userId: authorId, title: "My visa story", body: "A real experience worth sharing with the community.",
@@ -26,7 +34,7 @@ async function seedApprovedPost(t: ReturnType<typeof convexTest>, authorId: Id<"
   );
 }
 
-async function runWithScheduling(fn: () => Promise<void>, t: ReturnType<typeof convexTest>) {
+async function runWithScheduling(fn: () => Promise<void>, t: T) {
   vi.useFakeTimers();
   try {
     await fn();
@@ -37,7 +45,7 @@ async function runWithScheduling(fn: () => Promise<void>, t: ReturnType<typeof c
   }
 }
 
-async function seedReply(t: ReturnType<typeof convexTest>, postId: Id<"community_posts">, replierId: Id<"users">) {
+async function seedReply(t: T, postId: Id<"community_posts">, replierId: Id<"users">) {
   await t.withIdentity({ subject: replierId }).mutation(api.community.submitReply, { postId, body: "A reply worth flagging maybe." });
   const replies = await t.run(async (ctx) => ctx.db.query("community_replies").withIndex("by_post", (q) => q.eq("postId", postId)).collect());
   return replies[0]._id;
@@ -333,7 +341,7 @@ describe("community.listApprovedPosts — includes the new counters", () => {
 });
 
 describe("community admin — reply moderation", () => {
-  async function seedAdmin(t: ReturnType<typeof convexTest>) {
+  async function seedAdmin(t: T) {
     return await t.run(async (ctx) => ctx.db.insert("users", { email: `admin-${Math.random()}@example.com`, role: "admin", plan: "expert" }));
   }
 

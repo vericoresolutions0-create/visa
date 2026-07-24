@@ -36,6 +36,7 @@
   "payment.none": "Aucun moyen de paiement enregistré.",
   "payment.update": "Mettre à jour",
   "payout.title": "Informations de paiement",
+  "payout.hint": "Où nous envoyons vos commissions de parrainage — visible uniquement pour les agents.",
   "payout.bank": "Banque",
   "payout.mobile": "Mobile",
   "payout.paypal": "PayPal",

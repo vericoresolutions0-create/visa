@@ -13,6 +13,7 @@
   "add.expiry": "Expiry date (optional)",
   "add.label": "Label",
   "add.label_placeholder": "e.g. \"UK Passport\" or \"March Bank Statement\"",
+  "add.auto_label": "{{category}} document — {{date}}",
   "add.uploading": "Uploading…",
   "add.upload_cta": "Choose a file (JPG, PNG, or PDF, up to 50MB)",
   "cat.identity": "Identity",

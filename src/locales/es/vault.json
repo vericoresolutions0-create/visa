@@ -13,6 +13,7 @@
   "add.expiry": "Fecha de vencimiento (opcional)",
   "add.label": "Etiqueta",
   "add.label_placeholder": "ej. «Pasaporte UK» o «Extracto marzo»",
+  "add.auto_label": "Documento {{category}} — {{date}}",
   "add.uploading": "Subiendo…",
   "add.upload_cta": "Elige un archivo (JPG, PNG o PDF, hasta 50MB)",
   "cat.identity": "Identidad",

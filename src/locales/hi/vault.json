@@ -13,6 +13,7 @@
   "add.expiry": "समाप्ति तिथि (वैकल्पिक)",
   "add.label": "लेबल",
   "add.label_placeholder": "जैसे «UK पासपोर्ट» या «मार्च बैंक स्टेटमेंट»",
+  "add.auto_label": "{{category}} दस्तावेज़ — {{date}}",
   "add.uploading": "अपलोड हो रहा है…",
   "add.upload_cta": "फ़ाइल चुनें (JPG, PNG या PDF, 50MB तक)",
   "cat.identity": "पहचान",

@@ -342,7 +342,9 @@ export const listPayoutRequests = query({
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("asc")
       .take(100);
-    // Hydrate with agent name for display
+    // Hydrate with agent name and payout destination — an admin approving a
+    // request needs to know where the money is actually supposed to go, not
+    // just who's asking and how much.
     return await Promise.all(
       pending.map(async (req) => {
         const agent = await ctx.db.get(req.agentUserId);
@@ -355,6 +357,7 @@ export const listPayoutRequests = query({
           status: req.status,
           requestedAt: req.requestedAt,
           notes: req.notes ?? null,
+          payoutSetup: agent?.payoutSetup ?? null,
         };
       }),
     );

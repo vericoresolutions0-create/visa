@@ -36,6 +36,7 @@
   "payment.none": "कोई भुगतान विधि सहेजी नहीं गई।",
   "payment.update": "भुगतान अपडेट करें",
   "payout.title": "भुगतान सेटअप",
+  "payout.hint": "हम आपके रेफ़रल कमीशन भुगतान कहाँ भेजते हैं — केवल एजेंटों को दिखाई देता है।",
   "payout.bank": "बैंक",
   "payout.mobile": "मोबाइल",
   "payout.paypal": "PayPal",

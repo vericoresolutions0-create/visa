@@ -36,6 +36,7 @@
   "payment.none": "No hay método de pago guardado.",
   "payment.update": "Actualizar pago",
   "payout.title": "Configuración de cobro",
+  "payout.hint": "A dónde enviamos tus comisiones de referidos — visible solo para agentes.",
   "payout.bank": "Banco",
   "payout.mobile": "Móvil",
   "payout.paypal": "PayPal",

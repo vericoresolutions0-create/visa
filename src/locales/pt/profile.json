@@ -36,6 +36,7 @@
   "payment.none": "Nenhum método de pagamento salvo.",
   "payment.update": "Atualizar pagamento",
   "payout.title": "Configuração de recebimento",
+  "payout.hint": "Para onde enviamos suas comissões de indicação — visível apenas para agentes.",
   "payout.bank": "Banco",
   "payout.mobile": "Celular",
   "payout.paypal": "PayPal",
