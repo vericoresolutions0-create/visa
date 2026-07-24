@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { DemoSignInButton } from "@/components/ui/signin.tsx";
 import { api } from "@/convex/_generated/api.js";
 import { getStoredPartnerSlug } from "@/hooks/use-partner-referral.ts";
+import { TurnstileWidget } from "@/components/TurnstileWidget.tsx";
 
 type AuthAccessPanelProps = {
   returnPath?: string;
@@ -33,10 +34,12 @@ export function AuthAccessPanel({
   const { t } = useTranslation("auth");
   const { signIn, isLoading } = useAuth();
   const isGoogleConfigured = useQuery(api.auth.isGoogleConfigured);
+  const turnstileSiteKey = useQuery(api.turnstile.getSiteKey);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"signIn" | "signUp">(initialMode);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   // Reject external/protocol-relative URLs — only allow same-origin relative paths.
   const safeReturn = /^\/(?!\/)/.test(returnPath) ? returnPath : "/dashboard";
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +90,10 @@ export function AuthAccessPanel({
       setError(t("error.mustAgree"));
       return;
     }
+    if (authMode === "signUp" && turnstileSiteKey && !turnstileToken) {
+      setError(t("error.turnstileRequired"));
+      return;
+    }
 
     sessionStorage.setItem("authReturnPath", safeReturn);
     setSubmitting(true);
@@ -98,6 +105,7 @@ export function AuthAccessPanel({
         flow: authMode,
         ...(authMode === "signUp" ? { agreedToTermsAt: new Date().toISOString() } : {}),
         ...(partnerReferralSlug ? { partnerReferralSlug } : {}),
+        ...(authMode === "signUp" && turnstileToken ? { turnstileToken } : {}),
       });
       onAuthStart?.();
       toast.success(authMode === "signUp" ? t("toast.accountCreated") : t("toast.signedIn"));
@@ -109,6 +117,7 @@ export function AuthAccessPanel({
         (authMode === "signIn" ? t("error.signInFailed") : t("error.signUpFailed"));
       setError(message);
       toast.error(message);
+      setTurnstileToken(null);
     } finally {
       setSubmitting(false);
     }
@@ -207,6 +216,9 @@ export function AuthAccessPanel({
               </span>
             </label>
           )}
+          {authMode === "signUp" && turnstileSiteKey && (
+            <TurnstileWidget siteKey={turnstileSiteKey} onToken={setTurnstileToken} />
+          )}
           {error ? (
             <div className="text-sm text-destructive/90">{error}</div>
           ) : null}
@@ -215,7 +227,7 @@ export function AuthAccessPanel({
             variant="secondary"
             size="lg"
             className="w-full cursor-pointer font-semibold"
-            disabled={isLoading || submitting || (requiresConsent && !agreedToTerms)}
+            disabled={isLoading || submitting || (requiresConsent && !agreedToTerms) || (authMode === "signUp" && Boolean(turnstileSiteKey) && !turnstileToken)}
           >
             <Mail className="w-4 h-4" />
             {submitting

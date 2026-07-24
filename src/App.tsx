@@ -53,6 +53,7 @@ const ProfileSettingsPage = lazy(
   () => import("./pages/settings/profile/page.tsx"),
 );
 const ConfirmEmailPage = lazy(() => import("./pages/settings/confirm-email.tsx"));
+const VerifyEmailPage = lazy(() => import("./pages/settings/verify-email.tsx"));
 const RejectionAnalyserPage = lazy(
   () => import("./pages/rejection-analyser/page.tsx"),
 );
@@ -243,6 +244,7 @@ function AppRoutes() {
           <Route path="/dashboard/country-watch" element={<CountryWatchPage />} />
           <Route path="/settings/profile" element={<ProfileSettingsPage />} />
           <Route path="/settings/confirm-email/:token" element={<ConfirmEmailPage />} />
+          <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
           <Route
             path="/rejection-analyser"
             element={<RejectionAnalyserPage />}

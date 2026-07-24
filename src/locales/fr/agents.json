@@ -24,6 +24,7 @@
   "signin.title": "Connectez-vous pour voir les agents",
   "signin.subtitle": "Connectez-vous avec Google ou votre email pour voir les agents vérifiés, envoyer des demandes de contact, ou référencer votre agence.",
   "card.verified": "Vérifié",
+  "card.unverified": "Non vérifié — aucun justificatif fourni",
   "card.exp": "{{n}} ans d'exp.",
   "card.enquiry_sent": "Demande envoyée",
   "card.sending": "Envoi…",

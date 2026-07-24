@@ -1,0 +1,18 @@
+{
+  "confirmed.title": "Email Verified",
+  "confirmed.body": "Your email is verified — you now have full access to Community, agent contact, and trials.",
+  "error.title": "Couldn't Verify",
+  "error.fallback": "Could not verify this email.",
+  "idle.title": "Verify Your Email",
+  "idle.body": "Click below to confirm this is really your VisaClear account email.",
+  "idle.cta": "Verify This Email",
+  "idle.confirming": "Verifying…",
+  "signin.title": "Sign In to Verify",
+  "signin.body": "Sign in to the account that requested this verification to confirm it.",
+  "signin.cta": "Sign In to Continue",
+  "banner.title": "Verify your email address",
+  "banner.body": "Check your inbox for the link we sent you. You'll need it to post in Community, contact agents, or start a paid trial.",
+  "banner.resend": "Resend email",
+  "banner.resending": "Sending…",
+  "banner.resent": "Sent — check your inbox."
+}

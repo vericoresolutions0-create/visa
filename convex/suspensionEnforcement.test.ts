@@ -19,6 +19,7 @@ async function seedUser(t: ReturnType<typeof convexTest>, overrides: { isSuspend
       email: `user-${Math.random()}@example.com`,
       plan: overrides.plan ?? "pro",
       isSuspended: overrides.isSuspended ?? false,
+      emailVerificationTime: Date.now(),
     }),
   );
 }

@@ -12,6 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner.tsx";
+import { convexErrMsg } from "@/lib/utils.ts";
 
 type UpgradeModalProps = {
   open: boolean;
@@ -37,8 +39,8 @@ export function UpgradeModal({ open, onOpenChange, onTrialStarted }: UpgradeModa
       onOpenChange(false);
       onTrialStarted?.();
       navigate("/dashboard");
-    } catch {
-      toast.error("Could not start your trial. Please try again.");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not start your trial. Please try again.");
     } finally {
       setStarting(false);
     }
@@ -59,6 +61,7 @@ export function UpgradeModal({ open, onOpenChange, onTrialStarted }: UpgradeModa
             never miss a deadline again. 7-day free trial. Cancel anytime.
           </DialogDescription>
         </DialogHeader>
+        <EmailVerificationBanner />
         <Button
           size="lg"
           className="w-full font-semibold cursor-pointer mt-2"

@@ -127,6 +127,11 @@ function AgentCard({ agent }: { agent: AgentProfile }) {
                 <Check className="w-2.5 h-2.5" /> {t("card.verified")}
               </span>
             )}
+            {!agent.verified && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold border border-border" title="This agent hasn't submitted a credential for admin review yet">
+                {t("card.unverified")}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
             <MapPin className="w-3 h-3" />

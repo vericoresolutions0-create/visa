@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { bumpStat, bumpPlanCounters } from "./platformStats.ts";
-import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
+import { getCurrentUser as getCurrentUserDoc, getCurrentUserOrThrow, assertNotSuspended, assertEmailVerified } from "./authHelpers.ts";
 import { creditAgentReferralCommission } from "./agentReferralCommissions.ts";
 
 // Exported so the real Stripe checkout action (convex/stripe.ts) prices
@@ -768,6 +768,7 @@ export const startTrial = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     assertNotSuspended(user);
+    assertEmailVerified(user);
     if (user.plan !== "free") {
       throw new ConvexError({ code: "FORBIDDEN", message: "Trials are only available on the free plan." });
     }

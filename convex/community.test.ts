@@ -21,7 +21,9 @@ const modules = import.meta.glob("./**/*.ts");
 type T = TestConvex<typeof schema>;
 
 async function seedUser(t: T, plan: "free" | "pro" | "expert", country = "Nigeria") {
-  return await t.run(async (ctx) => ctx.db.insert("users", { email: `user-${Math.random()}@example.com`, plan, country }));
+  return await t.run(async (ctx) =>
+    ctx.db.insert("users", { email: `user-${Math.random()}@example.com`, plan, country, emailVerificationTime: Date.now() }),
+  );
 }
 
 async function seedApprovedPost(t: T, authorId: Id<"users">) {

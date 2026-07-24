@@ -1,0 +1,18 @@
+{
+  "confirmed.title": "Email Verificado",
+  "confirmed.body": "Tu email está verificado — ahora tienes acceso completo a la Comunidad, contacto con agentes y pruebas.",
+  "error.title": "No se Pudo Verificar",
+  "error.fallback": "No se pudo verificar este email.",
+  "idle.title": "Verifica Tu Email",
+  "idle.body": "Haz clic abajo para confirmar que este es realmente el email de tu cuenta VisaClear.",
+  "idle.cta": "Verificar Este Email",
+  "idle.confirming": "Verificando…",
+  "signin.title": "Inicia Sesión para Verificar",
+  "signin.body": "Inicia sesión en la cuenta que solicitó esta verificación para confirmarla.",
+  "signin.cta": "Iniciar Sesión para Continuar",
+  "banner.title": "Verifica tu dirección de email",
+  "banner.body": "Revisa tu bandeja de entrada por el enlace que te enviamos. Lo necesitarás para publicar en la Comunidad, contactar agentes o iniciar una prueba paga.",
+  "banner.resend": "Reenviar email",
+  "banner.resending": "Enviando…",
+  "banner.resent": "Enviado — revisa tu bandeja de entrada."
+}

@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
+import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended, assertEmailVerified } from "./authHelpers.ts";
 import { requireAdmin, logAdminAction } from "./admin.ts";
 import { checkUserDailyLimit } from "./rateLimits.ts";
 import { getEffectivePlan } from "./checklists.ts";
@@ -117,6 +117,7 @@ export const submitPost = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     assertNotSuspended(user);
+    assertEmailVerified(user);
 
     if (!PAID_PLANS.includes(getEffectivePlan(user) as (typeof PAID_PLANS)[number])) {
       throw new ConvexError({
@@ -383,6 +384,7 @@ export const submitReply = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
     assertNotSuspended(user);
+    assertEmailVerified(user);
 
     if (!PAID_PLANS.includes(getEffectivePlan(user) as (typeof PAID_PLANS)[number])) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Replying is available on Pro and Expert plans." });

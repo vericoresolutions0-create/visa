@@ -43,3 +43,17 @@ export function assertNotSuspended(user: Doc<"users">): void {
     });
   }
 }
+
+// Gates the handful of actions where a fake/unowned signup email is an
+// actual abuse vector — posting publicly, contacting an agent, starting a
+// paid trial — without blocking basic browsing or account creation itself,
+// which would add friction for no real gain. Google sign-ins never hit this
+// (see auth.ts): Google has already verified that email for us.
+export function assertEmailVerified(user: Doc<"users">): void {
+  if (!user.emailVerificationTime) {
+    throw new ConvexError({
+      code: "EMAIL_NOT_VERIFIED",
+      message: "Please verify your email address first — check your inbox for the link, or resend it from Settings.",
+    });
+  }
+}

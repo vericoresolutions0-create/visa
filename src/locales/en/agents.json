@@ -24,6 +24,7 @@
   "signin.title": "Sign In to Browse Agents",
   "signin.subtitle": "Sign in with Google or your email to view verified agents, send contact requests, or list your own agency.",
   "card.verified": "Verified",
+  "card.unverified": "Unverified — no credential on file",
   "card.exp": "{{n}}y exp",
   "card.enquiry_sent": "Enquiry Sent",
   "card.sending": "Sending…",

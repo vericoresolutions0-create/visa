@@ -12,12 +12,12 @@ import { defineConfig } from "vite";
 const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:*",
-    "frame-src 'none'",
+    "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site http://127.0.0.1:* ws://127.0.0.1:* https://challenges.cloudflare.com",
+    "frame-src https://challenges.cloudflare.com",
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

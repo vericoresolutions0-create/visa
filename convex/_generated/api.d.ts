@@ -50,6 +50,7 @@ import type * as dashboardInsights from "../dashboardInsights.js";
 import type * as dataFreshness from "../dataFreshness.js";
 import type * as dataFreshnessDigest from "../dataFreshnessDigest.js";
 import type * as emailChange from "../emailChange.js";
+import type * as emailVerification from "../emailVerification.js";
 import type * as emails_agentBilling from "../emails/agentBilling.js";
 import type * as emails_agentTrial from "../emails/agentTrial.js";
 import type * as emails_agentWelcome from "../emails/agentWelcome.js";
@@ -58,6 +59,7 @@ import type * as emails_clientDocumentUpload from "../emails/clientDocumentUploa
 import type * as emails_documentExpiry from "../emails/documentExpiry.js";
 import type * as emails_emailChange from "../emails/emailChange.js";
 import type * as emails_emailFailures from "../emails/emailFailures.js";
+import type * as emails_emailVerification from "../emails/emailVerification.js";
 import type * as emails_employerInvite from "../emails/employerInvite.js";
 import type * as emails_householdInvite from "../emails/householdInvite.js";
 import type * as emails_orgAdminInvite from "../emails/orgAdminInvite.js";
@@ -110,6 +112,7 @@ import type * as stripe from "../stripe.js";
 import type * as systemHealth from "../systemHealth.js";
 import type * as telegramBot from "../telegramBot.js";
 import type * as travelLog from "../travelLog.js";
+import type * as turnstile from "../turnstile.js";
 import type * as users from "../users.js";
 import type * as vault from "../vault.js";
 import type * as vendorWatch from "../vendorWatch.js";
@@ -170,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   dataFreshness: typeof dataFreshness;
   dataFreshnessDigest: typeof dataFreshnessDigest;
   emailChange: typeof emailChange;
+  emailVerification: typeof emailVerification;
   "emails/agentBilling": typeof emails_agentBilling;
   "emails/agentTrial": typeof emails_agentTrial;
   "emails/agentWelcome": typeof emails_agentWelcome;
@@ -178,6 +182,7 @@ declare const fullApi: ApiFromModules<{
   "emails/documentExpiry": typeof emails_documentExpiry;
   "emails/emailChange": typeof emails_emailChange;
   "emails/emailFailures": typeof emails_emailFailures;
+  "emails/emailVerification": typeof emails_emailVerification;
   "emails/employerInvite": typeof emails_employerInvite;
   "emails/householdInvite": typeof emails_householdInvite;
   "emails/orgAdminInvite": typeof emails_orgAdminInvite;
@@ -230,6 +235,7 @@ declare const fullApi: ApiFromModules<{
   systemHealth: typeof systemHealth;
   telegramBot: typeof telegramBot;
   travelLog: typeof travelLog;
+  turnstile: typeof turnstile;
   users: typeof users;
   vault: typeof vault;
   vendorWatch: typeof vendorWatch;

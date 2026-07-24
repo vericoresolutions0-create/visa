@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner.tsx";
 import {
   ArrowLeft, MapPin, Briefcase, Languages, Check, MessageCircle,
   Phone, BadgeCheck, Star, Globe, ChevronRight, Gem, ExternalLink,
@@ -297,6 +298,14 @@ export default function AgentProfilePage() {
                     <BadgeCheck className="w-3 h-3" /> Verified
                   </span>
                 )}
+                {!profile.verified && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-semibold border border-border"
+                    title="This agent hasn't submitted a credential for admin review yet"
+                  >
+                    Unverified — no credential on file
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1">
@@ -413,6 +422,7 @@ export default function AgentProfilePage() {
           ) : isAuthenticated ? (
             // Authenticated: existing contact form (unchanged)
             <div className="space-y-3">
+              <EmailVerificationBanner />
               {showMessageBox && (
                 <textarea
                   value={message}

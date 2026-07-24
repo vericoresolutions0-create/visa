@@ -6,6 +6,9 @@ import { action, query } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { recordPartnerEvent } from "./partners.ts";
+import { startEmailVerification } from "./emailVerification.ts";
+import type { MutationCtx } from "./_generated/server";
+import { verifyTurnstileToken } from "./turnstile.ts";
 
 // Google only activates once AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET are set
 // as Convex env vars — until then it's simply absent from the providers
@@ -40,7 +43,22 @@ const {
     // Fires exactly once for a genuinely new account (existingUserId is
     // null) — the authoritative place to record a real partner signup,
     // independent of any frontend timing.
-    async afterUserCreatedOrUpdated(ctx, { userId, existingUserId, profile }) {
+    async afterUserCreatedOrUpdated(ctx, { userId, existingUserId, profile, type }) {
+      if (existingUserId === null) {
+        // Google has already verified this email for us — trust it
+        // immediately rather than making the user click yet another link.
+        // Password-provider signups get a real verification email instead,
+        // since anyone can type any address into that form.
+        if (type === "oauth") {
+          await ctx.db.patch(userId, { emailVerificationTime: Date.now() });
+        } else if (type === "credentials") {
+          const email = (profile as { email?: string }).email;
+          if (email) {
+            const user = await ctx.db.get(userId);
+            await startEmailVerification(ctx as unknown as MutationCtx, userId, email, user?.name ?? "there");
+          }
+        }
+      }
       if (existingUserId !== null) return;
       const slug = (profile as { partnerReferralSlug?: string }).partnerReferralSlug;
       if (!slug) return;
@@ -87,6 +105,14 @@ export const signIn = action({
     const email = typeof params?.email === "string" ? params.email : undefined;
     if (email && flow) {
       await ctx.runMutation(internal.authRateLimit.checkAndRecordAuthAttempt, { email, flow });
+    }
+    // Bot-check new account creation specifically — a slow, distributed bot
+    // sails right through the per-email rate limiter above since it never
+    // reuses the same email twice. Inert until TURNSTILE_SITE_KEY /
+    // TURNSTILE_SECRET_KEY are both set (see convex/turnstile.ts).
+    if (flow === "signUp") {
+      const turnstileToken = typeof params?.turnstileToken === "string" ? params.turnstileToken : undefined;
+      await verifyTurnstileToken(turnstileToken);
     }
     return await callConvexAuthSignIn(ctx, args);
   },

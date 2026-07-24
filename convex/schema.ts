@@ -621,6 +621,21 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_user", ["userId"]),
 
+  // A pending, unverified proof-of-ownership for a new account's signup
+  // email. Same token/expiry shape as pending_email_changes — set
+  // users.emailVerificationTime once confirmed. Google sign-ins skip this
+  // entirely (Google has already verified that email); only Password-
+  // provider signups get one, created in auth.ts's afterUserCreatedOrUpdated.
+  pending_email_verifications: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    requestedAt: v.string(),
+    expiresAt: v.string(),
+    consumedAt: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
+
   // Same backstop pattern as contact_daily_usage, for the public white-label
   // application form.
   whitelabel_daily_usage: defineTable({

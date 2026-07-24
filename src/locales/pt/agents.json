@@ -24,6 +24,7 @@
   "signin.title": "Faça login para ver agentes",
   "signin.subtitle": "Faça login com Google ou seu email para ver agentes verificados, enviar solicitações de contato ou listar sua própria agência.",
   "card.verified": "Verificado",
+  "card.unverified": "Não verificado — sem credencial registrada",
   "card.exp": "{{n}} anos exp.",
   "card.enquiry_sent": "Consulta enviada",
   "card.sending": "Enviando…",

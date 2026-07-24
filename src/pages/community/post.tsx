@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
@@ -71,6 +72,7 @@ function ReplyComposer({ postId, isPaidUser }: { postId: Id<"community_posts">; 
 
   return (
     <div className="space-y-2">
+      <EmailVerificationBanner />
       <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}

@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { AuthAccessPanel } from "@/components/auth/access-panel.tsx";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
@@ -166,6 +167,8 @@ function SubmitPostForm({ onClose }: { onClose: () => void }) {
       <p className="text-xs text-muted-foreground leading-relaxed">
         Your post is anonymous — your name and contact details are never shown. Do not include phone numbers, email addresses, or external links. Posts are reviewed before going live.
       </p>
+
+      <EmailVerificationBanner />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {(["experience", "question", "tip", "complaint"] as Category[]).map((cat) => {
