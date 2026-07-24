@@ -925,6 +925,7 @@ export default defineSchema({
       v.literal("org_member_invite_accepted"),
       v.literal("org_member_ready"),
       v.literal("org_invite_reminder"),
+      v.literal("org_cohort_completed"),
     ),
     title: v.string(),
     body: v.string(),

@@ -5,7 +5,7 @@ import type { Id } from "./_generated/dataModel.js";
 import { internal } from "./_generated/api";
 import { getMyOrgAdminMembershipOrThrow } from "./organizations.ts";
 import { assertNotSuspended } from "./authHelpers.ts";
-import { ORG_READY_THRESHOLD, ORG_MEMBER_CAP } from "./orgHelpers.ts";
+import { ORG_READY_THRESHOLD, ORG_MEMBER_CAP, memberNounSingular } from "./orgHelpers.ts";
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -144,7 +144,38 @@ export const setPipelineStage = mutation({
   handler: async (ctx, args) => {
     const { organizationId } = await getMyOrgAdminMembershipOrThrow(ctx);
     await getOwnedLinkOrThrow(ctx, organizationId, args.linkId);
+
+    // Snapshot the whole active cohort BEFORE patching, so "did this specific
+    // update complete the cohort" can be judged as a real state transition
+    // (not-all-relocated -> all-relocated), not just "is everyone relocated
+    // right now" — which would re-fire on every later action once a cohort
+    // was already fully relocated. Only status accepted/pending members
+    // count as "active"; declined/revoked rows are already excluded from
+    // every other cohort-wide count in this file for the same reason.
+    const allLinks = await ctx.db
+      .query("org_employee_links")
+      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+      .take(ORG_MEMBER_CAP + 1);
+    const activeLinks = allLinks.filter((l) => l.status === "accepted");
+    const wasAllRelocated = activeLinks.length > 0 && activeLinks.every((l) => l.pipelineStage === "relocated");
+
     await ctx.db.patch(args.linkId, { pipelineStage: args.pipelineStage });
+
+    const isAllRelocatedNow = activeLinks.length > 0 && activeLinks.every((l) =>
+      (l._id === args.linkId ? args.pipelineStage : l.pipelineStage) === "relocated",
+    );
+
+    if (!wasAllRelocated && isAllRelocatedNow) {
+      const org = await ctx.db.get(organizationId);
+      const singular = memberNounSingular(org?.type);
+      await ctx.scheduler.runAfter(0, internal.notifications.createOrgAdminNotification, {
+        organizationId,
+        type: "org_cohort_completed",
+        title: "Your whole cohort has relocated",
+        body: `Every current ${singular} in ${org?.name ?? "your organisation"} has now relocated. Ready to start your next intake?`,
+        linkTo: "/business/dashboard",
+      });
+    }
   },
 });
 

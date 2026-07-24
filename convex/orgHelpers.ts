@@ -12,6 +12,15 @@ export function memberNoun(orgType?: string | null): string {
   return "employees";
 }
 
+// Singular form of memberNoun's plural — used wherever the copy refers to
+// exactly one person ("Jordan accepted your invite and joined as a
+// employee" would read wrong). Not a generic pluralizer, just the 3 real
+// words this app actually uses.
+export function memberNounSingular(orgType?: string | null): string {
+  const noun = memberNoun(orgType);
+  return noun === "students" ? "student" : noun === "clients" ? "client" : "employee";
+}
+
 // Shared with employerCohort.ts's bucketReadiness, which buckets
 // progress >= this as "Ready" on the employer's cohort view — the
 // org-admin "member is ready" notification fires on the same threshold

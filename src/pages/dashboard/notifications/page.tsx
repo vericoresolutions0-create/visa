@@ -12,7 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel.js";
 import {
   ArrowLeft, Globe, Bell, BellRing, FileWarning, Calendar, Clock,
   CheckCheck, Filter, Lock, ChevronRight, AlertTriangle, DollarSign, Star,
-  UserRoundCheck, UserPlus, CheckCircle2,
+  UserRoundCheck, UserPlus, CheckCircle2, PartyPopper,
 } from "lucide-react";
 
 type Notification = Doc<"in_app_notifications">;
@@ -98,6 +98,12 @@ function notificationIcon(type: Notification["type"]) {
         <UserPlus className="w-4 h-4 text-amber-500" />
       </div>
     );
+  if (type === "org_cohort_completed")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
+        <PartyPopper className="w-4 h-4 text-accent" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -117,6 +123,7 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "org_member_invite_accepted") return "Invite accepted";
   if (type === "org_member_ready") return "Member ready";
   if (type === "org_invite_reminder") return "Invite reminder";
+  if (type === "org_cohort_completed") return "Cohort completed";
   return "Reminder";
 }
 

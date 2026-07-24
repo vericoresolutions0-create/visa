@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import { Bell, BellRing, FileWarning, Calendar, Clock, UploadCloud, X, CheckCheck, AlertTriangle, DollarSign, Star, UserRoundCheck, UserPlus, CheckCircle2 } from "lucide-react";
+import { Bell, BellRing, FileWarning, Calendar, Clock, UploadCloud, X, CheckCheck, AlertTriangle, DollarSign, Star, UserRoundCheck, UserPlus, CheckCircle2, PartyPopper } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { useNavigate } from "react-router-dom";
 import type { Doc } from "@/convex/_generated/dataModel.js";
@@ -43,6 +43,8 @@ function notificationIcon(type: Notification["type"]) {
     return <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />;
   if (type === "org_invite_reminder")
     return <UserPlus className="w-4 h-4 text-amber-500 shrink-0" />;
+  if (type === "org_cohort_completed")
+    return <PartyPopper className="w-4 h-4 text-accent shrink-0" />;
   return <Clock className="w-4 h-4 text-accent shrink-0" />;
 }
 

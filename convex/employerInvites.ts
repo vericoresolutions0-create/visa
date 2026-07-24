@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { getCurrentUser, getCurrentUserOrThrow } from "./authHelpers.ts";
 import { internal } from "./_generated/api";
-import { memberNoun, ORG_READY_THRESHOLD } from "./orgHelpers.ts";
+import { memberNounSingular, ORG_READY_THRESHOLD } from "./orgHelpers.ts";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -78,8 +78,7 @@ export const acceptInvite = mutation({
     });
 
     const org = await ctx.db.get(link.organizationId);
-    const noun = memberNoun(org?.type);
-    const singular = noun === "students" ? "student" : noun === "clients" ? "client" : "employee";
+    const singular = memberNounSingular(org?.type);
     await ctx.scheduler.runAfter(0, internal.notifications.createOrgAdminNotification, {
       organizationId: link.organizationId,
       type: "org_member_invite_accepted",
