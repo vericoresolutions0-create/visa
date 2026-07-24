@@ -5,8 +5,8 @@
 // or a broken product (a guard fires when it shouldn't). Real DB rows, real
 // identity simulation via t.withIdentity, nothing mocked.
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { describe, expect, test, vi } from "vitest";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
@@ -245,5 +245,163 @@ describe("marketplace.getMarketplaceLeads — pagination", () => {
     });
     expect(result.page.length).toBeLessThanOrEqual(3);
     expect(result.isDone).toBe(false);
+  });
+});
+
+describe("marketplace.findMatchingVerifiedAgents — immediate lead alert matching (2026-07-24)", () => {
+  test("matches a verified agent whose specialisation matches the lead's visa type", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t); // specialisations: ["skilled-worker"], verified: true
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner@example.com" }));
+    const leadId = await seedLead(t, ownerId); // visaType: "skilled-worker"
+
+    const matches = await t.run(async (ctx) =>
+      ctx.runQuery(internal.marketplace.findMatchingVerifiedAgents, { leadId }),
+    );
+
+    expect(matches.map((m) => m.userId)).toContain(agentUserId);
+  });
+
+  test("excludes an unverified agent even with a matching specialisation", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t, { verified: false });
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner2@example.com" }));
+    const leadId = await seedLead(t, ownerId);
+
+    const matches = await t.run(async (ctx) =>
+      ctx.runQuery(internal.marketplace.findMatchingVerifiedAgents, { leadId }),
+    );
+
+    expect(matches.map((m) => m.userId)).not.toContain(agentUserId);
+  });
+
+  test("excludes the lead owner from their own matches, even if they have a matching agent profile", async () => {
+    const t = convexTest(schema, modules);
+    const ownerId = await seedAgent(t); // owner is also a verified agent with a matching specialisation
+    const leadId = await seedLead(t, ownerId);
+
+    const matches = await t.run(async (ctx) =>
+      ctx.runQuery(internal.marketplace.findMatchingVerifiedAgents, { leadId }),
+    );
+
+    expect(matches.map((m) => m.userId)).not.toContain(ownerId);
+  });
+
+  test("falls back to destination-served agents when no specialisation matches", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { email: "dest-agent@example.com" });
+      await ctx.db.insert("agent_profiles", {
+        userId,
+        fullName: "Destination Agent",
+        email: "dest-agent@example.com",
+        country: "Canada",
+        specialisations: ["student-visa"], // does not match the lead's visaType below
+        destinations: ["Canada"],
+        bio: "Test bio",
+        yearsExperience: 3,
+        languages: ["en"],
+        verified: true,
+        createdAt: new Date().toISOString(),
+        creditBalance: 100,
+        leadAccessRevoked: false,
+      });
+      return userId;
+    });
+    const ownerId = await t.run(async (ctx) => ctx.db.insert("users", { email: "owner3@example.com" }));
+    const leadId = await t.run(async (ctx) =>
+      ctx.db.insert("marketplace_leads", {
+        userId: ownerId,
+        visaType: "work-permit", // no agent specialises in this
+        destinationCountry: "Canada",
+        urgencyLevel: "standard",
+        status: "open",
+        unlockCost: 10,
+        createdAt: new Date().toISOString(),
+      }),
+    );
+
+    const matches = await t.run(async (ctx) =>
+      ctx.runQuery(internal.marketplace.findMatchingVerifiedAgents, { leadId }),
+    );
+
+    expect(matches.map((m) => m.userId)).toContain(agentUserId);
+  });
+});
+
+describe("marketplace.submitLead — immediate new-lead alert dispatch (2026-07-24)", () => {
+  test("submitting a lead schedules the immediate alert, which creates a real notification for a matching verified agent", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await seedAgent(t); // specialisations: ["skilled-worker"], verified: true
+    // seedAgent's shared helper doesn't set agentPlan (other tests using it
+    // don't need an active plan to browse/unlock) — notifications correctly
+    // require an active agent (paid or trial), so this test needs one too.
+    await t.run(async (ctx) => ctx.db.patch(agentUserId, { agentPlan: "agent_listing" }));
+    const applicantId = await t.run(async (ctx) => ctx.db.insert("users", { email: "applicant@example.com", plan: "free" }));
+
+    vi.useFakeTimers();
+    try {
+      await t.withIdentity({ subject: applicantId }).mutation(api.marketplace.submitLead, {
+        visaType: "skilled-worker",
+        destinationCountry: "United Kingdom",
+        urgencyLevel: "urgent",
+      });
+      vi.runAllTimers();
+      await t.finishInProgressScheduledFunctions();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const notifications = await t.run(async (ctx) =>
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", agentUserId)).collect(),
+    );
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].type).toBe("marketplace_lead_alert");
+    expect(notifications[0].title).toContain("skilled-worker");
+  });
+
+  test("does not alert an agent whose trial has already expired and has no paid plan", async () => {
+    const t = convexTest(schema, modules);
+    const agentUserId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        email: "expired-trial@example.com",
+        agentTrialPlan: "agent_listing",
+        agentTrialExpiresAt: new Date(Date.now() - 86_400_000).toISOString(),
+      });
+      await ctx.db.insert("agent_profiles", {
+        userId,
+        fullName: "Expired Trial Agent",
+        email: "expired-trial@example.com",
+        country: "United Kingdom",
+        specialisations: ["skilled-worker"],
+        bio: "Test bio",
+        yearsExperience: 2,
+        languages: ["en"],
+        verified: true,
+        createdAt: new Date().toISOString(),
+        creditBalance: 0,
+        leadAccessRevoked: false,
+      });
+      return userId;
+    });
+    const applicantId = await t.run(async (ctx) => ctx.db.insert("users", { email: "applicant2@example.com", plan: "free" }));
+
+    vi.useFakeTimers();
+    try {
+      await t.withIdentity({ subject: applicantId }).mutation(api.marketplace.submitLead, {
+        visaType: "skilled-worker",
+        destinationCountry: "United Kingdom",
+        urgencyLevel: "urgent",
+      });
+      vi.runAllTimers();
+      await t.finishInProgressScheduledFunctions();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const notifications = await t.run(async (ctx) =>
+      ctx.db.query("in_app_notifications").withIndex("by_user", (q) => q.eq("userId", agentUserId)).collect(),
+    );
+    expect(notifications).toHaveLength(0);
   });
 });

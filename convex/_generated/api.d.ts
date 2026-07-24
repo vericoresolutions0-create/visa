@@ -73,6 +73,7 @@ import type * as fileValidation from "../fileValidation.js";
 import type * as household from "../household.js";
 import type * as http from "../http.js";
 import type * as influencers from "../influencers.js";
+import type * as leadDispatch from "../leadDispatch.js";
 import type * as leadSentinel from "../leadSentinel.js";
 import type * as licenseCodes from "../licenseCodes.js";
 import type * as managedDependents from "../managedDependents.js";
@@ -181,6 +182,7 @@ declare const fullApi: ApiFromModules<{
   household: typeof household;
   http: typeof http;
   influencers: typeof influencers;
+  leadDispatch: typeof leadDispatch;
   leadSentinel: typeof leadSentinel;
   licenseCodes: typeof licenseCodes;
   managedDependents: typeof managedDependents;

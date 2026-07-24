@@ -1,9 +1,64 @@
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getCurrentUser, getCurrentUserOrThrow, assertNotSuspended } from "./authHelpers.ts";
 import { logSecurityEvent } from "./securityAudit.ts";
+import type { Doc } from "./_generated/dataModel";
+
+const MAX_MATCHED_AGENTS = 5;
+
+// ─── Shared: find verified agents matching a lead ─────────────────────────────
+// Specialisation match first (substring either direction, e.g. "Skilled
+// Worker" lead matches an agent specialising in "UK Skilled Worker Visas");
+// falls back to destination-served agents if nothing specialises. Used by
+// the immediate new-lead alert (leadDispatch.ts), fired once per lead right
+// at creation. leadSentinel.ts's 48h stale-lead nudge deliberately keeps its
+// own copy of this same matching logic rather than calling this — it
+// batch-loads all verified profiles ONCE and reuses that list across up to
+// 10 leads per cron run; routing it through this per-lead query instead
+// would mean re-fetching all 200 profiles for every lead, a real
+// performance regression for no benefit at that call site.
+export const findMatchingVerifiedAgents = internalQuery({
+  args: { leadId: v.id("marketplace_leads"), limit: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<Doc<"agent_profiles">[]> => {
+    const lead = await ctx.db.get(args.leadId);
+    if (!lead) return [];
+    const limit = args.limit ?? MAX_MATCHED_AGENTS;
+
+    const verifiedProfiles = await ctx.db
+      .query("agent_profiles")
+      .withIndex("by_verified", (q) => q.eq("verified", true))
+      .take(200);
+
+    const matching = verifiedProfiles
+      .filter(
+        (p) =>
+          p.userId !== lead.userId &&
+          p.specialisations.some(
+            (s) =>
+              s.toLowerCase().includes(lead.visaType.toLowerCase()) ||
+              lead.visaType.toLowerCase().includes(s.toLowerCase()),
+          ),
+      )
+      .slice(0, limit);
+
+    if (matching.length > 0) return matching;
+
+    return verifiedProfiles
+      .filter(
+        (p) =>
+          p.userId !== lead.userId &&
+          (!p.destinations ||
+            p.destinations.length === 0 ||
+            p.destinations.some(
+              (d) => d.toLowerCase() === lead.destinationCountry.toLowerCase(),
+            )),
+      )
+      .slice(0, limit);
+  },
+});
 
 // Credit cost per lead urgency tier — server-only, never accepted from client.
 const UNLOCK_COSTS: Record<string, number> = {
@@ -73,7 +128,7 @@ export const submitLead = mutation({
           "You already have an open lead request. Close it before submitting another.",
       });
 
-    await ctx.db.insert("marketplace_leads", {
+    const leadId = await ctx.db.insert("marketplace_leads", {
       userId: user._id,
       visaType: args.visaType.trim(),
       destinationCountry: args.destinationCountry.trim(),
@@ -83,6 +138,8 @@ export const submitLead = mutation({
       unlockCost: UNLOCK_COSTS[args.urgencyLevel] ?? 3,
       createdAt: new Date().toISOString(),
     });
+
+    await ctx.scheduler.runAfter(0, internal.leadDispatch.dispatchImmediateLeadAlert, { leadId });
   },
 });
 
@@ -116,7 +173,7 @@ export const submitLeadFromRejectionAnalysis = internalMutation({
       .join(". ")
       .slice(0, 1000);
 
-    await ctx.db.insert("marketplace_leads", {
+    const leadId = await ctx.db.insert("marketplace_leads", {
       userId: args.userId,
       visaType: args.visaType.trim(),
       destinationCountry: args.destinationCountry.trim(),
@@ -128,7 +185,15 @@ export const submitLeadFromRejectionAnalysis = internalMutation({
       leadSource: "rejection_analyser",
       applicantNationality: args.applicantNationality,
     });
+
+    await ctx.scheduler.runAfter(0, internal.leadDispatch.dispatchImmediateLeadAlert, { leadId });
   },
+});
+
+// ─── Internal: fetch a lead by id (for the immediate-alert dispatcher) ────────
+export const getLeadForAlert = internalQuery({
+  args: { leadId: v.id("marketplace_leads") },
+  handler: async (ctx, args) => await ctx.db.get(args.leadId),
 });
 
 // ─── Browse marketplace leads (agent side — contact details masked) ───────────
