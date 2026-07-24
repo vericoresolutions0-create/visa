@@ -30,6 +30,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ChevronRight,
+  ChevronDown,
   TrendingUp,
   LogIn,
   Star,
@@ -566,8 +567,27 @@ function ReminderModal({
 
 type DashboardView = "overview" | "checklists" | "timeline" | "reminders";
 
+// Collapsed by default — five icon tiles repeating navigation that's mostly
+// reachable elsewhere isn't worth permanent space on every dashboard visit.
+// Remembered per device so it stays however the user last left it.
+const DASHBOARD_PAGES_COLLAPSED_KEY = "vc_dashboard_pages_collapsed";
+
 function DashboardPageLinks({ current }: { current: DashboardView }) {
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = window.localStorage.getItem(DASHBOARD_PAGES_COLLAPSED_KEY);
+    return stored === null ? true : stored === "1";
+  });
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(DASHBOARD_PAGES_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
   const pages = [
     {
       id: "overview",
@@ -601,11 +621,34 @@ function DashboardPageLinks({ current }: { current: DashboardView }) {
     },
   ];
 
+  if (collapsed) {
+    return (
+      <button
+        onClick={toggleCollapsed}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-primary/3 transition-all cursor-pointer"
+      >
+        <span className="flex items-center gap-2.5">
+          <span className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center text-primary shrink-0">
+            <Shield className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-sm font-semibold text-primary">Dashboard Pages</span>
+        </span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+      </button>
+    );
+  }
+
   return (
     <div>
-      <h3 className="font-semibold text-sm text-primary uppercase tracking-widest mb-3">
-        Dashboard Pages
-      </h3>
+      <button
+        onClick={toggleCollapsed}
+        className="w-full flex items-center justify-between mb-3 cursor-pointer group"
+      >
+        <h3 className="font-semibold text-sm text-primary uppercase tracking-widest">
+          Dashboard Pages
+        </h3>
+        <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors rotate-180" />
+      </button>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {pages.map((page) => (
           <button

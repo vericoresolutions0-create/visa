@@ -488,9 +488,16 @@ export default function DocumentVaultPage() {
                         const status = expiryStatus(doc.expiryDate);
                         const hasReminder = visibleReminders.some((r) => r.vaultDocumentId === doc._id && !r.sent);
                         return (
-                          <div key={doc._id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                          <div key={doc._id} className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <div className="flex-1 min-w-0">
+                            {/* min-w-[9rem] instead of min-w-0: on a narrow row with an
+                                expiry badge + reminder badge + three icon buttons all
+                                marked shrink-0, a plain flex-1 can get squeezed all the
+                                way to zero width — an invisible, unclickable name. This
+                                floor forces the trailing controls to wrap to their own
+                                line instead, so the name (and its click target) always
+                                has real, tappable space. */}
+                            <div className="flex-1 min-w-36">
                               <button
                                 onClick={() => void handlePreview(doc)}
                                 className="text-sm font-medium text-foreground truncate hover:text-primary hover:underline cursor-pointer text-left block w-full"

@@ -125,7 +125,13 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+        // Fixed + viewport-anchored on mobile: the bell isn't the last item in
+        // the header (Settings/Sign out sit to its right), so a dropdown
+        // anchored to the bell's own position — not the screen edge — pushed
+        // most of a fixed 320px panel off-screen to the left on phone widths.
+        // sm: and up reverts to the original button-anchored dropdown, where
+        // there's always enough room.
+        <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-80 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-semibold text-primary">Notifications</span>
