@@ -67,17 +67,31 @@ export function buildComplianceCsv(rows: CohortRow[], orgType?: string | null): 
   return lines.join("\n");
 }
 
-export function downloadComplianceCsv(rows: CohortRow[], orgName: string, orgType?: string | null) {
-  const csv = buildComplianceCsv(rows, orgType);
+export function buildComplianceCsvFileName(orgName: string, orgType?: string | null): string {
+  const h = getOrgHeaders(orgType);
+  const safeOrgName = orgName.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_").slice(0, 50);
+  return `VisaClear_${h.reportName}_${safeOrgName}_${new Date().toISOString().split("T")[0]}.csv`;
+}
+
+// Split out from downloadComplianceCsv so the compliance-export-history
+// feature can persist the exact same CSV via the backend (see
+// business/dashboard.tsx's handleExportCompliance) before triggering this
+// purely local browser download — re-downloading a past export must return
+// exactly what was exported that day, not whatever the live cohort looks
+// like now.
+export function triggerCsvDownload(csv: string, fileName: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  const h = getOrgHeaders(orgType);
-  const safeOrgName = orgName.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_").slice(0, 50);
-  link.download = `VisaClear_${h.reportName}_${safeOrgName}_${new Date().toISOString().split("T")[0]}.csv`;
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+export function downloadComplianceCsv(rows: CohortRow[], orgName: string, orgType?: string | null) {
+  const csv = buildComplianceCsv(rows, orgType);
+  triggerCsvDownload(csv, buildComplianceCsvFileName(orgName, orgType));
 }

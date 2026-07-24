@@ -39,6 +39,7 @@ import type * as checklistFlags from "../checklistFlags.js";
 import type * as checklists from "../checklists.js";
 import type * as clientIntakes from "../clientIntakes.js";
 import type * as community from "../community.js";
+import type * as complianceExportHistory from "../complianceExportHistory.js";
 import type * as contact from "../contact.js";
 import type * as countryWatch from "../countryWatch.js";
 import type * as creators from "../creators.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   checklists: typeof checklists;
   clientIntakes: typeof clientIntakes;
   community: typeof community;
+  complianceExportHistory: typeof complianceExportHistory;
   contact: typeof contact;
   countryWatch: typeof countryWatch;
   creators: typeof creators;

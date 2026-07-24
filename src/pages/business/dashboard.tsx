@@ -12,13 +12,16 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { useSeo } from "@/hooks/use-seo.ts";
 import { useSmartBack } from "@/hooks/use-smart-back.ts";
 import { useAuth } from "@/hooks/use-auth.ts";
-import { downloadComplianceCsv } from "@/lib/compliance-export.ts";
+import { buildComplianceCsv, buildComplianceCsvFileName, triggerCsvDownload } from "@/lib/compliance-export.ts";
 import { NotificationBell } from "@/components/NotificationBell.tsx";
 import { cn, convexErrMsg } from "@/lib/utils.ts";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog.tsx";
+import {
   Globe, Building2, GraduationCap, Scale, LogIn, UserPlus, Download,
   LayoutDashboard, Table2, X, ChevronRight, Search, Send, Ban, ClipboardList, ArrowLeft, LogOut,
-  Sparkles,
+  Sparkles, History, FileDown,
 } from "lucide-react";
 import { AgentAIChat } from "@/components/AgentAIChat.tsx";
 
@@ -427,6 +430,9 @@ function DashboardInner() {
   const revokeInvite = useMutation(api.employerCohort.revokeInvite);
   const setPipelineStage = useMutation(api.employerCohort.setPipelineStage);
   const renameOrg = useMutation(api.organizations.renameOrganization);
+  const generateExportUploadUrl = useMutation(api.complianceExportHistory.generateExportUploadUrl);
+  const recordComplianceExport = useMutation(api.complianceExportHistory.recordComplianceExport);
+  const getExportDownloadUrl = useMutation(api.complianceExportHistory.getExportDownloadUrl);
 
   const [view, setView] = useState<"table" | "pipeline" | "ai">("table");
   const [search, setSearch] = useState("");
@@ -435,6 +441,11 @@ function DashboardInner() {
   const [showRenameForm, setShowRenameForm] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [renamingSaving, setRenamingSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [showExportHistory, setShowExportHistory] = useState(false);
+  const [downloadingHistoryId, setDownloadingHistoryId] = useState<string | null>(null);
+
+  const exportHistory = useQuery(api.complianceExportHistory.listMyExportHistory, showExportHistory ? {} : "skip");
 
   useEffect(() => {
     if (myOrg === null) navigate("/business/onboarding", { replace: true });
@@ -509,6 +520,48 @@ function DashboardInner() {
     }
   };
 
+  // Persists the exact CSV to compliance_export_history (real audit trail —
+  // re-downloading a past entry later must return exactly what was exported
+  // that day, not the live cohort re-rendered). Best-effort: if the persist
+  // step fails, the download the admin actually asked for still happens —
+  // this feature adds a history on top of the export, it must never be able
+  // to break the export itself.
+  const handleExportCompliance = async () => {
+    setExporting(true);
+    const rows = cohort as CohortRow[];
+    const csv = buildComplianceCsv(rows, myOrg.type);
+    const fileName = buildComplianceCsvFileName(myOrg.name, myOrg.type);
+    try {
+      const uploadUrl = await generateExportUploadUrl({});
+      const uploadResult = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/csv" },
+        body: csv,
+      });
+      if (!uploadResult.ok) throw new Error("Upload failed");
+      const { storageId } = await uploadResult.json();
+      await recordComplianceExport({ storageId, fileName, rowCount: rows.length });
+    } catch (err) {
+      console.error("Failed to save compliance export to history", err);
+      toast.error("Export downloaded, but couldn't be saved to your export history.");
+    } finally {
+      triggerCsvDownload(csv, fileName);
+      setExporting(false);
+    }
+  };
+
+  const handleDownloadHistoryEntry = async (historyId: Id<"compliance_export_history">) => {
+    setDownloadingHistoryId(historyId);
+    try {
+      const url = await getExportDownloadUrl({ historyId });
+      window.open(url, "_blank");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not open this export. Please try again.");
+    } finally {
+      setDownloadingHistoryId(null);
+    }
+  };
+
   const pending = (cohort as CohortRow[]).filter((r) => r.status === "pending").length;
   const relocated = (cohort as CohortRow[]).filter((r) => r.pipelineStage === "relocated").length;
   // Accepted-and-not-yet-relocated — was previously computed as two
@@ -536,14 +589,73 @@ function DashboardInner() {
         <div className="flex gap-2 shrink-0">
           <Button
             variant="outline"
-            onClick={() => downloadComplianceCsv(cohort as CohortRow[], myOrg.name, myOrg.type)}
-            className="cursor-pointer font-semibold"
+            size="icon"
+            onClick={() => setShowExportHistory(true)}
+            className="cursor-pointer"
+            title="Export history"
+            aria-label="Export history"
+          >
+            <History className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            disabled={exporting}
+            onClick={() => void handleExportCompliance()}
+            className="cursor-pointer font-semibold disabled:opacity-60"
           >
             <Download className="w-4 h-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">{orgCtx.exportLabel}</span>
+            <span className="hidden sm:inline">{exporting ? "Exporting…" : orgCtx.exportLabel}</span>
           </Button>
         </div>
       </div>
+
+      <Dialog open={showExportHistory} onOpenChange={setShowExportHistory}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl text-primary">Export History</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Every compliance report {myOrg.name} has exported. Each entry downloads exactly what was exported that day, not the live cohort.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto -mx-1 px-1">
+            {exportHistory === undefined ? (
+              <div className="space-y-2 py-2">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+              </div>
+            ) : exportHistory.length === 0 ? (
+              <div className="py-10 text-center">
+                <FileDown className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No exports yet. Your first export will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {exportHistory.map((entry) => (
+                  <div key={entry._id} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {new Date(entry.exportedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {entry.rowCount} {entry.rowCount === 1 ? "row" : "rows"} · Exported by {entry.exportedByName}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={downloadingHistoryId === entry._id}
+                      onClick={() => void handleDownloadHistoryEntry(entry._id)}
+                      className="cursor-pointer font-semibold shrink-0 disabled:opacity-60"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                      {downloadingHistoryId === entry._id ? "Opening…" : "Download"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats bar — only shown once there are cohort members */}
       {cohort.length > 0 && (

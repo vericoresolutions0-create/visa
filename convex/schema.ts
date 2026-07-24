@@ -801,6 +801,28 @@ export default defineSchema({
     .index("by_link", ["linkId"])
     .index("by_org", ["organizationId"]),
 
+  // A real, permanent record of every compliance CSV an org has ever
+  // exported — the export itself was always a one-off client-side snapshot
+  // with no saved history, so an org couldn't prove what it exported for a
+  // past compliance review, or when. Stores the actual CSV file (not just a
+  // log line) via ctx.storage, since the live cohort can change after the
+  // fact — re-downloading a past entry must return exactly what was
+  // exported that day, not a freshly regenerated (and possibly different)
+  // report. Never auto-deleted; unlike file-download tokens, a compliance
+  // audit trail is meant to persist.
+  compliance_export_history: defineTable({
+    organizationId: v.id("organizations"),
+    exportedByUserId: v.id("users"),
+    exportedAt: v.string(),
+    rowCount: v.number(),
+    // Snapshot of the org's type at export time, so a past entry's report
+    // label (e.g. "Student_Report") stays accurate even if the org's type
+    // is ever changed later.
+    orgType: v.optional(v.string()),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+  }).index("by_org", ["organizationId"]),
+
   // A minor (or any dependent with no VisaClear account of their own) that a
   // parent manages directly — no token/consent flow at all, since the
   // parent is the legal data controller for their own minor child. This is
