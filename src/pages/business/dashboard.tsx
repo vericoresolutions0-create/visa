@@ -433,6 +433,9 @@ function DashboardInner() {
   const generateExportUploadUrl = useMutation(api.complianceExportHistory.generateExportUploadUrl);
   const recordComplianceExport = useMutation(api.complianceExportHistory.recordComplianceExport);
   const getExportDownloadUrl = useMutation(api.complianceExportHistory.getExportDownloadUrl);
+  const inviteCoAdmin = useMutation(api.orgAdminInvites.inviteCoAdmin);
+  const revokeAdminInvite = useMutation(api.orgAdminInvites.revokeAdminInvite);
+  const removeCoAdmin = useMutation(api.orgAdminInvites.removeCoAdmin);
 
   const [view, setView] = useState<"table" | "pipeline" | "ai">("table");
   const [search, setSearch] = useState("");
@@ -444,8 +447,14 @@ function DashboardInner() {
   const [exporting, setExporting] = useState(false);
   const [showExportHistory, setShowExportHistory] = useState(false);
   const [downloadingHistoryId, setDownloadingHistoryId] = useState<string | null>(null);
+  const [showInviteAdminForm, setShowInviteAdminForm] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [invitingAdmin, setInvitingAdmin] = useState(false);
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
+  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
 
   const exportHistory = useQuery(api.complianceExportHistory.listMyExportHistory, showExportHistory ? {} : "skip");
+  const orgAdmins = useQuery(api.orgAdminInvites.listMyOrgAdmins, myOrg?.orgRole === "org_admin" ? {} : "skip");
 
   useEffect(() => {
     if (myOrg === null) navigate("/business/onboarding", { replace: true });
@@ -559,6 +568,46 @@ function DashboardInner() {
       toast.error(convexErrMsg(err) ?? "Could not open this export. Please try again.");
     } finally {
       setDownloadingHistoryId(null);
+    }
+  };
+
+  const handleInviteAdmin = async () => {
+    if (!newAdminEmail.trim()) return;
+    setInvitingAdmin(true);
+    try {
+      await inviteCoAdmin({ email: newAdminEmail.trim() });
+      toast.success("Admin invite sent.");
+      setShowInviteAdminForm(false);
+      setNewAdminEmail("");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not send the invite. Please try again.");
+    } finally {
+      setInvitingAdmin(false);
+    }
+  };
+
+  const handleRevokeAdminInvite = async (inviteId: Id<"org_admin_invites">) => {
+    setRevokingInviteId(inviteId);
+    try {
+      await revokeAdminInvite({ inviteId });
+      toast.success("Invite revoked.");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not revoke the invite. Please try again.");
+    } finally {
+      setRevokingInviteId(null);
+    }
+  };
+
+  const handleRemoveAdmin = async (userId: Id<"users">) => {
+    if (!window.confirm("Remove this person's admin access?")) return;
+    setRemovingAdminId(userId);
+    try {
+      await removeCoAdmin({ userId });
+      toast.success("Admin removed.");
+    } catch (err) {
+      toast.error(convexErrMsg(err) ?? "Could not remove this admin. Please try again.");
+    } finally {
+      setRemovingAdminId(null);
     }
   };
 
@@ -849,6 +898,87 @@ function DashboardInner() {
               {myOrg.type && <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded">{myOrg.type.replace("_", " ")}</span>}
             </p>
           )}
+
+          {/* Admins — same secure token-invite pattern as employee invites,
+              a separate table (org_admin_invites) since a co-admin isn't a
+              cohort member being tracked. Removing an admin is always
+              blocked server-side if it would leave zero admins. */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Admins</p>
+              {!showInviteAdminForm && (
+                <button
+                  onClick={() => setShowInviteAdminForm(true)}
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  Invite a co-admin
+                </button>
+              )}
+            </div>
+
+            {showInviteAdminForm && (
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3 mb-3">
+                <label className="block text-xs font-semibold text-foreground">Colleague's email</label>
+                <Input
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="colleague@company.com"
+                  className="w-full"
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleInviteAdmin(); }}
+                />
+                <div className="flex gap-2">
+                  <Button disabled={invitingAdmin || !newAdminEmail.trim()} onClick={() => void handleInviteAdmin()} className="cursor-pointer font-semibold disabled:opacity-60" size="sm">
+                    {invitingAdmin ? "Sending…" : "Send Invite"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setShowInviteAdminForm(false); setNewAdminEmail(""); }} className="cursor-pointer">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {orgAdmins === undefined ? (
+              <Skeleton className="h-16 w-full rounded-lg" />
+            ) : (
+              <div className="space-y-2">
+                {orgAdmins.admins.map((admin) => (
+                  <div key={admin.userId} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {admin.name ?? admin.email}{admin.isYou && <span className="ml-1.5 text-[10px] font-semibold uppercase text-accent">You</span>}
+                      </p>
+                      {admin.name && <p className="text-xs text-muted-foreground truncate">{admin.email}</p>}
+                    </div>
+                    {orgAdmins.admins.length > 1 && (
+                      <button
+                        onClick={() => void handleRemoveAdmin(admin.userId)}
+                        disabled={removingAdminId === admin.userId}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-destructive hover:bg-destructive/8 hover:border-destructive/20 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                      >
+                        <Ban className="w-3 h-3" /> {removingAdminId === admin.userId ? "Removing…" : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {orgAdmins.pendingInvites.map((invite) => (
+                  <div key={invite._id} className="flex items-center justify-between gap-3 border border-dashed border-border rounded-lg px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-muted-foreground truncate">{invite.invitedEmail}</p>
+                      <p className="text-xs text-muted-foreground/70">Invite pending</p>
+                    </div>
+                    <button
+                      onClick={() => void handleRevokeAdminInvite(invite._id)}
+                      disabled={revokingInviteId === invite._id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-transparent text-destructive hover:bg-destructive/8 hover:border-destructive/20 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      <Ban className="w-3 h-3" /> {revokingInviteId === invite._id ? "Revoking…" : "Revoke"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

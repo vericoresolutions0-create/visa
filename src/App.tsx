@@ -74,6 +74,7 @@ const BusinessLoginPage = lazy(() => import("./pages/business/login.tsx"));
 const BusinessOnboardingPage = lazy(() => import("./pages/business/onboarding.tsx"));
 const BusinessDashboardPage = lazy(() => import("./pages/business/dashboard.tsx"));
 const BusinessInvitePage = lazy(() => import("./pages/business/invite.tsx"));
+const BusinessAdminInvitePage = lazy(() => import("./pages/business/admin-invite.tsx"));
 const ContactPage = lazy(() => import("./pages/contact/page.tsx"));
 const AboutPage = lazy(() => import("./pages/about/page.tsx"));
 const BlogPage = lazy(() => import("./pages/blog/page.tsx"));
@@ -264,6 +265,7 @@ function AppRoutes() {
           <Route path="/business/onboarding" element={<BusinessOnboardingPage />} />
           <Route path="/business/dashboard" element={<BusinessDashboardPage />} />
           <Route path="/business/invite/:token" element={<BusinessInvitePage />} />
+          <Route path="/business/admin-invite/:token" element={<BusinessAdminInvitePage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/blog" element={<BlogPage />} />

@@ -789,6 +789,34 @@ export default defineSchema({
     .index("by_employee_user", ["employeeUserId"])
     .index("by_invited_email", ["invitedEmail"]),
 
+  // Invite-a-co-admin flow (build queue item #24) — deliberately a separate
+  // table from org_employee_links rather than a shared "inviteType" field on
+  // it: a co-admin isn't a cohort member being tracked toward relocation,
+  // so none of that table's fields (pipelineStage, department, roleTitle,
+  // linkedChecklistId, targetRelocationDate) apply, and mixing the two would
+  // mean every cohort-wide query in employerCohort.ts needs to remember to
+  // filter admin invites back out. Same real security pattern as
+  // org_employee_links on purpose though: unguessable token, real expiry,
+  // masked-email public preview, email-match enforced on accept.
+  org_admin_invites: defineTable({
+    organizationId: v.id("organizations"),
+    invitedEmail: v.string(),
+    token: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("revoked"),
+    ),
+    invitedByUserId: v.id("users"),
+    createdAt: v.string(),
+    respondedAt: v.optional(v.string()),
+    expiresAt: v.optional(v.string()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_token", ["token"])
+    .index("by_org_email", ["organizationId", "invitedEmail"]),
+
   // Private HR notes — employer-authored, NEVER shown to the employee. No
   // employee-facing query in convex/employerInvites.ts ever reads this.
   org_employee_notes: defineTable({
