@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { query, mutation, internalQuery } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel.js";
+import { internal } from "./_generated/api";
 import { bumpStat, bumpPlanCounters, readStats } from "./platformStats.ts";
 import { getCurrentUserOrThrow } from "./authHelpers.ts";
 
@@ -383,6 +384,20 @@ export const processPayoutRequest = mutation({
       ctx, admin, "processPayoutRequest", args.requestId,
       `${args.decision} $${(req.amountCents / 100).toFixed(2)} — ${args.adminNotes ?? "no notes"}`,
     );
+
+    // Previously silent — an agent had no way to know their payout request
+    // was processed at all short of checking back on their own dashboard.
+    const amount = (req.amountCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+    await ctx.runMutation(internal.notifications.createAgentNotification, {
+      userId: req.agentUserId,
+      type: "agent_payout_status",
+      title: args.decision === "paid" ? `Payout sent: ${amount}` : `Payout declined: ${amount}`,
+      body:
+        args.decision === "paid"
+          ? `Your payout request for ${amount} has been sent.`
+          : `Your payout request for ${amount} was declined.${args.adminNotes ? ` Note: ${args.adminNotes}` : ""}`,
+      linkTo: "/agents/dashboard",
+    });
   },
 });
 

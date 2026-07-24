@@ -891,6 +891,7 @@ export default defineSchema({
       v.literal("agent_trial_expiring"),
       v.literal("agent_payment_failed"),
       v.literal("agent_commission_earned"),
+      v.literal("agent_payout_status"),
     ),
     title: v.string(),
     body: v.string(),

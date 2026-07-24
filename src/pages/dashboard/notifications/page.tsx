@@ -61,6 +61,12 @@ function notificationIcon(type: Notification["type"]) {
         <DollarSign className="w-4 h-4 text-green-600" />
       </div>
     );
+  if (type === "agent_payout_status")
+    return (
+      <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+        <DollarSign className="w-4 h-4 text-blue-500" />
+      </div>
+    );
   return (
     <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center">
       <Clock className="w-4 h-4 text-accent" />
@@ -74,6 +80,7 @@ function typeLabel(type: Notification["type"]): string {
   if (type === "agent_trial_expiring") return "Trial ending";
   if (type === "agent_payment_failed") return "Payment failed";
   if (type === "agent_commission_earned") return "Commission earned";
+  if (type === "agent_payout_status") return "Payout update";
   return "Reminder";
 }
 
