@@ -914,7 +914,7 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
           </div>
 
           {/* Travel Health Score — Pro/Expert only, computed from real data */}
-          {travelHealth && travelHealth !== "locked" && (
+          {travelHealth && travelHealth !== "locked" && travelHealth !== "no_data" && (
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
@@ -951,6 +951,16 @@ function DashboardInner({ view = "overview" }: { view?: DashboardView }) {
                 Tracks document expiries, overdue reminders, and incomplete trips in one number.
               </p>
             </button>
+          )}
+          {travelHealth === "no_data" && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 p-4">
+              <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
+                Travel Health Score
+              </span>
+              <p className="text-xs text-primary-foreground/80 mt-1.5">
+                No score yet — add a document to your Vault or save a checklist, and this will start tracking expiries, reminders, and progress for real.
+              </p>
+            </div>
           )}
         </div>
       )}

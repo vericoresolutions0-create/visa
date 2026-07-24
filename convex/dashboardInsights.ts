@@ -13,7 +13,7 @@ function daysUntil(dateStr: string): number {
 // score genuinely reflects whether this person has anything to worry about.
 export const getTravelHealth = query({
   args: {},
-  handler: async (ctx): Promise<{ score: number; actions: UrgentAction[] } | "locked" | null> => {
+  handler: async (ctx): Promise<{ score: number; actions: UrgentAction[] } | "locked" | "no_data" | null> => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
     if (user.plan !== "pro" && user.plan !== "expert") return "locked";
@@ -23,6 +23,14 @@ export const getTravelHealth = query({
       ctx.db.query("reminders").withIndex("by_user", (q) => q.eq("userId", user._id)).take(100),
       ctx.db.query("saved_checklists").withIndex("by_user", (q) => q.eq("userId", user._id)).take(100),
     ]);
+
+    // A perfect 100 with nothing to show isn't "we checked and you're fine" —
+    // it's "we've never seen any of your data." Those have to read
+    // differently, or a brand-new user sees a false all-clear before they've
+    // done anything at all.
+    if (vaultDocs.length === 0 && reminders.length === 0 && trips.length === 0) {
+      return "no_data";
+    }
 
     let score = 100;
     const actions: UrgentAction[] = [];
